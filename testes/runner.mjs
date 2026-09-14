@@ -1,0 +1,72 @@
+import { spawn } from 'child_process';
+import readline from 'readline';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const colors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  green: '\x1b[32m',
+  cyan: '\x1b[36m',
+  yellow: '\x1b[33m',
+};
+
+const args = process.argv.slice(2);
+let selectedFase = null;
+
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--fase' && args[i + 1]) {
+    selectedFase = args[i + 1];
+    break;
+  }
+}
+
+function runFase(fase) {
+  let scriptPath = '';
+  if (fase === '1') {
+    scriptPath = path.join(__dirname, 'fase1', 'teste-login.mjs');
+  } else {
+    console.log(`\n${colors.yellow}A fase ${fase} ainda não tem testes implementados nesta etapa.${colors.reset}\n`);
+    process.exit(0);
+  }
+
+  console.log(`\n${colors.bright}${colors.cyan}A executar testes da Fase ${fase}...${colors.reset}\n`);
+
+  const child = spawn('node', [scriptPath], { stdio: 'inherit' });
+
+  child.on('close', (code) => {
+    process.exit(code || 0);
+  });
+}
+
+if (selectedFase) {
+  runFase(selectedFase);
+} else {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  console.log(`\n${colors.bright}══════════════════════════════════════════════════════${colors.reset}`);
+  console.log(`${colors.bright}   PLATAFORMA FARMA - EXECUTOR DE TESTES POR FASE   ${colors.reset}`);
+  console.log(`${colors.bright}══════════════════════════════════════════════════════${colors.reset}`);
+  console.log('Escolha a fase que deseja testar:');
+  console.log('  1) 1ª Fase - Autenticação & Login (admin@sermail.pt)');
+  console.log('  2) 2ª Fase - Gestão de Clientes & Artigos (a implementar)');
+  console.log('  3) 3ª Fase - Armazéns & Movimentos (a implementar)');
+  console.log('  4) 4ª Fase - Pedidos & Expedição (a implementar)');
+  console.log('  0) Sair');
+
+  rl.question('\nIntroduza o número da fase [1]: ', (answer) => {
+    rl.close();
+    const choice = answer.trim() || '1';
+    if (choice === '0') {
+      console.log('Operação cancelada.');
+      process.exit(0);
+    }
+    runFase(choice);
+  });
+}
