@@ -132,13 +132,13 @@ export default async function DashboardPage() {
                 <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
                 Fase 1: Login & Autenticação Supabase
               </li>
-              <li className="flex items-center gap-2 text-on-surface-variant/70">
-                <span className="material-symbols-outlined text-outline text-base">radio_button_unchecked</span>
-                Fase 2: Gestão de Clientes & Artigos
+              <li className="flex items-center gap-2 text-emerald-800 font-medium">
+                <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                Fase 2: Clientes (Siglas) & Perfis de Acesso
               </li>
               <li className="flex items-center gap-2 text-on-surface-variant/70">
                 <span className="material-symbols-outlined text-outline text-base">radio_button_unchecked</span>
-                Fase 3: Armazéns & Movimentos
+                Fase 3: Artigos, Armazéns & Movimentos
               </li>
               <li className="flex items-center gap-2 text-on-surface-variant/70">
                 <span className="material-symbols-outlined text-outline text-base">radio_button_unchecked</span>

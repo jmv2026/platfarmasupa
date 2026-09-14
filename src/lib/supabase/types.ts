@@ -1,5 +1,52 @@
 export type UserRole = 'admin' | 'gestor' | 'user1' | 'user2' | 'user3';
 
+export interface PerfilPermissoes {
+  all?: boolean;
+  admin?: boolean;
+  gestor?: boolean;
+  dashboard?: boolean;
+  clientes?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  utilizadores?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  artigos?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  armazens?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  movimentos?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  pedidos?: {
+    read?: boolean;
+    write?: boolean;
+    delete?: boolean;
+  };
+  [key: string]: unknown;
+}
+
+export interface Perfil {
+  codigo: UserRole;
+  nome: string;
+  descricao: string | null;
+  permissoes: PerfilPermissoes;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
