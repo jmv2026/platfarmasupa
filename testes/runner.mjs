@@ -36,6 +36,8 @@ function runFase(fase) {
     scriptPath = path.join(__dirname, 'fase4', 'teste-movimentos-stocks.mjs');
   } else if (fase === '5') {
     scriptPath = path.join(__dirname, 'fase5', 'teste-pedidos.mjs');
+  } else if (fase === '6') {
+    scriptPath = path.join(__dirname, 'fase6', 'teste-configuracao.mjs');
   } else {
     console.log(`\n${colors.yellow}A fase ${fase} ainda não tem testes implementados nesta etapa.${colors.reset}\n`);
     process.exit(0);
@@ -67,6 +69,7 @@ if (selectedFase) {
   console.log('  3) 3ª Fase - Gestão de Artigos & Armazéns');
   console.log('  4) 4ª Fase - Movimentos de Artigos & Views de Stock');
   console.log('  5) 5ª Fase - Processo de Pedidos, Sugestão FEFO & Débitos SS');
+  console.log('  6) 6ª Fase - Painel de Configuração & Administração (Admin)');
   console.log('  0) Sair');
 
   rl.question('\nIntroduza o número da fase [1]: ', (answer) => {

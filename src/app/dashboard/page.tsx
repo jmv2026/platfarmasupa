@@ -74,6 +74,15 @@ export default async function DashboardPage() {
                 <span className="material-symbols-outlined text-sm">local_shipping</span>
                 Pedidos & Expedição
               </Link>
+              {profile?.role === 'admin' && (
+                <Link
+                  href="/configuracao"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">settings</span>
+                  Configuração
+                </Link>
+              )}
             </nav>
           </div>
 

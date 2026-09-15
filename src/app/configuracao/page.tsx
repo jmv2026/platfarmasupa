@@ -2,11 +2,10 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
-import NovoPedidoForm from './novo-pedido-form';
-import PedidosLista from './pedidos-lista';
-import { Client, StockPedido, PedidoComLinhas } from '@/lib/supabase/types';
+import ConfiguracaoTabs from './configuracao-tabs';
+import { UserProfile, Client, Artigo, Perfil } from '@/lib/supabase/types';
 
-export default async function PedidosPage() {
+export default async function ConfiguracaoPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,24 +15,29 @@ export default async function PedidosPage() {
     redirect('/login');
   }
 
+  // Obter perfil do utilizador para controlo de acesso
   const { data: profile } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .single();
 
-  // Buscar dados em paralelo
+  // CONTROLO DE ACESSO RBAC: Apenas perfil 'admin' pode aceder à página de configuração
+  if (profile?.role !== 'admin') {
+    redirect('/dashboard?error=unauthorized');
+  }
+
+  // Carregar dados de Utilizadores, Clientes, Artigos e Perfis
   const [
-    { data: clients },
-    { data: stockPedidos },
-    { data: pedidos },
+    { data: usersList },
+    { data: clientsList },
+    { data: artigosList },
+    { data: perfisList },
   ] = await Promise.all([
-    supabase.from('clients').select('*').eq('ativo', true).order('name'),
-    supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla'),
-    supabase
-      .from('pedidos')
-      .select('*, clients(id, name, sigla), pedido_linhas(*)')
-      .order('created_at', { ascending: false }),
+    supabase.from('users').select('*').order('created_at', { ascending: false }),
+    supabase.from('clients').select('*').order('name'),
+    supabase.from('artigos').select('*').order('artigo_id'),
+    supabase.from('perfis').select('*').order('codigo'),
   ]);
 
   return (
@@ -65,20 +69,18 @@ export default async function PedidosPage() {
               </Link>
               <Link
                 href="/pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">local_shipping</span>
                 Pedidos & Expedição
               </Link>
-              {profile?.role === 'admin' && (
-                <Link
-                  href="/configuracao"
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-sm">settings</span>
-                  Configuração
-                </Link>
-              )}
+              <Link
+                href="/configuracao"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">settings</span>
+                Configuração
+              </Link>
             </nav>
           </div>
 
@@ -88,8 +90,8 @@ export default async function PedidosPage() {
                 {profile?.full_name || user.email}
               </p>
               <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-secondary-container text-on-secondary-container uppercase">
-                  {profile?.role || 'admin'}
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wide">
+                  ADMINISTRADOR
                 </span>
                 <span className="text-[11px] text-on-surface-variant/80">
                   {profile?.empresa || 'Sermail'}
@@ -105,34 +107,34 @@ export default async function PedidosPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-secondary-container to-secondary text-on-secondary-container rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-block px-3 py-1 bg-surface-container-lowest/80 text-secondary rounded-full text-xs font-bold tracking-wide uppercase">
-                Fase 5 • Expedição Farma
+              <span className="inline-block px-3 py-1 bg-secondary text-on-secondary rounded-full text-xs font-bold tracking-wide uppercase shadow-sm">
+                Fase 6 • Painel de Configuração
               </span>
-              <span className="text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Alocação FEFO & Débito em Tempo Real
+              <span className="text-xs font-semibold text-primary-fixed flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                Acesso Exclusivo a Administradores (Role: Admin)
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2 text-on-secondary">
-              Gestão e Registo de Pedidos de Entrega
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2">
+              Configuração & Administração do Sistema
             </h1>
-            <p className="text-xs sm:text-sm max-w-2xl opacity-90">
-              Crie pedidos de entrega com seleção inteligente pelo critério <strong>FEFO (First Expired, First Out)</strong>. As linhas são sincronizadas em tempo real com a view <code>vw_stock_pedidos</code> e debitam automaticamente o stock via movimentos <strong>SS</strong>.
+            <p className="text-xs sm:text-sm text-primary-fixed max-w-2xl">
+              Gestão centralizada de contas de utilizadores com perfis de acesso, parametrização de clientes (siglas ≤ 4 carateres) e cadastro de artigos com controlo de conservação e lote/série.
             </p>
           </div>
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
 
-        {/* Formulário de Criação de Pedido */}
-        <NovoPedidoForm
-          clients={(clients as Client[]) || []}
-          stockPedidos={(stockPedidos as StockPedido[]) || []}
+        {/* Abas de Configuração */}
+        <ConfiguracaoTabs
+          users={(usersList as UserProfile[]) || []}
+          clients={(clientsList as Client[]) || []}
+          artigos={(artigosList as Artigo[]) || []}
+          perfis={(perfisList as Perfil[]) || []}
         />
-
-        {/* Lista de Pedidos Existentes */}
-        <PedidosLista pedidos={(pedidos as PedidoComLinhas[]) || []} />
       </main>
     </div>
   );
