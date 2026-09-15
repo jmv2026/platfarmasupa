@@ -191,9 +191,16 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
       });
 
       if (res.success) {
+        let emailNote = '';
+        if (res.emailEnviado) {
+          emailNote = ` Notificação por email enviada via Resend para ${res.emailDestinatarios?.join(' e ')}.`;
+        } else if (res.emailError) {
+          emailNote = ` (Nota Resend: ${res.emailError})`;
+        }
+
         setFeedback({
           type: 'success',
-          message: `Pedido ${res.nrPedido} registado com sucesso! Os movimentos de saída (SS) foram processados e o stock foi atualizado.`,
+          message: `Pedido ${res.nrPedido} registado com sucesso! Os movimentos de saída (SS) foram processados e o stock foi atualizado.${emailNote}`,
         });
         // Reset form
         setNomeDestinatario('');

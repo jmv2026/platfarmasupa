@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { NovoPedidoInput } from '@/lib/supabase/types';
+import { enviarEmailConfirmacaoPedido } from '@/lib/email';
 
 export async function criarPedidoAction(input: NovoPedidoInput) {
   const supabase = await createClient();
@@ -116,6 +117,38 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     }
   }
 
+  // 5. Obter perfil do utilizador para envio de email
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('full_name, email')
+    .eq('id', user.id)
+    .single();
+
+  // 6. Enviar emails automáticos via Resend (utilizador criador + joao.melo@sermil.pt)
+  const emailResult = await enviarEmailConfirmacaoPedido({
+    nr_pedido: pedido.nr_pedido,
+    ref_documento: pedido.ref_documento,
+    cliente_nome: client.name,
+    cliente_sigla: client.sigla,
+    nome_destinatario: pedido.nome_destinatario,
+    morada: pedido.morada,
+    codigo_postal: pedido.codigo_postal,
+    localidade: pedido.localidade,
+    pais: pedido.pais,
+    data_pedido: pedido.data_pedido,
+    data_entrega: pedido.data_entrega,
+    observacoes: pedido.observacoes,
+    utilizador_nome: userProfile?.full_name || user.email?.split('@')[0],
+    utilizador_email: user.email || userProfile?.email || 'admin@sermail.pt',
+    linhas: input.linhas.map((l) => ({
+      artigo_codigo: l.artigo_codigo,
+      descricao: l.descricao,
+      lote: l.lote,
+      validade: l.validade,
+      quantidade: l.quantidade,
+    })),
+  });
+
   revalidatePath('/pedidos');
   revalidatePath('/dashboard');
 
@@ -123,5 +156,8 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     success: true,
     pedidoId: pedido.id,
     nrPedido: pedido.nr_pedido,
+    emailEnviado: emailResult.success,
+    emailDestinatarios: emailResult.recipients,
+    emailError: emailResult.error,
   };
 }

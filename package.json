@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:fase1": "node testes/fase1/teste-login.mjs",
+    "test:fase7": "node testes/fase7/teste-resend-pedidos.mjs",
     "test": "node testes/runner.mjs"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "next": "^15.2.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.28.1",
     "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {

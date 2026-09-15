@@ -13,7 +13,12 @@ import {
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
 } from '@/lib/supabase/types';
-import { criarUtilizadorAction, criarClienteAction, criarArtigoAction } from './actions';
+import {
+  criarUtilizadorAction,
+  criarClienteAction,
+  criarArtigoAction,
+  enviarEmailTesteConfigAction,
+} from './actions';
 
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
@@ -24,7 +29,7 @@ interface ConfiguracaoTabsProps {
 
 export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: ConfiguracaoTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -36,6 +41,16 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
   const [userEmpresa, setUserEmpresa] = useState('');
   const [userClientId, setUserClientId] = useState<string>('');
   const [userAtivo, setUserAtivo] = useState(true);
+
+  // Estados Aba Email & Teste
+  const [testEmailTarget, setTestEmailTarget] = useState('joao.melo@sermil.pt');
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailFeedback, setTestEmailFeedback] = useState<{
+    type: 'success' | 'warning' | 'error';
+    message: string;
+    recipients?: string[];
+    details?: string;
+  } | null>(null);
 
   // Estados Formulário Cliente
   const [clientName, setClientName] = useState('');
@@ -160,6 +175,40 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
     }
   };
 
+  // Handler: Emitir Email de Teste para o Administrador (Fase 7)
+  const handleSendTestEmail = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setTestEmailLoading(true);
+    setTestEmailFeedback(null);
+
+    try {
+      const res = await enviarEmailTesteConfigAction(testEmailTarget);
+      if (res.success) {
+        const dests = res.recipients && res.recipients.length > 0 ? res.recipients.join(' e ') : testEmailTarget;
+        setTestEmailFeedback({
+          type: 'success',
+          message: `Email de teste emitido com sucesso para ${dests} via Resend!`,
+          recipients: res.recipients || [testEmailTarget],
+        });
+      } else {
+        setTestEmailFeedback({
+          type: 'warning',
+          message: res.error || 'Aviso durante o envio do email de teste.',
+          recipients: res.recipients,
+          details: 'Verifique se a chave RESEND_API_KEY está configurada no ficheiro .env.local e se o domínio de remetente foi aprovado no painel da Resend.',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado ao disparar email de teste';
+      setTestEmailFeedback({
+        type: 'error',
+        message: msg,
+      });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  };
+
   const isClientRole = userRole === 'user1' || userRole === 'user2' || userRole === 'user3';
 
   return (
@@ -212,6 +261,23 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
         >
           <span className="material-symbols-outlined text-base">medication</span>
           Catálogo de Artigos ({artigos.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('email');
+            setFeedback(null);
+            setTestEmailFeedback(null);
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'email'
+              ? 'bg-secondary text-on-secondary shadow-md'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">mail</span>
+          Email & Resend
         </button>
       </div>
 
@@ -785,6 +851,168 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 4: EMAIL & RESEND */}
+      {/* ========================================================================= */}
+      {activeTab === 'email' && (
+        <div className="space-y-8">
+          {/* Painel Principal de Emissão de Email de Teste */}
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-6">
+              <div>
+                <h3 className="text-base font-bold font-headline text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">mark_email_read</span>
+                  Supervisão & Teste de Notificações por Email (Fase 7)
+                </h3>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Valide a ligação com o motor <strong>Resend</strong> e emita emails de teste com a estrutura oficial da Plataforma Farma.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Motor Resend Ativo
+                </span>
+              </div>
+            </div>
+
+            {/* Secção de Disparo de Teste */}
+            <div className="bg-gradient-to-br from-secondary/5 via-primary/5 to-surface-container/50 border border-secondary/20 rounded-2xl p-6 sm:p-7 space-y-5">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-secondary/10 border border-secondary/30 flex items-center justify-center text-secondary flex-shrink-0">
+                  <span className="material-symbols-outlined text-2xl">send</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-on-surface">
+                    Emissão de Email de Teste para a Administração
+                  </h4>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    O teste envia um email com template regulamentar de diagnóstico para o endereço indicado e para a conta de supervisão (<strong>joao.melo@sermil.pt</strong>).
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSendTestEmail} className="space-y-4 pt-2">
+                <div className="max-w-md">
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Endereço de Destino do Teste (Admin):
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-base">
+                      alternate_email
+                    </span>
+                    <input
+                      type="email"
+                      value={testEmailTarget}
+                      onChange={(e) => setTestEmailTarget(e.target.value)}
+                      placeholder="joao.melo@sermil.pt"
+                      required
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-surface-container-lowest border border-outline-variant/50 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="submit"
+                    disabled={testEmailLoading}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-bold shadow-md hover:bg-secondary/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testEmailLoading ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-on-secondary border-t-transparent rounded-full animate-spin"></span>
+                        A Enviar Email via Resend...
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm">forward_to_inbox</span>
+                        Emitir Email de Teste para o Admin
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTestEmailTarget('joao.melo@sermil.pt')}
+                    className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Predefinir joao.melo@sermil.pt
+                  </button>
+                </div>
+              </form>
+
+              {/* Feedback do Teste */}
+              {testEmailFeedback && (
+                <div
+                  className={`p-4 rounded-xl text-xs font-medium space-y-1.5 transition-all ${
+                    testEmailFeedback.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : testEmailFeedback.type === 'warning'
+                      ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">
+                      {testEmailFeedback.type === 'success'
+                        ? 'verified'
+                        : testEmailFeedback.type === 'warning'
+                        ? 'warning'
+                        : 'error'}
+                    </span>
+                    <strong className="text-xs">{testEmailFeedback.message}</strong>
+                  </div>
+                  {testEmailFeedback.recipients && testEmailFeedback.recipients.length > 0 && (
+                    <p className="text-[11px] opacity-90 pl-6">
+                      Destinatários processados: <strong>{testEmailFeedback.recipients.join(', ')}</strong>
+                    </p>
+                  )}
+                  {testEmailFeedback.details && (
+                    <p className="text-[11px] opacity-85 pl-6 pt-1">
+                      💡 {testEmailFeedback.details}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Configurações & Parâmetros em vigor */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="bg-surface-container/40 border border-outline-variant/30 rounded-xl p-5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-secondary text-sm">settings_suggest</span>
+                  Regras de Notificação de Pedidos
+                </div>
+                <ul className="text-xs text-on-surface-variant space-y-2 list-disc list-inside">
+                  <li>
+                    Disparo automático após criação com sucesso do cabeçalho, linhas e débito <strong>SS</strong>.
+                  </li>
+                  <li>
+                    Envio simultâneo para o <strong>utilizador requerente</strong> e para <strong>joao.melo@sermil.pt</strong>.
+                  </li>
+                  <li>
+                    Dados incluídos: Número do Pedido, Cliente, Destinatário, Morada, Lotes <strong>FEFO</strong>, Validades e Qtds.
+                  </li>
+                </ul>
+              </div>
+
+              <div className="bg-surface-container/40 border border-outline-variant/30 rounded-xl p-5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-secondary text-sm">tune</span>
+                  Parametrização do Servidor (.env.local)
+                </div>
+                <div className="text-[11px] font-mono bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-3 text-on-surface space-y-1">
+                  <div><span className="text-on-surface-variant">API_KEY:</span> <span className="text-emerald-600 font-semibold">RESEND_API_KEY</span></div>
+                  <div><span className="text-on-surface-variant">FROM:</span> <span className="text-secondary font-semibold">Plataforma Farma &lt;onboarding@resend.dev&gt;</span></div>
+                  <div><span className="text-on-surface-variant">SUPERVISÃO:</span> <span className="text-on-surface font-semibold">joao.melo@sermil.pt</span></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

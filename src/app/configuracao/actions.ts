@@ -253,3 +253,38 @@ export async function criarArtigoAction(input: {
     return { success: false, error: msg };
   }
 }
+
+// 4. AÇÃO: Enviar Email de Teste para o Administrador (Aba Email)
+export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, recipients: [] as string[], error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  // Verificar perfil de administrador
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, full_name, email')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return { success: false, recipients: [] as string[], error: 'Acesso negado: Apenas administradores podem disparar emails de teste.' };
+  }
+
+  const { enviarEmailTesteAdmin } = await import('@/lib/email');
+
+  const adminEmailDestino = destinatarioCustom?.trim() || profile.email || user.email || 'joao.melo@sermil.pt';
+
+  const result = await enviarEmailTesteAdmin({
+    adminEmail: adminEmailDestino,
+    solicitanteNome: profile.full_name || 'Administrador Farma',
+    solicitanteEmail: user.email || profile.email || 'admin@sermail.pt',
+  });
+
+  return result;
+}
