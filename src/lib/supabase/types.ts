@@ -121,3 +121,69 @@ export interface Armazem {
   created_at?: string;
   updated_at?: string;
 }
+
+export type TipoMovimento = 'es' | 'ss' | 'et' | 'st';
+
+export const TIPO_MOVIMENTO_LABELS: Record<TipoMovimento, string> = {
+  es: 'Entrada de Stock',
+  ss: 'Saída de Stock',
+  et: 'Entrada por Transferência',
+  st: 'Saída por Transferência',
+};
+
+export interface Movimento {
+  id: string;
+  artigo_id: string;
+  client_id: string;
+  tipo_movimento: TipoMovimento;
+  quantidade: number;
+  tipo_armazem: TipoArmazem;
+  armazem_loc: string;
+  posicao: string | null;
+  lote: string | null;
+  nr_serie: string | null;
+  validade: string | null;
+  data_fabrico: string | null;
+  data_movimento: string;
+  documento_ref?: string | null;
+  observacoes?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface StockAtual {
+  client_id: string;
+  cliente_nome: string;
+  cliente_sigla: string;
+  artigo_id: string;
+  artigo_codigo: string;
+  artigo_descricao: string;
+  tipo_artigo: TipoArtigo;
+  tipo_armazenamento: TipoArmazenamento;
+  tipo_armazem: TipoArmazem;
+  armazem_descricao: string;
+  armazem_loc: string;
+  posicao: string | null;
+  lote: string | null;
+  validade: string | null;
+  data_fabrico: string | null;
+  stock: number;
+  ultimo_movimento: string;
+}
+
+export interface StockPedido {
+  client_id: string;
+  cliente_nome: string;
+  cliente_sigla: string;
+  artigo_id: string;
+  artigo_codigo: string;
+  artigo_descricao: string;
+  tipo_artigo: TipoArtigo;
+  tipo_armazenamento: TipoArmazenamento;
+  lote: string | null;
+  validade: string | null;
+  data_fabrico: string | null;
+  stock: number;
+  ultimo_movimento: string;
+}

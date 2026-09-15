@@ -32,6 +32,8 @@ function runFase(fase) {
     scriptPath = path.join(__dirname, 'fase2', 'teste-clientes-perfis.mjs');
   } else if (fase === '3') {
     scriptPath = path.join(__dirname, 'fase3', 'teste-artigos-armazens.mjs');
+  } else if (fase === '4') {
+    scriptPath = path.join(__dirname, 'fase4', 'teste-movimentos-stocks.mjs');
   } else {
     console.log(`\n${colors.yellow}A fase ${fase} ainda não tem testes implementados nesta etapa.${colors.reset}\n`);
     process.exit(0);
@@ -61,7 +63,7 @@ if (selectedFase) {
   console.log('  1) 1ª Fase - Autenticação & Login (admin@sermail.pt)');
   console.log('  2) 2ª Fase - Clientes, Siglas (<=4 carateres) & Perfis de Acesso');
   console.log('  3) 3ª Fase - Gestão de Artigos & Armazéns');
-  console.log('  4) 4ª Fase - Pedidos & Expedição (a implementar)');
+  console.log('  4) 4ª Fase - Movimentos de Artigos & Views de Stock');
   console.log('  0) Sair');
 
   rl.question('\nIntroduza o número da fase [1]: ', (answer) => {

@@ -1,10 +1,13 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from './sign-out-button';
+import { TIPO_ARTIGO_LABELS, TIPO_ARMAZENAMENTO_LABELS, TIPO_MOVIMENTO_LABELS, TipoArtigo, TipoArmazenamento, TipoMovimento } from '@/lib/supabase/types';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/login');
@@ -16,8 +19,27 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
+  // Buscar dados das views e tabelas da Fase 4
+  const [
+    { data: stockAtual },
+    { data: stockPedidos },
+    { data: movimentos },
+    { count: totalClientes },
+    { count: totalArtigos },
+  ] = await Promise.all([
+    supabase.from('vw_stock_atual').select('*').order('cliente_sigla'),
+    supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla'),
+    supabase.from('movimentos').select('*, clients(name, sigla), artigos(artigo_id, descricao)').order('data_movimento', { ascending: false }).limit(10),
+    supabase.from('clients').select('*', { count: 'exact', head: true }),
+    supabase.from('artigos').select('*', { count: 'exact', head: true }),
+  ]);
+
+  const totalStockVenda = stockPedidos?.reduce((acc, curr) => acc + Number(curr.stock || 0), 0) || 0;
+  const totalLotes = stockAtual?.length || 0;
+  const totalMovimentos = movimentos?.length || 0;
+
   return (
-    <div className="min-h-screen bg-background text-on-background">
+    <div className="min-h-screen bg-background text-on-background pb-12">
       {/* Header */}
       <header className="bg-surface-container-lowest border-b border-outline-variant/30 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -54,97 +76,375 @@ export default async function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Welcome Banner */}
-        <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl mb-8 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10">
-            <span className="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold tracking-wide uppercase mb-3">
-              Fase 1 Concluída
-            </span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold tracking-wide uppercase">
+                Fase 4 Ativa
+              </span>
+              <span className="text-xs text-primary-fixed font-medium flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Rastreabilidade de Movimentos & Views de Stock
+              </span>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2">
-              Bem-vindo à Plataforma Farma, {profile?.full_name || 'Administrador'}!
+              Gestão de Stocks & Movimentos Farmacêuticos
             </h1>
             <p className="text-primary-fixed text-sm max-w-2xl">
-              Autenticação segura via Supabase Auth configurada com sucesso para a empresa Sermail, Logística Integrada Lda.
+              Sistema multi-tenant de rastreabilidade de lotes, controlo de temperatura, armazéns regulamentares e alocação de pedidos em tempo real.
             </p>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
 
-        {/* User Card & System Status */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-            <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">account_circle</span>
-              Dados do Utilizador
-            </h2>
-            <dl className="space-y-3 text-sm">
+        {/* KPIs Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
               <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Email</dt>
-                <dd className="text-on-surface font-semibold mt-0.5">{user.email}</dd>
+                <p className="text-xs font-medium text-on-surface-variant">Stock Venda Disponível</p>
+                <p className="text-2xl font-bold font-headline text-secondary mt-1">{totalStockVenda.toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span></p>
               </div>
-              <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Perfil / Função</dt>
-                <dd className="text-secondary font-semibold mt-0.5 uppercase">{profile?.role || 'admin'}</dd>
+              <div className="w-11 h-11 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                <span className="material-symbols-outlined">inventory_2</span>
               </div>
-              <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Empresa</dt>
-                <dd className="text-on-surface font-semibold mt-0.5">{profile?.empresa || 'Sermail, Logística Integrada Lda'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Estado da Conta</dt>
-                <dd className="text-emerald-700 font-semibold mt-0.5 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Ativo
-                </dd>
-              </div>
-            </dl>
+            </div>
+            <p className="text-[11px] text-emerald-700 font-medium mt-3 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">check_circle</span>
+              Armazém 01 (Venda Livre)
+            </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-            <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">database</span>
-              Estado da Base de Dados
-            </h2>
-            <dl className="space-y-3 text-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
               <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Backend</dt>
-                <dd className="text-on-surface font-semibold mt-0.5">Supabase PostgreSQL</dd>
+                <p className="text-xs font-medium text-on-surface-variant">Lotes / Posições Ativas</p>
+                <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalLotes}</p>
               </div>
-              <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Limpeza de Tabelas</dt>
-                <dd className="text-emerald-700 font-semibold mt-0.5">Executada com Sucesso</dd>
+              <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined">warehouse</span>
               </div>
-              <div>
-                <dt className="text-xs text-on-surface-variant font-medium">Conta de Teste</dt>
-                <dd className="text-on-surface font-mono text-xs mt-0.5">admin@sermail.pt</dd>
-              </div>
-            </dl>
+            </div>
+            <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">pin_drop</span>
+              Stock consolidado por localização
+            </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-on-surface-variant">Clientes Proprietários</p>
+                <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalClientes || 0}</p>
+              </div>
+              <div className="w-11 h-11 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-700">
+                <span className="material-symbols-outlined">corporate_fare</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-emerald-700 font-medium mt-3 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">shield</span>
+              Siglas regulamentares (≤ 4 carateres)
+            </p>
+          </div>
+
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-on-surface-variant">Catálogo de Artigos</p>
+                <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalArtigos || 0}</p>
+              </div>
+              <div className="w-11 h-11 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
+                <span className="material-symbols-outlined">medication</span>
+              </div>
+            </div>
+            <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
+              <span className="material-symbols-outlined text-xs">thermostat</span>
+              Tipos MH, DC, DM c/ frio & TA
+            </p>
+          </div>
+        </div>
+
+        {/* View 1: Stock Disponível para Pedidos (vw_stock_pedidos - Armazém 01) */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-outline-variant/20 gap-2">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">shopping_cart_checkout</span>
+                  Stock Disponível para Pedidos (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_pedidos</code>)
+                </h2>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                  Armazém 01 (Venda)
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Visão de stock para alocação direta de encomendas comerciais (sem informação física de armazém/posição).
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
+                  <th className="py-2.5 px-3">Código Artigo</th>
+                  <th className="py-2.5 px-3">Descrição</th>
+                  <th className="py-2.5 px-3">Tipo Artigo</th>
+                  <th className="py-2.5 px-3">Conservação</th>
+                  <th className="py-2.5 px-3">Lote</th>
+                  <th className="py-2.5 px-3">Validade</th>
+                  <th className="py-2.5 px-3 text-right rounded-r-lg">Stock Disponível</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                {stockPedidos && stockPedidos.length > 0 ? (
+                  stockPedidos.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                      <td className="py-3 px-3 font-semibold">
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                          {item.cliente_sigla}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
+                      <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                      <td className="py-3 px-3">
+                        <span className="text-[11px] text-on-surface-variant">
+                          {TIPO_ARTIGO_LABELS[item.tipo_artigo as TipoArtigo] || item.tipo_artigo}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          item.tipo_armazenamento === 'TF' ? 'bg-cyan-100 text-cyan-800' :
+                          item.tipo_armazenamento === 'TC' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          <span className="material-symbols-outlined text-[12px]">
+                            {item.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                          </span>
+                          {TIPO_ARMAZENAMENTO_LABELS[item.tipo_armazenamento as TipoArmazenamento] || item.tipo_armazenamento}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-semibold text-secondary">{item.lote}</td>
+                      <td className="py-3 px-3 font-mono text-on-surface-variant">
+                        {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                        {Number(item.stock).toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-on-surface-variant">
+                      Nenhum artigo com stock disponível para venda no momento.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* View 2: Stock Consolidado com Localização (vw_stock_atual) */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-outline-variant/20 gap-2">
+            <div>
+              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">inventory</span>
+                Stock Consolidado com Localização (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_atual</code>)
+              </h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">
+                Visão detalhada por cliente, artigo, lote, validade, armazém (`armazem_loc`) e posição física.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
+                  <th className="py-2.5 px-3">Código</th>
+                  <th className="py-2.5 px-3">Descrição Artigo</th>
+                  <th className="py-2.5 px-3">Lote</th>
+                  <th className="py-2.5 px-3">Validade</th>
+                  <th className="py-2.5 px-3">Armazém Loc</th>
+                  <th className="py-2.5 px-3">Tipo Armazém</th>
+                  <th className="py-2.5 px-3">Posição</th>
+                  <th className="py-2.5 px-3 text-right rounded-r-lg">Stock</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                {stockAtual && stockAtual.length > 0 ? (
+                  stockAtual.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                          {item.cliente_sigla}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
+                      <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                      <td className="py-3 px-3 font-mono text-secondary font-semibold">{item.lote}</td>
+                      <td className="py-3 px-3 font-mono text-on-surface-variant">
+                        {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
+                      </td>
+                      <td className="py-3 px-3 font-mono font-semibold text-secondary-600">
+                        {item.armazem_loc}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                          item.tipo_armazem === '01' ? 'bg-emerald-100 text-emerald-800' :
+                          item.tipo_armazem === '05' ? 'bg-amber-100 text-amber-800' :
+                          item.tipo_armazem === '02' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {item.armazem_descricao || `Armazém ${item.tipo_armazem}`}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-medium text-on-surface-variant">
+                        {item.posicao || '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                        {Number(item.stock).toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="py-6 text-center text-on-surface-variant">
+                      Nenhum registo de stock consolidado.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Tabela de Movimentos Recentes & Fases do Projeto */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Movimentos Recentes */}
+          <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
             <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">checklist</span>
-              Fases do Projeto
+              <span className="material-symbols-outlined text-secondary">history</span>
+              Últimos Movimentos de Stock Registados
             </h2>
-            <ul className="space-y-2.5 text-xs">
-              <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                Fase 1: Login & Autenticação Supabase
-              </li>
-              <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                Fase 2: Clientes (Siglas) & Perfis de Acesso
-              </li>
-              <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                Fase 3: Artigos & Armazéns
-              </li>
-              <li className="flex items-center gap-2 text-on-surface-variant/70">
-                <span className="material-symbols-outlined text-outline text-base">radio_button_unchecked</span>
-                Fase 4: Movimentos, Pedidos & Expedição
-              </li>
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-2.5 px-3 rounded-l-lg">Tipo</th>
+                    <th className="py-2.5 px-3">Cliente</th>
+                    <th className="py-2.5 px-3">Artigo</th>
+                    <th className="py-2.5 px-3">Armazém Loc</th>
+                    <th className="py-2.5 px-3">Posição</th>
+                    <th className="py-2.5 px-3">Qtd</th>
+                    <th className="py-2.5 px-3 text-right rounded-r-lg">Data Movimento</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                  {movimentos && movimentos.length > 0 ? (
+                    movimentos.map((mov) => {
+                      const isEntry = mov.tipo_movimento === 'es' || mov.tipo_movimento === 'et';
+                      return (
+                        <tr key={mov.id} className="hover:bg-surface-container/30 transition-colors">
+                          <td className="py-2.5 px-3">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                              mov.tipo_movimento === 'es' ? 'bg-emerald-100 text-emerald-800' :
+                              mov.tipo_movimento === 'ss' ? 'bg-rose-100 text-rose-800' :
+                              mov.tipo_movimento === 'et' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              <span className="material-symbols-outlined text-[12px]">
+                                {isEntry ? 'arrow_downward' : 'arrow_upward'}
+                              </span>
+                              {mov.tipo_movimento}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-semibold">
+                            {mov.clients?.sigla || '-'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-mono font-medium">{mov.artigo_id?.artigo_id || mov.artigos?.artigo_id}</span>
+                            <span className="text-on-surface-variant text-[11px] block truncate max-w-[140px]">
+                              {mov.artigo_id?.descricao || mov.artigos?.descricao}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-mono font-medium text-secondary">
+                            {mov.armazem_loc}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-on-surface-variant">
+                            {mov.posicao || '-'}
+                          </td>
+                          <td className={`py-2.5 px-3 font-mono font-bold ${isEntry ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {isEntry ? '+' : '-'}{Number(mov.quantidade).toLocaleString('pt-PT')}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-[11px] text-on-surface-variant">
+                            {new Date(mov.data_movimento).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-4 text-center text-on-surface-variant">
+                        Nenhum movimento registado.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Fases do Projeto & Estado da Base de Dados */}
+          <div className="space-y-6">
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+              <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">checklist</span>
+                Fases do Projeto
+              </h2>
+              <ul className="space-y-3 text-xs">
+                <li className="flex items-center gap-2 text-emerald-800 font-medium">
+                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                  Fase 1: Login & Autenticação Supabase
+                </li>
+                <li className="flex items-center gap-2 text-emerald-800 font-medium">
+                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                  Fase 2: Clientes (Siglas ≤ 4) & Perfis
+                </li>
+                <li className="flex items-center gap-2 text-emerald-800 font-medium">
+                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                  Fase 3: Artigos & 7 Tipos de Armazéns
+                </li>
+                <li className="flex items-center gap-2 text-emerald-800 font-medium">
+                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                  Fase 4: Movimentos & Views de Stock
+                </li>
+              </ul>
+            </div>
+
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+              <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">verified</span>
+                Regras de Integridade Farma
+              </h2>
+              <ul className="space-y-2 text-xs text-on-surface-variant">
+                <li className="flex items-start gap-1.5">
+                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
+                  <span><strong>Tipo Movimento:</strong> <code className="bg-surface-container px-1 rounded">es</code>, <code className="bg-surface-container px-1 rounded">ss</code>, <code className="bg-surface-container px-1 rounded">et</code>, <code className="bg-surface-container px-1 rounded">st</code></span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
+                  <span><strong>Armazém Loc:</strong> Sigla + Tipo Armazém (ex: <code className="bg-surface-container px-1 rounded">PFIZ-01</code>)</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
+                  <span><strong>Filtro Pedidos:</strong> Exclusivo Armazém 01 (Venda Livre)</span>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </main>
