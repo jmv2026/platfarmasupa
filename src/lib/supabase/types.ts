@@ -187,3 +187,75 @@ export interface StockPedido {
   stock: number;
   ultimo_movimento: string;
 }
+
+export type StatusPedido = 'pendente' | 'confirmado' | 'em_preparacao' | 'expedido' | 'entregue' | 'cancelado';
+
+export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {
+  pendente: 'Pendente',
+  confirmado: 'Confirmado',
+  em_preparacao: 'Em Preparação',
+  expedido: 'Expedido',
+  entregue: 'Entregue',
+  cancelado: 'Cancelado',
+};
+
+export interface Pedido {
+  id: string;
+  nr_pedido: string;
+  ref_documento: string | null;
+  client_id: string;
+  nome_destinatario: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais: string;
+  data_pedido: string;
+  data_entrega: string | null;
+  status: StatusPedido | string;
+  observacoes: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PedidoLinha {
+  id: string;
+  pedido_id: string;
+  client_id: string;
+  artigo_id: string;
+  artigo_codigo: string;
+  descricao: string;
+  lote: string;
+  validade: string | null;
+  quantidade: number;
+  created_at?: string;
+}
+
+export interface PedidoComLinhas extends Pedido {
+  clients?: Client;
+  pedido_linhas?: PedidoLinha[];
+}
+
+export interface NovaLinhaPedidoInput {
+  artigo_id: string;
+  artigo_codigo: string;
+  descricao: string;
+  lote: string;
+  validade: string | null;
+  quantidade: number;
+  stock_disponivel?: number;
+}
+
+export interface NovoPedidoInput {
+  client_id: string;
+  ref_documento?: string;
+  nome_destinatario: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais: string;
+  data_pedido: string;
+  data_entrega?: string;
+  observacoes?: string;
+  linhas: NovaLinhaPedidoInput[];
+}
