@@ -68,10 +68,10 @@ async function runTests() {
   }
 
   // 2. Validação da Configuração dos Destinatários
-  console.log(`\n${colors.bright}[2/7] Validação da Configuração dos Destinatários (Utilizador + joao.melo@sermil.pt)${colors.reset}`);
+  console.log(`\n${colors.bright}[2/7] Validação da Configuração dos Destinatários (Utilizador + joao.melo@sermail.pt)${colors.reset}`);
   try {
     const targetEmail = adminUser?.email || 'admin@sermail.pt';
-    const expectedAdmin = 'joao.melo@sermil.pt';
+    const expectedAdmin = 'joao.melo@sermail.pt';
 
     // Verificar geração de destinatários únicos
     const recipients = Array.from(
@@ -80,7 +80,7 @@ async function runTests() {
 
     if (recipients.includes(expectedAdmin) && recipients.includes(targetEmail)) {
       printPass(
-        'Regra de envio duplo validada: utilizador que fez o pedido e joao.melo@sermil.pt incluídos',
+        'Regra de envio duplo validada: utilizador que fez o pedido e joao.melo@sermail.pt incluídos',
         `Destinatários configurados: ${recipients.join(', ')}`
       );
       passedCount++;
@@ -128,7 +128,7 @@ async function runTests() {
     const hasNrPedido = htmlOutput.includes('PED-2026-TEST-RESEND') && textOutput.includes('PED-2026-TEST-RESEND');
     const hasDestino = htmlOutput.includes('Hospital Curry Cabral') && htmlOutput.includes('1069-166');
     const hasArtigo = htmlOutput.includes('MED-001') && htmlOutput.includes('LOTE-001');
-    const hasAdminRecipient = htmlOutput.includes('joao.melo@sermil.pt') && textOutput.includes('joao.melo@sermil.pt');
+    const hasAdminRecipient = htmlOutput.includes('joao.melo@sermail.pt') && textOutput.includes('joao.melo@sermail.pt');
 
     if (hasNrPedido && hasDestino && hasArtigo && hasAdminRecipient) {
       printPass(
@@ -173,7 +173,7 @@ async function runTests() {
 
     const envioResult = await enviarEmailConfirmacaoPedido(testPayload);
 
-    if (envioResult.recipients.includes('joao.melo@sermil.pt') && envioResult.recipients.includes('admin@sermail.pt')) {
+    if (envioResult.recipients.includes('joao.melo@sermail.pt') && envioResult.recipients.includes('admin@sermail.pt')) {
       if (envioResult.success) {
         printPass(
           'Email de pedido enviado com sucesso através da API do Resend',
@@ -199,22 +199,22 @@ async function runTests() {
   console.log(`\n${colors.bright}[5/7] Validação da Emissão de Email de Teste para o Admin (Aba Email na Configuração)${colors.reset}`);
   try {
     const timestamp = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
-    const htmlTeste = gerarEmailTesteHtml({ adminEmail: 'joao.melo@sermil.pt' }, timestamp);
+    const htmlTeste = gerarEmailTesteHtml({ adminEmail: 'joao.melo@sermail.pt' }, timestamp);
 
     const hasTitle = htmlTeste.includes('Validação de Envio de Email (Resend)');
-    const hasAdmin = htmlTeste.includes('joao.melo@sermil.pt');
+    const hasAdmin = htmlTeste.includes('joao.melo@sermail.pt');
 
     if (!hasTitle || !hasAdmin) {
       throw new Error('Template HTML do email de teste administrativo inválido.');
     }
 
     const testResult = await enviarEmailTesteAdmin({
-      adminEmail: 'joao.melo@sermil.pt',
+      adminEmail: 'joao.melo@sermail.pt',
       solicitanteNome: 'Administrador Farma',
       solicitanteEmail: 'admin@sermail.pt',
     });
 
-    if (testResult.recipients.includes('joao.melo@sermil.pt')) {
+    if (testResult.recipients.includes('joao.melo@sermail.pt')) {
       printPass(
         'Funcionalidade da Aba de Configuração validada: emissão de email de teste para o Admin processada',
         `Destinatários: ${testResult.recipients.join(', ')} | Estado: ${testResult.success ? 'Enviado' : testResult.error}`

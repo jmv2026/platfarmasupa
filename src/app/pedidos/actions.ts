@@ -124,7 +124,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     .eq('id', user.id)
     .single();
 
-  // 6. Enviar emails automáticos via Resend (utilizador criador + joao.melo@sermil.pt)
+  // 6. Enviar emails automáticos via Resend (utilizador criador + joao.melo@sermail.pt)
   const emailResult = await enviarEmailConfirmacaoPedido({
     nr_pedido: pedido.nr_pedido,
     ref_documento: pedido.ref_documento,

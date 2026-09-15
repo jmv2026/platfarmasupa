@@ -43,7 +43,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
   const [userAtivo, setUserAtivo] = useState(true);
 
   // Estados Aba Email & Teste
-  const [testEmailTarget, setTestEmailTarget] = useState('joao.melo@sermil.pt');
+  const [testEmailTarget, setTestEmailTarget] = useState('joao.melo@sermail.pt');
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testEmailFeedback, setTestEmailFeedback] = useState<{
     type: 'success' | 'warning' | 'error';
@@ -893,7 +893,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                     Emissão de Email de Teste para a Administração
                   </h4>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    O teste envia um email com template regulamentar de diagnóstico para o endereço indicado e para a conta de supervisão (<strong>joao.melo@sermil.pt</strong>).
+                    O teste envia um email com template regulamentar de diagnóstico para o endereço indicado e para a conta de supervisão (<strong>joao.melo@sermail.pt</strong>).
                   </p>
                 </div>
               </div>
@@ -911,7 +911,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                       type="email"
                       value={testEmailTarget}
                       onChange={(e) => setTestEmailTarget(e.target.value)}
-                      placeholder="joao.melo@sermil.pt"
+                      placeholder="joao.melo@sermail.pt"
                       required
                       className="w-full pl-9 pr-3 py-2 text-xs bg-surface-container-lowest border border-outline-variant/50 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 font-medium"
                     />
@@ -939,10 +939,10 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
 
                   <button
                     type="button"
-                    onClick={() => setTestEmailTarget('joao.melo@sermil.pt')}
+                    onClick={() => setTestEmailTarget('joao.melo@sermail.pt')}
                     className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
                   >
-                    Predefinir joao.melo@sermil.pt
+                    Predefinir joao.melo@sermail.pt
                   </button>
                 </div>
               </form>
@@ -994,7 +994,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                     Disparo automático após criação com sucesso do cabeçalho, linhas e débito <strong>SS</strong>.
                   </li>
                   <li>
-                    Envio simultâneo para o <strong>utilizador requerente</strong> e para <strong>joao.melo@sermil.pt</strong>.
+                    Envio simultâneo para o <strong>utilizador requerente</strong> e para <strong>joao.melo@sermail.pt</strong>.
                   </li>
                   <li>
                     Dados incluídos: Número do Pedido, Cliente, Destinatário, Morada, Lotes <strong>FEFO</strong>, Validades e Qtds.
@@ -1010,7 +1010,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                 <div className="text-[11px] font-mono bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-3 text-on-surface space-y-1">
                   <div><span className="text-on-surface-variant">API_KEY:</span> <span className="text-emerald-600 font-semibold">RESEND_API_KEY</span></div>
                   <div><span className="text-on-surface-variant">FROM:</span> <span className="text-secondary font-semibold">Plataforma Farma &lt;onboarding@resend.dev&gt;</span></div>
-                  <div><span className="text-on-surface-variant">SUPERVISÃO:</span> <span className="text-on-surface font-semibold">joao.melo@sermil.pt</span></div>
+                  <div><span className="text-on-surface-variant">SUPERVISÃO:</span> <span className="text-on-surface font-semibold">joao.melo@sermail.pt</span></div>
                 </div>
               </div>
             </div>

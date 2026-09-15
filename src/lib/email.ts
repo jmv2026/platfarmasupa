@@ -186,7 +186,7 @@ export function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
         Este é um email automático gerado pela <strong>Plataforma Farma • Sermail</strong>.
       </p>
       <p style="margin: 0;">
-        Notificação enviada ao requerente e à equipa técnica (joao.melo@sermil.pt).
+        Notificação enviada ao requerente e à equipa técnica (joao.melo@sermail.pt).
       </p>
     </div>
 
@@ -234,15 +234,15 @@ Total de Unidades: ${totalUnidades} un
 ${dados.observacoes ? `OBSERVAÇÕES:\n${dados.observacoes}\n` : ''}
 =================================================================
 Este email foi gerado automaticamente pela Plataforma Farma.
-Notificação enviada a: ${dados.utilizador_email} e joao.melo@sermil.pt
+Notificação enviada a: ${dados.utilizador_email} e joao.melo@sermail.pt
 `.trim();
 }
 
 /**
- * Envia o email de notificação de pedido para o utilizador e joao.melo@sermil.pt
+ * Envia o email de notificação de pedido para o utilizador e joao.melo@sermail.pt
  */
 export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Promise<EmailEnvioResult> {
-  const adminEmail = 'joao.melo@sermil.pt';
+  const adminEmail = 'joao.melo@sermail.pt';
   const userEmail = (dados.utilizador_email || '').toLowerCase().trim();
 
   // Gerar lista de destinatários únicos
@@ -363,7 +363,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
           </tr>
           <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Supervisão / Cópia:</td>
-            <td style="padding: 10px 14px; color: #0284c7; font-weight: 600;">joao.melo@sermil.pt</td>
+            <td style="padding: 10px 14px; color: #0284c7; font-weight: 600;">joao.melo@sermail.pt</td>
           </tr>
           <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Solicitado Por:</td>
@@ -382,7 +382,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
           📦 Demonstração do Formato de Notificação de Pedido:
         </div>
         <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-          Quando qualquer utilizador submete um pedido no menu <strong>Pedidos & Expedição</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email idêntico com todos os detalhes e morada de destino para o requerente e para <strong>joao.melo@sermil.pt</strong>.
+          Quando qualquer utilizador submete um pedido no menu <strong>Pedidos & Expedição</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email idêntico com todos os detalhes e morada de destino para o requerente e para <strong>joao.melo@sermail.pt</strong>.
         </p>
       </div>
 
@@ -408,8 +408,8 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
  * Envia o email de teste administrativo via Resend
  */
 export async function enviarEmailTesteAdmin(dados: EmailTesteAdminDados): Promise<EmailEnvioResult> {
-  const adminDestino = (dados.adminEmail || 'joao.melo@sermil.pt').toLowerCase().trim();
-  const supervisoryDestino = 'joao.melo@sermil.pt';
+  const adminDestino = (dados.adminEmail || 'joao.melo@sermail.pt').toLowerCase().trim();
+  const supervisoryDestino = 'joao.melo@sermail.pt';
 
   const recipients = Array.from(
     new Set([adminDestino, supervisoryDestino].filter((e) => e && e.includes('@')))
