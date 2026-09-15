@@ -29,8 +29,11 @@ export interface EmailPedidoDados {
 export interface EmailEnvioResult {
   success: boolean;
   recipients: string[];
+  delivered?: string[];
+  failed?: { email: string; reason: string }[];
   data?: unknown;
   error?: string;
+  details?: string;
 }
 
 /**
@@ -42,6 +45,99 @@ function getResendClient(): Resend | null {
     return null;
   }
   return new Resend(apiKey);
+}
+
+/**
+ * Função utilitária para envio robusto de emails via Resend para múltiplos destinatários.
+ * Trata restrições do modo sandbox/teste de forma individual para garantir entrega aos destinatários autorizados.
+ */
+async function enviarMensagemResend(params: {
+  from: string;
+  recipients: string[];
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<EmailEnvioResult> {
+  const resend = getResendClient();
+  const { from, recipients, subject, html, text } = params;
+
+  if (!resend) {
+    const aviso = 'Chave RESEND_API_KEY não configurada ou em modo simulação no .env.local';
+    console.warn(`[Resend Email] ${aviso}. Destinatários planeados: ${recipients.join(', ')}`);
+    return {
+      success: false,
+      recipients,
+      error: aviso,
+    };
+  }
+
+  const delivered: string[] = [];
+  const failed: { email: string; reason: string }[] = [];
+  const responsesData: Record<string, unknown> = {};
+
+  for (const email of recipients) {
+    try {
+      const response = await resend.emails.send({
+        from,
+        to: [email],
+        subject,
+        html,
+        text,
+      });
+
+      if (response.error) {
+        console.warn(`[Resend Email Warning] Falha no envio para ${email}:`, response.error.message);
+        failed.push({
+          email,
+          reason: response.error.message || 'Erro na API Resend',
+        });
+      } else {
+        console.log(`[Resend Email Success] Email entregue para ${email} (ID: ${response.data?.id})`);
+        delivered.push(email);
+        if (response.data) {
+          responsesData[email] = response.data;
+        }
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error(`[Resend Email Exception] Erro ao enviar para ${email}:`, errorMsg);
+      failed.push({
+        email,
+        reason: errorMsg,
+      });
+    }
+  }
+
+  const isSuccess = delivered.length > 0;
+  let summaryError: string | undefined = undefined;
+  let details: string | undefined = undefined;
+
+  if (failed.length > 0) {
+    const sandboxFailures = failed.filter(
+      (f) =>
+        f.reason.includes('testing emails') ||
+        f.reason.includes('validation_error') ||
+        f.reason.includes('verify a domain')
+    );
+
+    if (sandboxFailures.length > 0) {
+      details = `Alguns endereços (${sandboxFailures.map((f) => f.email).join(', ')}) requerem validação de domínio em resend.com/domains para envio fora da conta titular (jccmmelo@gmail.com).`;
+    }
+
+    if (!isSuccess) {
+      summaryError = failed.map((f) => `${f.email}: ${f.reason}`).join(' | ');
+    }
+  }
+
+  return {
+    success: isSuccess,
+    recipients,
+    delivered,
+    failed,
+    data: responsesData,
+    error: summaryError,
+    details,
+  };
 }
 
 /**
@@ -239,72 +335,35 @@ Notificação enviada a: ${dados.utilizador_email} e joao.melo@sermail.pt
 }
 
 /**
- * Envia o email de notificação de pedido para o utilizador e joao.melo@sermail.pt
+ * Envia o email de notificação de pedido para o utilizador e contas de administração configuradas
  */
 export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Promise<EmailEnvioResult> {
-  const adminEmail = 'joao.melo@sermail.pt';
+  const adminNotification = process.env.RESEND_NOTIFICATION_EMAIL || 'jccmmelo@gmail.com';
+  const defaultAdmin = 'joao.melo@sermail.pt';
   const userEmail = (dados.utilizador_email || '').toLowerCase().trim();
 
   // Gerar lista de destinatários únicos
   const recipients = Array.from(
-    new Set([userEmail, adminEmail].filter((email) => email && email.includes('@')))
+    new Set([userEmail, adminNotification, defaultAdmin].filter((email) => email && email.includes('@')))
   );
-
-  const resend = getResendClient();
-
-  if (!resend) {
-    const aviso = 'Chave RESEND_API_KEY não configurada ou em modo simulação no .env.local';
-    console.warn(`[Resend Email] ${aviso}. Destinatários planeados: ${recipients.join(', ')}`);
-    return {
-      success: false,
-      recipients,
-      error: aviso,
-    };
-  }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
   const subject = `[Plataforma Farma] Pedido Registado: ${dados.nr_pedido} - ${dados.nome_destinatario}`;
   const html = gerarEmailPedidoHtml(dados);
   const text = gerarEmailPedidoTexto(dados);
 
-  try {
-    const response = await resend.emails.send({
-      from: fromEmail,
-      to: recipients,
-      subject,
-      html,
-      text,
-    });
-
-    if (response.error) {
-      console.error('[Resend Email Error]:', response.error);
-      return {
-        success: false,
-        recipients,
-        error: response.error.message || 'Erro ao enviar email via Resend',
-      };
-    }
-
-    console.log(`[Resend Email Success] Email enviado com sucesso para: ${recipients.join(', ')} (ID: ${response.data?.id})`);
-
-    return {
-      success: true,
-      recipients,
-      data: response.data,
-    };
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido no envio de email';
-    console.error('[Resend Email Exception]:', errorMsg);
-    return {
-      success: false,
-      recipients,
-      error: errorMsg,
-    };
-  }
+  return enviarMensagemResend({
+    from: fromEmail,
+    recipients,
+    subject,
+    html,
+    text,
+  });
 }
 
 export interface EmailTesteAdminDados {
-  adminEmail: string;
+  adminEmail?: string;
+  destinatarios?: string[];
   solicitanteNome?: string | null;
   solicitanteEmail?: string | null;
 }
@@ -314,6 +373,9 @@ export interface EmailTesteAdminDados {
  */
 export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: string): string {
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
+  const listDestinatarios = dados.destinatarios && dados.destinatarios.length > 0
+    ? dados.destinatarios.join(', ')
+    : (dados.adminEmail || 'jccmmelo@gmail.com, joao.melo@sermail.pt');
 
   return `
 <!DOCTYPE html>
@@ -332,7 +394,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
         ✉️ Teste de Diagnóstico • Painel de Configuração
       </div>
       <h1 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff;">Validação de Envio de Email (Resend)</h1>
-      <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Mensagem de confirmação enviada com sucesso para o Administrador</p>
+      <p style="margin: 6px 0 0 0; font-size: 13px; opacity: 0.9;">Mensagem de confirmação enviada com sucesso para os Administradores</p>
     </div>
 
     <div style="padding: 28px;">
@@ -343,7 +405,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
           <strong style="color: #166534; font-size: 14px;">✔ Ligação com o Resend operacional e verificada!</strong>
         </div>
         <p style="margin: 6px 0 0 0; font-size: 13px; color: #15803d;">
-          Este email confirma que a integração entre a <strong>Plataforma Farma</strong> e o serviço <strong>Resend</strong> está ativa e pronta para emitir notificações automáticas de expedição.
+          Este email confirma que a integração entre a <strong>Plataforma Farma</strong> e o motor de envio <strong>Resend</strong> está ativa e pronta para emitir notificações automáticas de expedição.
         </p>
       </div>
 
@@ -358,19 +420,15 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
             <td style="padding: 10px 14px; font-weight: 600; color: #0f172a; font-family: monospace;">${fromEmail}</td>
           </tr>
           <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Destinatário Admin:</td>
-            <td style="padding: 10px 14px; color: #0284c7; font-weight: 600;">${dados.adminEmail}</td>
+            <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Destinatários de Teste:</td>
+            <td style="padding: 10px 14px; color: #0284c7; font-weight: 600;">${listDestinatarios}</td>
           </tr>
           <tr style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-            <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Supervisão / Cópia:</td>
-            <td style="padding: 10px 14px; color: #0284c7; font-weight: 600;">joao.melo@sermail.pt</td>
-          </tr>
-          <tr style="background-color: #ffffff; border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Solicitado Por:</td>
-            <td style="padding: 10px 14px; color: #334155;">${dados.solicitanteNome || 'Administrador'} (${dados.solicitanteEmail || dados.adminEmail})</td>
+            <td style="padding: 10px 14px; color: #334155;">${dados.solicitanteNome || 'Administrador'} (${dados.solicitanteEmail || 'admin@sermail.pt'})</td>
           </tr>
-          <tr style="background-color: #f8fafc;">
-            <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Data & Hora:</td>
+          <tr style="background-color: #ffffff;">
+            <td style="padding: 10px 14px; font-weight: 600; color: #64748b;">Data & Hora do Envio:</td>
             <td style="padding: 10px 14px; color: #334155;">${timestamp}</td>
           </tr>
         </table>
@@ -382,7 +440,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
           📦 Demonstração do Formato de Notificação de Pedido:
         </div>
         <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-          Quando qualquer utilizador submete um pedido no menu <strong>Pedidos & Expedição</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email idêntico com todos os detalhes e morada de destino para o requerente e para <strong>joao.melo@sermail.pt</strong>.
+          Quando qualquer utilizador submete um pedido no menu <strong>Pedidos & Expedição</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email com todos os detalhes e morada de destino para o requerente e equipa de logística.
         </p>
       </div>
 
@@ -408,74 +466,46 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
  * Envia o email de teste administrativo via Resend
  */
 export async function enviarEmailTesteAdmin(dados: EmailTesteAdminDados): Promise<EmailEnvioResult> {
-  const adminDestino = (dados.adminEmail || 'joao.melo@sermail.pt').toLowerCase().trim();
-  const supervisoryDestino = 'joao.melo@sermail.pt';
+  const rawList: string[] = [];
+
+  if (dados.destinatarios && dados.destinatarios.length > 0) {
+    rawList.push(...dados.destinatarios);
+  }
+  if (dados.adminEmail) {
+    rawList.push(...dados.adminEmail.split(/[,;\s]+/));
+  }
+
+  // Se nenhum destino foi passado, usar lista padrão de supervisão
+  if (rawList.length === 0) {
+    rawList.push('jccmmelo@gmail.com', 'joao.melo@sermail.pt');
+  }
 
   const recipients = Array.from(
-    new Set([adminDestino, supervisoryDestino].filter((e) => e && e.includes('@')))
+    new Set(rawList.map((e) => e.toLowerCase().trim()).filter((e) => e && e.includes('@')))
   );
-
-  const resend = getResendClient();
-
-  if (!resend) {
-    const aviso = 'Chave RESEND_API_KEY não configurada ou em modo simulação no .env.local';
-    console.warn(`[Resend Test Email] ${aviso}. Destinatários planeados: ${recipients.join(', ')}`);
-    return {
-      success: false,
-      recipients,
-      error: aviso,
-    };
-  }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
   const timestamp = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
   const subject = `[Plataforma Farma] ✉️ Teste de Comunicação Resend - ${timestamp}`;
-  const html = gerarEmailTesteHtml(dados, timestamp);
+  const html = gerarEmailTesteHtml({ ...dados, destinatarios: recipients }, timestamp);
   const text = `
 PLATAFORMA FARMA - TESTE DE COMUNICAÇÃO RESEND
 =================================================
 Data e Hora: ${timestamp}
 Remetente: ${fromEmail}
 Destinatários: ${recipients.join(', ')}
-Solicitado por: ${dados.solicitanteNome || 'Admin'} (${dados.solicitanteEmail || adminDestino})
+Solicitado por: ${dados.solicitanteNome || 'Admin'} (${dados.solicitanteEmail || 'admin@sermail.pt'})
 
 Este é um email de validação emitido através da aba Email na Página de Configurações da Plataforma Farma.
 A integração com o Resend está operacional.
 =================================================
 `.trim();
 
-  try {
-    const response = await resend.emails.send({
-      from: fromEmail,
-      to: recipients,
-      subject,
-      html,
-      text,
-    });
-
-    if (response.error) {
-      console.error('[Resend Test Email Error]:', response.error);
-      return {
-        success: false,
-        recipients,
-        error: response.error.message || 'Erro ao enviar email de teste via Resend',
-      };
-    }
-
-    console.log(`[Resend Test Email Success] Email de teste enviado para: ${recipients.join(', ')} (ID: ${response.data?.id})`);
-
-    return {
-      success: true,
-      recipients,
-      data: response.data,
-    };
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Erro desconhecido no envio de email de teste';
-    console.error('[Resend Test Email Exception]:', errorMsg);
-    return {
-      success: false,
-      recipients,
-      error: errorMsg,
-    };
-  }
+  return enviarMensagemResend({
+    from: fromEmail,
+    recipients,
+    subject,
+    html,
+    text,
+  });
 }

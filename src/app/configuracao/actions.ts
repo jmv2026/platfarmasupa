@@ -278,13 +278,15 @@ export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) 
 
   const { enviarEmailTesteAdmin } = await import('@/lib/email');
 
-  const adminEmailDestino = destinatarioCustom?.trim() || profile.email || user.email || 'joao.melo@sermail.pt';
+  const rawInput = destinatarioCustom?.trim() || profile.email || user.email || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
+  const listaDestinatarios = rawInput.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
 
   const result = await enviarEmailTesteAdmin({
-    adminEmail: adminEmailDestino,
+    destinatarios: listaDestinatarios,
     solicitanteNome: profile.full_name || 'Administrador Farma',
     solicitanteEmail: user.email || profile.email || 'admin@sermail.pt',
   });
 
   return result;
 }
+

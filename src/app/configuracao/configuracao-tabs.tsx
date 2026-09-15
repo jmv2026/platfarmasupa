@@ -43,12 +43,13 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
   const [userAtivo, setUserAtivo] = useState(true);
 
   // Estados Aba Email & Teste
-  const [testEmailTarget, setTestEmailTarget] = useState('joao.melo@sermail.pt');
+  const [testEmailTarget, setTestEmailTarget] = useState('jccmmelo@gmail.com, joao.melo@sermail.pt');
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testEmailFeedback, setTestEmailFeedback] = useState<{
     type: 'success' | 'warning' | 'error';
     message: string;
     recipients?: string[];
+    delivered?: string[];
     details?: string;
   } | null>(null);
 
@@ -184,18 +185,20 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
     try {
       const res = await enviarEmailTesteConfigAction(testEmailTarget);
       if (res.success) {
-        const dests = res.recipients && res.recipients.length > 0 ? res.recipients.join(' e ') : testEmailTarget;
+        const dests = res.delivered && res.delivered.length > 0 ? res.delivered.join(', ') : testEmailTarget;
         setTestEmailFeedback({
-          type: 'success',
-          message: `Email de teste emitido com sucesso para ${dests} via Resend!`,
+          type: res.failed && res.failed.length > 0 ? 'warning' : 'success',
+          message: `Email de teste processado via Resend! Entregue com sucesso a: ${dests}`,
           recipients: res.recipients || [testEmailTarget],
+          delivered: res.delivered,
+          details: res.details,
         });
       } else {
         setTestEmailFeedback({
-          type: 'warning',
+          type: 'error',
           message: res.error || 'Aviso durante o envio do email de teste.',
           recipients: res.recipients,
-          details: 'Verifique se a chave RESEND_API_KEY está configurada no ficheiro .env.local e se o domínio de remetente foi aprovado no painel da Resend.',
+          details: res.details || 'Verifique se a chave RESEND_API_KEY está configurada no ficheiro .env.local e se o domínio de remetente foi aprovado no painel da Resend.',
         });
       }
     } catch (err: unknown) {
@@ -908,17 +911,20 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                       alternate_email
                     </span>
                     <input
-                      type="email"
+                      type="text"
                       value={testEmailTarget}
                       onChange={(e) => setTestEmailTarget(e.target.value)}
-                      placeholder="joao.melo@sermail.pt"
+                      placeholder="jccmmelo@gmail.com, joao.melo@sermail.pt"
                       required
                       className="w-full pl-9 pr-3 py-2 text-xs bg-surface-container-lowest border border-outline-variant/50 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 font-medium"
                     />
                   </div>
+                  <p className="text-[10px] text-on-surface-variant mt-1">
+                    Pode introduzir múltiplos endereços separados por vírgula.
+                  </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2 pt-2">
                   <button
                     type="submit"
                     disabled={testEmailLoading}
@@ -939,10 +945,26 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
 
                   <button
                     type="button"
-                    onClick={() => setTestEmailTarget('joao.melo@sermail.pt')}
-                    className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
+                    onClick={() => setTestEmailTarget('jccmmelo@gmail.com, joao.melo@sermail.pt')}
+                    className="px-3 py-2 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
                   >
-                    Predefinir joao.melo@sermail.pt
+                    Ambos
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTestEmailTarget('jccmmelo@gmail.com')}
+                    className="px-3 py-2 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
+                  >
+                    jccmmelo@gmail.com
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setTestEmailTarget('joao.melo@sermail.pt')}
+                    className="px-3 py-2 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-colors cursor-pointer"
+                  >
+                    joao.melo@sermail.pt
                   </button>
                 </div>
               </form>
