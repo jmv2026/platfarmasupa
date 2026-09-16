@@ -40,6 +40,19 @@ export default async function ConfiguracaoPage() {
     supabase.from('perfis').select('*').order('codigo'),
   ]);
 
+  // Dados de Parametrização do Servidor de Email (.env.local)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const isKeyConfigured = !!(resendApiKey && !resendApiKey.startsWith('re_123456789') && resendApiKey !== 'YOUR_RESEND_API_KEY');
+  const serverEmailConfig = {
+    fromEmail: process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>',
+    apiKeyConfigured: isKeyConfigured,
+    apiKeyMasked: isKeyConfigured
+      ? `${resendApiKey!.substring(0, 8)}...${resendApiKey!.slice(-4)}`
+      : 'Não configurada (Simulação)',
+    notificationEmail: process.env.RESEND_NOTIFICATION_EMAIL || 'jccmmelo@gmail.com',
+    supervisaoEmail: 'joao.melo@sermail.pt',
+  };
+
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">
       {/* Header */}
@@ -134,6 +147,7 @@ export default async function ConfiguracaoPage() {
           clients={(clientsList as Client[]) || []}
           artigos={(artigosList as Artigo[]) || []}
           perfis={(perfisList as Perfil[]) || []}
+          serverEmailConfig={serverEmailConfig}
         />
       </main>
     </div>

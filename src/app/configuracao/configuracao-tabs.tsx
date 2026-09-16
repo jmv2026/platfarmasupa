@@ -20,14 +20,29 @@ import {
   enviarEmailTesteConfigAction,
 } from './actions';
 
+export interface ServerEmailConfig {
+  fromEmail: string;
+  apiKeyConfigured: boolean;
+  apiKeyMasked: string;
+  notificationEmail: string;
+  supervisaoEmail: string;
+}
+
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
   clients: Client[];
   artigos: Artigo[];
   perfis: Perfil[];
+  serverEmailConfig?: ServerEmailConfig;
 }
 
-export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: ConfiguracaoTabsProps) {
+export default function ConfiguracaoTabs({
+  users,
+  clients,
+  artigos,
+  perfis,
+  serverEmailConfig,
+}: ConfiguracaoTabsProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
@@ -873,14 +888,14 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                   Supervisão & Teste de Notificações por Email (Fase 7)
                 </h3>
                 <p className="text-xs text-on-surface-variant mt-1">
-                  Valide a ligação com o motor <strong>Resend</strong> e emita emails de teste com a estrutura oficial da Plataforma Farma.
+                  Valide a ligação com o motor <strong>Resend</strong> e emita emails de teste com a estrutura oficial da Plataforma Farma através do domínio verificado.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Motor Resend Ativo
+                  Motor Resend Ativo • platfarma.sermaildev.cloud
                 </span>
               </div>
             </div>
@@ -896,7 +911,7 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                     Emissão de Email de Teste para a Administração
                   </h4>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    O teste envia um email com template regulamentar de diagnóstico para o endereço indicado e para a conta de supervisão (<strong>joao.melo@sermail.pt</strong>).
+                    O teste envia um email com template regulamentar de diagnóstico a partir de <strong>noreplay@platfarma.sermaildev.cloud</strong> para os destinatários selecionados.
                   </p>
                 </div>
               </div>
@@ -1016,7 +1031,10 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
                     Disparo automático após criação com sucesso do cabeçalho, linhas e débito <strong>SS</strong>.
                   </li>
                   <li>
-                    Envio simultâneo para o <strong>utilizador requerente</strong> e para <strong>joao.melo@sermail.pt</strong>.
+                    Envio simultâneo para o <strong>utilizador requerente</strong>, notificação de sistema (<strong>{serverEmailConfig?.notificationEmail || 'jccmmelo@gmail.com'}</strong>) e supervisão (<strong>{serverEmailConfig?.supervisaoEmail || 'joao.melo@sermail.pt'}</strong>).
+                  </li>
+                  <li>
+                    Remetente oficial: <strong>{serverEmailConfig?.fromEmail || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>'}</strong>.
                   </li>
                   <li>
                     Dados incluídos: Número do Pedido, Cliente, Destinatário, Morada, Lotes <strong>FEFO</strong>, Validades e Qtds.
@@ -1025,14 +1043,36 @@ export default function ConfiguracaoTabs({ users, clients, artigos, perfis }: Co
               </div>
 
               <div className="bg-surface-container/40 border border-outline-variant/30 rounded-xl p-5 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
-                  <span className="material-symbols-outlined text-secondary text-sm">tune</span>
-                  Parametrização do Servidor (.env.local)
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
+                    <span className="material-symbols-outlined text-secondary text-sm">tune</span>
+                    Parametrização do Servidor (.env.local)
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Ativo & Conectado
+                  </span>
                 </div>
-                <div className="text-[11px] font-mono bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-3 text-on-surface space-y-1">
-                  <div><span className="text-on-surface-variant">API_KEY:</span> <span className="text-emerald-600 font-semibold">RESEND_API_KEY</span></div>
-                  <div><span className="text-on-surface-variant">FROM:</span> <span className="text-secondary font-semibold">Plataforma Farma &lt;onboarding@resend.dev&gt;</span></div>
-                  <div><span className="text-on-surface-variant">SUPERVISÃO:</span> <span className="text-on-surface font-semibold">joao.melo@sermail.pt</span></div>
+                <div className="text-[11px] font-mono bg-surface-container-lowest border border-outline-variant/40 rounded-lg p-3 text-on-surface space-y-1.5">
+                  <div className="flex justify-between items-center py-0.5 border-b border-outline-variant/20">
+                    <span className="text-on-surface-variant">API_KEY:</span>
+                    <span className="text-emerald-700 font-semibold">{serverEmailConfig?.apiKeyMasked || 're_QtC9ht7m...uHxZ'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-outline-variant/20">
+                    <span className="text-on-surface-variant">FROM_EMAIL:</span>
+                    <span className="text-secondary font-semibold">{serverEmailConfig?.fromEmail || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-outline-variant/20">
+                    <span className="text-on-surface-variant">NOTIFICATION:</span>
+                    <span className="text-on-surface font-semibold">{serverEmailConfig?.notificationEmail || 'jccmmelo@gmail.com'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5 border-b border-outline-variant/20">
+                    <span className="text-on-surface-variant">SUPERVISÃO:</span>
+                    <span className="text-on-surface font-semibold">{serverEmailConfig?.supervisaoEmail || 'joao.melo@sermail.pt'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-on-surface-variant">DOMÍNIO:</span>
+                    <span className="text-emerald-600 font-bold">platfarma.sermaildev.cloud</span>
+                  </div>
                 </div>
               </div>
             </div>

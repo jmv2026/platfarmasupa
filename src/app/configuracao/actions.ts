@@ -279,7 +279,7 @@ export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) 
   const { enviarEmailTesteAdmin } = await import('@/lib/email');
 
   const rawInput = destinatarioCustom?.trim() || profile.email || user.email || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
-  const listaDestinatarios = rawInput.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean);
+  const listaDestinatarios = rawInput.split(/[,;\s]+/).map((e: string) => e.trim()).filter(Boolean);
 
   const result = await enviarEmailTesteAdmin({
     destinatarios: listaDestinatarios,

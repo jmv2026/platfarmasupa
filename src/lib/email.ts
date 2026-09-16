@@ -352,7 +352,7 @@ export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Pro
     new Set([userEmail, adminNotification, defaultAdmin].filter((email) => email && email.includes('@')))
   );
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
   const subject = `[Plataforma Farma] Pedido Registado: ${dados.nr_pedido} - ${dados.nome_destinatario}`;
   const html = gerarEmailPedidoHtml(dados);
   const text = gerarEmailPedidoTexto(dados);
@@ -377,7 +377,7 @@ export interface EmailTesteAdminDados {
  * Gera o template HTML para o email de teste administrativo
  */
 export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: string): string {
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
   const listDestinatarios = dados.destinatarios && dados.destinatarios.length > 0
     ? dados.destinatarios.join(', ')
     : (dados.adminEmail || 'jccmmelo@gmail.com, joao.melo@sermail.pt');
@@ -489,7 +489,7 @@ export async function enviarEmailTesteAdmin(dados: EmailTesteAdminDados): Promis
     new Set(rawList.map((e) => e.toLowerCase().trim()).filter((e) => e && e.includes('@')))
   );
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <onboarding@resend.dev>';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
   const timestamp = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
   const subject = `[Plataforma Farma] ✉️ Teste de Comunicação Resend - ${timestamp}`;
   const html = gerarEmailTesteHtml({ ...dados, destinatarios: recipients }, timestamp);

@@ -164,7 +164,6 @@ export interface StockAtual {
   tipo_armazem: TipoArmazem;
   armazem_descricao: string;
   armazem_loc: string;
-  posicao: string | null;
   lote: string | null;
   validade: string | null;
   data_fabrico: string | null;

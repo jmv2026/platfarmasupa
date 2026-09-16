@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
 import NovoPedidoForm from './novo-pedido-form';
 import PedidosLista from './pedidos-lista';
-import { Client, StockPedido, PedidoComLinhas } from '@/lib/supabase/types';
+import { Client, StockPedido, PedidoComLinhas, UserProfile } from '@/lib/supabase/types';
 
 export default async function PedidosPage() {
   const supabase = await createClient();
@@ -22,18 +22,28 @@ export default async function PedidosPage() {
     .eq('id', user.id)
     .single();
 
+  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
+  const userClientId = profile?.client_id;
+
+  let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let pedidosQuery = supabase.from('pedidos').select('*, clients(id, name, sigla), pedido_linhas(*)').order('created_at', { ascending: false });
+
+  if (!isManagerOrAdmin && userClientId) {
+    clientsQuery = clientsQuery.eq('id', userClientId);
+    stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
+    pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+  }
+
   // Buscar dados em paralelo
   const [
     { data: clients },
     { data: stockPedidos },
     { data: pedidos },
   ] = await Promise.all([
-    supabase.from('clients').select('*').eq('ativo', true).order('name'),
-    supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla'),
-    supabase
-      .from('pedidos')
-      .select('*, clients(id, name, sigla), pedido_linhas(*)')
-      .order('created_at', { ascending: false }),
+    clientsQuery,
+    stockPedidosQuery,
+    pedidosQuery,
   ]);
 
   return (
@@ -105,30 +115,20 @@ export default async function PedidosPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-secondary-container to-secondary text-on-secondary-container rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-block px-3 py-1 bg-surface-container-lowest/80 text-secondary rounded-full text-xs font-bold tracking-wide uppercase">
-                Fase 5 • Expedição Farma
-              </span>
-              <span className="text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Alocação FEFO & Débito em Tempo Real
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2 text-on-secondary">
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
               Gestão e Registo de Pedidos de Entrega
             </h1>
-            <p className="text-xs sm:text-sm max-w-2xl opacity-90">
-              Crie pedidos de entrega com seleção inteligente pelo critério <strong>FEFO (First Expired, First Out)</strong>. As linhas são sincronizadas em tempo real com a view <code>vw_stock_pedidos</code> e debitam automaticamente o stock via movimentos <strong>SS</strong>.
-            </p>
           </div>
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
 
         {/* Formulário de Criação de Pedido */}
         <NovoPedidoForm
           clients={(clients as Client[]) || []}
           stockPedidos={(stockPedidos as StockPedido[]) || []}
+          currentUserProfile={(profile as UserProfile) || null}
         />
 
         {/* Lista de Pedidos Existentes */}

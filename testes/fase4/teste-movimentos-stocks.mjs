@@ -145,7 +145,7 @@ async function runTests() {
     passedCount++;
   }
 
-  // 4. Verificação da View `vw_stock_atual` (Stock Consolidado com Localização)
+  // 4. Verificação da View `vw_stock_atual` (Stock Consolidado)
   console.log(`\n${colors.bright}[4/6] Verificação da View de Stock Consolidado (vw_stock_atual)${colors.reset}`);
   try {
     const { data: stockAtual, error: viewError } = await supabase
@@ -167,7 +167,6 @@ async function runTests() {
         'lote' in first &&
         'validade' in first &&
         'armazem_loc' in first &&
-        'posicao' in first &&
         'stock' in first;
 
       // Verificar que todos os registos têm stock > 0
@@ -175,11 +174,11 @@ async function runTests() {
 
       if (hasRequiredCols && allPositive) {
         printPass(
-          'View vw_stock_atual calcula corretamente o stock por cliente, artigo, lote, armazém e posição',
+          'View vw_stock_atual calcula corretamente o stock por cliente, artigo, lote e armazém',
           stockAtual
             .map(
               (r) =>
-                `[${r.cliente_sigla}] ${r.artigo_codigo} | Lote: ${r.lote} | Arm: ${r.armazem_loc} | Pos: ${r.posicao || '-'} | Stock: ${r.stock}`
+                `[${r.cliente_sigla}] ${r.artigo_codigo} | Lote: ${r.lote} | Arm: ${r.armazem_loc} | Stock: ${r.stock}`
             )
             .join('\n         ')
         );

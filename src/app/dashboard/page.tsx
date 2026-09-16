@@ -20,6 +20,22 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
+  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
+  const userClientId = profile?.client_id;
+
+  // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let movimentosQuery = supabase.from('movimentos').select('*, clients(name, sigla), artigos(artigo_id, descricao)').order('data_movimento', { ascending: false }).limit(10);
+  let pedidosCountQuery = supabase.from('pedidos').select('*', { count: 'exact', head: true });
+
+  if (!isManagerOrAdmin && userClientId) {
+    stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
+    stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
+    movimentosQuery = movimentosQuery.eq('client_id', userClientId);
+    pedidosCountQuery = pedidosCountQuery.eq('client_id', userClientId);
+  }
+
   // Buscar dados das views e tabelas em paralelo
   const [
     { data: stockAtual },
@@ -29,12 +45,12 @@ export default async function DashboardPage() {
     { count: totalArtigos },
     { count: totalPedidos },
   ] = await Promise.all([
-    supabase.from('vw_stock_atual').select('*').order('cliente_sigla'),
-    supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla'),
-    supabase.from('movimentos').select('*, clients(name, sigla), artigos(artigo_id, descricao)').order('data_movimento', { ascending: false }).limit(10),
+    stockAtualQuery,
+    stockPedidosQuery,
+    movimentosQuery,
     supabase.from('clients').select('*', { count: 'exact', head: true }),
     supabase.from('artigos').select('*', { count: 'exact', head: true }),
-    supabase.from('pedidos').select('*', { count: 'exact', head: true }),
+    pedidosCountQuery,
   ]);
 
   const totalStockVenda = stockPedidos?.reduce((acc, curr) => acc + Number(curr.stock || 0), 0) || 0;
@@ -318,10 +334,10 @@ export default async function DashboardPage() {
             <div>
               <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary">inventory</span>
-                Stock Consolidado com Localização (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_atual</code>)
+                Stock Consolidado (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_atual</code>)
               </h2>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Visão detalhada por cliente, artigo, lote, validade, armazém (`armazem_loc`) e posição física.
+                Visão detalhada por cliente, artigo, lote, validade e armazém (`armazem_loc`).
               </p>
             </div>
           </div>
@@ -337,7 +353,6 @@ export default async function DashboardPage() {
                   <th className="py-2.5 px-3">Validade</th>
                   <th className="py-2.5 px-3">Armazém Loc</th>
                   <th className="py-2.5 px-3">Tipo Armazém</th>
-                  <th className="py-2.5 px-3">Posição</th>
                   <th className="py-2.5 px-3 text-right rounded-r-lg">Stock</th>
                 </tr>
               </thead>
@@ -368,9 +383,6 @@ export default async function DashboardPage() {
                           {item.armazem_descricao || `Armazém ${item.tipo_armazem}`}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-mono font-medium text-on-surface-variant">
-                        {item.posicao || '-'}
-                      </td>
                       <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
                         {Number(item.stock).toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span>
                       </td>
@@ -378,7 +390,7 @@ export default async function DashboardPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={9} className="py-6 text-center text-on-surface-variant">
+                    <td colSpan={8} className="py-6 text-center text-on-surface-variant">
                       Nenhum registo de stock consolidado.
                     </td>
                   </tr>

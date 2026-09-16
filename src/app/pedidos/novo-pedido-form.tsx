@@ -2,19 +2,31 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Client, StockPedido, NovaLinhaPedidoInput } from '@/lib/supabase/types';
+import { Client, StockPedido, NovaLinhaPedidoInput, UserProfile } from '@/lib/supabase/types';
 import { criarPedidoAction } from './actions';
 
 interface NovoPedidoFormProps {
   clients: Client[];
   stockPedidos: StockPedido[];
+  currentUserProfile?: UserProfile | null;
 }
 
-export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoFormProps) {
+export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfile }: NovoPedidoFormProps) {
   const router = useRouter();
 
+  // Permissões RBAC: Admin e Gestor podem selecionar qualquer cliente livremente
+  const isManagerOrAdmin = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
+
+  // Se não for admin nem gestor, o cliente proprietário é automaticamente o associado ao perfil
+  const initialClientId = useMemo(() => {
+    if (!isManagerOrAdmin && currentUserProfile?.client_id) {
+      return currentUserProfile.client_id;
+    }
+    return clients[0]?.id || '';
+  }, [isManagerOrAdmin, currentUserProfile, clients]);
+
   // Estados do Cabeçalho
-  const [selectedClientId, setSelectedClientId] = useState<string>(clients[0]?.id || '');
+  const [selectedClientId, setSelectedClientId] = useState<string>(initialClientId);
   const [nomeDestinatario, setNomeDestinatario] = useState('');
   const [morada, setMorada] = useState('');
   const [codigoPostal, setCodigoPostal] = useState('');
@@ -41,6 +53,12 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
   const clientStock = useMemo(() => {
     return stockPedidos.filter((s) => s.client_id === selectedClientId && Number(s.stock) > 0);
   }, [stockPedidos, selectedClientId]);
+
+  // Cliente associado ao perfil de utilizador (quando não é admin nem gestor)
+  const associatedClient = useMemo(() => {
+    if (isManagerOrAdmin) return null;
+    return clients.find((c) => c.id === currentUserProfile?.client_id) || null;
+  }, [isManagerOrAdmin, clients, currentUserProfile]);
 
   // Lista única de artigos disponíveis para o cliente selecionado
   const availableArtigos = useMemo(() => {
@@ -159,12 +177,20 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
   // Submeter Pedido Completo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClientId) {
-      setFeedback({ type: 'error', message: 'Selecione o cliente proprietário.' });
+    const finalClientId = !isManagerOrAdmin && currentUserProfile?.client_id
+      ? currentUserProfile.client_id
+      : selectedClientId;
+
+    if (!finalClientId) {
+      setFeedback({
+        type: 'error',
+        message: 'Não foi possível identificar o cliente proprietário do pedido. Contacte a administração.',
+      });
       return;
     }
+
     if (!nomeDestinatario || !morada || !codigoPostal || !localidade) {
-      setFeedback({ type: 'error', message: 'Preencha os campos obrigatórios de morada e destinatário.' });
+      setFeedback({ type: 'error', message: 'Preencha todos os campos obrigatórios do destinatário e morada.' });
       return;
     }
     if (linhas.length === 0) {
@@ -177,7 +203,7 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
 
     try {
       const res = await criarPedidoAction({
-        client_id: selectedClientId,
+        client_id: finalClientId,
         ref_documento: refDocumento || undefined,
         nome_destinatario: nomeDestinatario,
         morada,
@@ -212,6 +238,11 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
         setLinhas([]);
         setSelectedArtigoId('');
         setSelectedLote('');
+        if (!isManagerOrAdmin && currentUserProfile?.client_id) {
+          setSelectedClientId(currentUserProfile.client_id);
+        } else {
+          setSelectedClientId(clients[0]?.id || '');
+        }
         router.refresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao processar pedido.' });
@@ -268,23 +299,41 @@ export default function NovoPedidoForm({ clients, stockPedidos }: NovoPedidoForm
               <label className="block text-xs font-semibold text-on-surface mb-1">
                 Cliente Proprietário do Stock <span className="text-rose-600">*</span>
               </label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => {
-                  setSelectedClientId(e.target.value);
-                  setSelectedArtigoId('');
-                  setSelectedLote('');
-                  setLinhas([]);
-                }}
-                className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                required
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    [{c.sigla}] {c.name}
-                  </option>
-                ))}
-              </select>
+
+              {isManagerOrAdmin ? (
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => {
+                    setSelectedClientId(e.target.value);
+                    setSelectedArtigoId('');
+                    setSelectedLote('');
+                    setLinhas([]);
+                  }}
+                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                  required
+                >
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      [{c.sigla}] {c.name}
+                    </option>
+                  ))}
+                </select>
+              ) : associatedClient ? (
+                <div>
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={`[${associatedClient.sigla}] ${associatedClient.name}`}
+                    className="w-full bg-surface-container/70 border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface font-semibold cursor-not-allowed select-none opacity-90 shadow-inner"
+                  />
+                </div>
+              ) : (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-rose-600">error</span>
+                  <span>O seu utilizador não tem cliente associado. Contacte a administração.</span>
+                </div>
+              )}
             </div>
 
             <div>

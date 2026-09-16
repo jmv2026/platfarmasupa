@@ -287,9 +287,9 @@ export async function seedDatabase() {
   const { data: vwPedidos } = await supabase.from('vw_stock_pedidos').select('*');
 
   console.log(`\n${colors.bright}Resultados das Views:${colors.reset}`);
-  console.log(`  • ${colors.cyan}vw_stock_atual:${colors.reset} ${vwAtual?.length || 0} lotes/posições em stock consolidado`);
+  console.log(`  • ${colors.cyan}vw_stock_atual:${colors.reset} ${vwAtual?.length || 0} lotes/armazéns em stock consolidado`);
   vwAtual?.forEach((r) => {
-    console.log(`     - [${r.cliente_sigla}] ${r.artigo_codigo} (${r.artigo_descricao.substring(0, 30)}...) | Lote: ${r.lote} | Arm: ${r.armazem_loc} | Pos: ${r.posicao || '-'} | Stock: ${r.stock}`);
+    console.log(`     - [${r.cliente_sigla}] ${r.artigo_codigo} (${r.artigo_descricao.substring(0, 30)}...) | Lote: ${r.lote} | Arm: ${r.armazem_loc} | Stock: ${r.stock}`);
   });
 
   console.log(`  • ${colors.cyan}vw_stock_pedidos (Apenas Armazém 01):${colors.reset} ${vwPedidos?.length || 0} registos prontos para pedidos`);

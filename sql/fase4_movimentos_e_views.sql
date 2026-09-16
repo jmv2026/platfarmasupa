@@ -41,11 +41,14 @@ COMMENT ON COLUMN public.movimentos.tipo_movimento IS 'es: Entrada Stock, ss: Sa
 COMMENT ON COLUMN public.movimentos.armazem_loc IS 'Identificador do armazém do cliente (ex: Sigla + Tipo Armazém -> PFIZ-01)';
 
 -- ------------------------------------------------------------------------------
--- 2. VIEW: vw_stock_atual (Stock Consolidado com Localização)
+-- 2. VIEW: vw_stock_atual (Stock Consolidado com Isolamento por Cliente/Utilizador)
 -- ------------------------------------------------------------------------------
 -- Agrupa todos os movimentos e calcula o saldo atual por cliente, artigo, lote,
--- validade, armazem_loc e posição. Apenas inclui lotes com saldo positivo (> 0).
+-- validade e armazem_loc. Apenas inclui lotes com saldo positivo (> 0).
+-- Lista apenas os produtos do cliente associado ao utilizador (exceto admin/gestor).
 -- ------------------------------------------------------------------------------
+DROP VIEW IF EXISTS public.vw_stock_atual CASCADE;
+
 CREATE OR REPLACE VIEW public.vw_stock_atual AS
 SELECT 
     m.client_id,
@@ -59,7 +62,6 @@ SELECT
     m.tipo_armazem,
     arm.descricao AS armazem_descricao,
     m.armazem_loc,
-    m.posicao,
     m.lote,
     m.validade,
     m.data_fabrico,
@@ -75,6 +77,18 @@ FROM public.movimentos m
 JOIN public.clients c ON c.id = m.client_id
 JOIN public.artigos a ON a.id = m.artigo_id
 JOIN public.armazens arm ON arm.tipo_armazem = m.tipo_armazem
+WHERE (
+    auth.uid() IS NULL
+    OR EXISTS (
+        SELECT 1 FROM public.users u 
+        WHERE u.id = auth.uid() 
+          AND (u.role IN ('admin', 'gestor') OR u.client_id IS NULL)
+    )
+    OR m.client_id = (
+        SELECT u.client_id FROM public.users u 
+        WHERE u.id = auth.uid()
+    )
+)
 GROUP BY 
     m.client_id,
     c.name,
@@ -87,7 +101,6 @@ GROUP BY
     m.tipo_armazem,
     arm.descricao,
     m.armazem_loc,
-    m.posicao,
     m.lote,
     m.validade,
     m.data_fabrico
@@ -105,6 +118,8 @@ HAVING SUM(
 -- Similar a vw_stock_atual, mas filtra estritamente o Armazém '01' (Venda) e omite
 -- armazém e posição para fins de alocação de encomendas.
 -- ------------------------------------------------------------------------------
+DROP VIEW IF EXISTS public.vw_stock_pedidos CASCADE;
+
 CREATE OR REPLACE VIEW public.vw_stock_pedidos AS
 SELECT 
     m.client_id,
@@ -130,6 +145,18 @@ FROM public.movimentos m
 JOIN public.clients c ON c.id = m.client_id
 JOIN public.artigos a ON a.id = m.artigo_id
 WHERE m.tipo_armazem = '01'
+  AND (
+    auth.uid() IS NULL
+    OR EXISTS (
+        SELECT 1 FROM public.users u 
+        WHERE u.id = auth.uid() 
+          AND (u.role IN ('admin', 'gestor') OR u.client_id IS NULL)
+    )
+    OR m.client_id = (
+        SELECT u.client_id FROM public.users u 
+        WHERE u.id = auth.uid()
+    )
+  )
 GROUP BY 
     m.client_id,
     c.name,

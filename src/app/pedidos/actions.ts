@@ -15,7 +15,28 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     return { success: false, error: 'Utilizador não autenticado' };
   }
 
-  if (!input.client_id) {
+  // 0. Obter perfil do utilizador para controlo de acesso RBAC
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, client_id, email, full_name')
+    .eq('id', user.id)
+    .single();
+
+  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
+
+  let targetClientId = input.client_id;
+  if (!isManagerOrAdmin) {
+    if (!profile?.client_id) {
+      return {
+        success: false,
+        error: 'O seu perfil de utilizador não tem um cliente proprietário associado. Contacte um administrador.',
+      };
+    }
+    // Forçar o cliente do utilizador para não permitir alterações
+    targetClientId = profile.client_id;
+  }
+
+  if (!targetClientId) {
     return { success: false, error: 'Selecione o cliente proprietário do produto' };
   }
 
@@ -31,7 +52,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
   const { data: client, error: clientErr } = await supabase
     .from('clients')
     .select('id, sigla, name')
-    .eq('id', input.client_id)
+    .eq('id', targetClientId)
     .single();
 
   if (clientErr || !client) {
@@ -50,7 +71,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     .insert({
       nr_pedido: nrPedido,
       ref_documento: input.ref_documento || null,
-      client_id: input.client_id,
+      client_id: targetClientId,
       nome_destinatario: input.nome_destinatario,
       morada: input.morada,
       codigo_postal: input.codigo_postal,
@@ -80,7 +101,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     // Inserir linha do pedido
     const { error: linhaErr } = await supabase.from('pedido_linhas').insert({
       pedido_id: pedido.id,
-      client_id: input.client_id,
+      client_id: targetClientId,
       artigo_id: linha.artigo_id,
       artigo_codigo: linha.artigo_codigo,
       descricao: linha.descricao,
@@ -97,7 +118,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     // Gerar movimento de saída de stock SS correspondente
     const { error: movErr } = await supabase.from('movimentos').insert({
       artigo_id: linha.artigo_id,
-      client_id: input.client_id,
+      client_id: targetClientId,
       tipo_movimento: 'ss',
       quantidade: linha.quantidade,
       tipo_armazem: '01', // Armazém Venda
