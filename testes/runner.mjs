@@ -47,7 +47,8 @@ function runFase(fase) {
 
   console.log(`\n${colors.bright}${colors.cyan}A executar testes da Fase ${fase}...${colors.reset}\n`);
 
-  const child = spawn('node', [scriptPath], { stdio: 'inherit' });
+  const nodeArgs = ['--env-file=.env.local', scriptPath];
+  const child = spawn('node', nodeArgs, { stdio: 'inherit' });
 
   child.on('close', (code) => {
     process.exit(code || 0);

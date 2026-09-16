@@ -113,6 +113,9 @@ async function enviarMensagemResend(params: {
   let details: string | undefined = undefined;
 
   if (failed.length > 0) {
+    const unverifiedDomainFailure = failed.find(
+      (f) => f.reason.includes('not verified') || f.reason.includes('domain is not verified')
+    );
     const sandboxFailures = failed.filter(
       (f) =>
         f.reason.includes('testing emails') ||
@@ -120,8 +123,10 @@ async function enviarMensagemResend(params: {
         f.reason.includes('verify a domain')
     );
 
-    if (sandboxFailures.length > 0) {
-      details = `Alguns endereços (${sandboxFailures.map((f) => f.email).join(', ')}) requerem validação de domínio em resend.com/domains para envio fora da conta titular (jccmmelo@gmail.com).`;
+    if (unverifiedDomainFailure) {
+      details = `O domínio do remetente configurado em RESEND_FROM_EMAIL não está verificado no Resend. É necessário verificar o domínio em https://resend.com/domains ou utilizar temporariamente "Plataforma Farma <onboarding@resend.dev>" no .env.local para testes.`;
+    } else if (sandboxFailures.length > 0) {
+      details = `Em modo de testes do Resend (onboarding@resend.dev), os emails só podem ser entregues à conta titular (jccmmelo@gmail.com). Para enviar para outros endereços (${sandboxFailures.map((f) => f.email).join(', ')}), valide o seu domínio em https://resend.com/domains.`;
     }
 
     if (!isSuccess) {
