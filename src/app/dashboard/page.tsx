@@ -107,14 +107,9 @@ export default async function DashboardPage() {
               <p className="text-xs font-semibold text-on-surface">
                 {profile?.full_name || user.email}
               </p>
-              <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-secondary-container text-on-secondary-container uppercase">
-                  {profile?.role || 'admin'}
-                </span>
-                <span className="text-[11px] text-on-surface-variant/80">
-                  {profile?.empresa || 'Sermail'}
-                </span>
-              </div>
+              <p className="text-[11px] text-on-surface-variant/80 mt-0.5">
+                {profile?.empresa || 'Sermail'}
+              </p>
             </div>
 
             <SignOutButton />

@@ -376,7 +376,7 @@ export default function ConfiguracaoTabs({
 
                 <div>
                   <label className="block text-xs font-semibold text-on-surface mb-1">
-                    Perfil / Função <span className="text-rose-600">*</span>
+                    Função / Acesso <span className="text-rose-600">*</span>
                   </label>
                   <select
                     value={userRole}
@@ -462,7 +462,7 @@ export default function ConfiguracaoTabs({
                   <tr>
                     <th className="py-2.5 px-3 rounded-l-lg">Nome</th>
                     <th className="py-2.5 px-3">Email</th>
-                    <th className="py-2.5 px-3">Perfil / Função</th>
+                    <th className="py-2.5 px-3">Função / Acesso</th>
                     <th className="py-2.5 px-3">Empresa</th>
                     <th className="py-2.5 px-3">Estado</th>
                     <th className="py-2.5 px-3 text-right rounded-r-lg">Data Criação</th>

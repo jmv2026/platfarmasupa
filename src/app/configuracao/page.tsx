@@ -102,14 +102,9 @@ export default async function ConfiguracaoPage() {
               <p className="text-xs font-semibold text-on-surface">
                 {profile?.full_name || user.email}
               </p>
-              <div className="flex items-center justify-end gap-1.5 mt-0.5">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 uppercase tracking-wide">
-                  ADMINISTRADOR
-                </span>
-                <span className="text-[11px] text-on-surface-variant/80">
-                  {profile?.empresa || 'Sermail'}
-                </span>
-              </div>
+              <p className="text-[11px] text-on-surface-variant/80 mt-0.5">
+                {profile?.empresa || 'Sermail'}
+              </p>
             </div>
 
             <SignOutButton />
@@ -124,18 +119,18 @@ export default async function ConfiguracaoPage() {
           <div className="relative z-10">
             <div className="flex items-center gap-2 mb-3">
               <span className="inline-block px-3 py-1 bg-secondary text-on-secondary rounded-full text-xs font-bold tracking-wide uppercase shadow-sm">
-                Fase 6 • Painel de Configuração
+                Painel de Configuração
               </span>
               <span className="text-xs font-semibold text-primary-fixed flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Acesso Exclusivo a Administradores (Role: Admin)
+                Administração do Sistema
               </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2">
               Configuração & Administração do Sistema
             </h1>
             <p className="text-xs sm:text-sm text-primary-fixed max-w-2xl">
-              Gestão centralizada de contas de utilizadores com perfis de acesso, parametrização de clientes (siglas ≤ 4 carateres) e cadastro de artigos com controlo de conservação e lote/série.
+              Gestão centralizada de contas de utilizadores, parametrização de clientes (siglas ≤ 4 carateres) e cadastro de artigos com controlo de conservação e lote/série.
             </p>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
