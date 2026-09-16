@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { gerarExcelPedido } from './excel.ts';
 
 export interface LinhaPedidoEmail {
   artigo_codigo: string;
@@ -57,9 +58,15 @@ async function enviarMensagemResend(params: {
   subject: string;
   html: string;
   text: string;
+  attachments?: {
+    filename: string;
+    content?: Buffer | string;
+    path?: string;
+    contentType?: string;
+  }[];
 }): Promise<EmailEnvioResult> {
   const resend = getResendClient();
-  const { from, recipients, subject, html, text } = params;
+  const { from, recipients, subject, html, text, attachments } = params;
 
   if (!resend) {
     const aviso = 'Chave RESEND_API_KEY não configurada ou em modo simulação no .env.local';
@@ -83,6 +90,7 @@ async function enviarMensagemResend(params: {
         subject,
         html,
         text,
+        attachments,
       });
 
       if (response.error) {
@@ -92,7 +100,7 @@ async function enviarMensagemResend(params: {
           reason: response.error.message || 'Erro na API Resend',
         });
       } else {
-        console.log(`[Resend Email Success] Email entregue para ${email} (ID: ${response.data?.id})`);
+        console.log(`[Resend Email Success] Email entregue para ${email} (ID: ${response.data?.id}) com ${attachments?.length || 0} anexo(s)`);
         delivered.push(email);
         if (response.data) {
           responsesData[email] = response.data;
@@ -269,6 +277,20 @@ export function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
           : ''
       }
 
+      <!-- Informação do Utilizador Solicitante e Anexo -->
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-bottom: 24px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 32px; vertical-align: middle; font-size: 20px;">📎</td>
+            <td style="vertical-align: middle;">
+              <strong style="color: #166534; font-size: 13px;">Documento Anexo:</strong>
+              <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #15803d;"> Pedido_${dados.nr_pedido}.xlsx</span>
+              <div style="font-size: 11px; color: #166534; margin-top: 2px;">Folha de cálculo Excel com a guia integral de pedido, destinatário e alocação de lotes FEFO.</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
       <!-- Informação do Utilizador Solicitante -->
       <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 12px; color: #64748b;">
         <p style="margin: 0 0 4px 0;">
@@ -333,6 +355,9 @@ ${linhasTexto}
 Total de Unidades: ${totalUnidades} un
 
 ${dados.observacoes ? `OBSERVAÇÕES:\n${dados.observacoes}\n` : ''}
+DOCUMENTO ANEXO:
+- Pedido_${dados.nr_pedido}.xlsx (Ficheiro Excel com resumo e linhas de expedição)
+
 =================================================================
 Este email foi gerado automaticamente pela Plataforma Farma.
 Notificação enviada a: ${dados.utilizador_email} e joao.melo@sermail.pt
@@ -357,12 +382,27 @@ export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Pro
   const html = gerarEmailPedidoHtml(dados);
   const text = gerarEmailPedidoTexto(dados);
 
+  // Gerar anexo Excel (.xlsx) com a guia do pedido
+  let attachments: { filename: string; content: Buffer }[] | undefined = undefined;
+  try {
+    const excelBuffer = await gerarExcelPedido(dados);
+    attachments = [
+      {
+        filename: `Pedido_${dados.nr_pedido}.xlsx`,
+        content: excelBuffer,
+      },
+    ];
+  } catch (excelErr) {
+    console.error('[Excel Attachment Error] Falha ao gerar o anexo Excel do pedido:', excelErr);
+  }
+
   return enviarMensagemResend({
     from: fromEmail,
     recipients,
     subject,
     html,
     text,
+    attachments,
   });
 }
 

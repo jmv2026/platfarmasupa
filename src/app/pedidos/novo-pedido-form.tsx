@@ -217,18 +217,8 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
       });
 
       if (res.success) {
-        let emailNote = '';
-        if (res.emailEnviado) {
-          emailNote = ` Notificação por email enviada via Resend para ${res.emailDestinatarios?.join(' e ')}.`;
-        } else if (res.emailError) {
-          emailNote = ` (Nota Resend: ${res.emailError})`;
-        }
-
-        setFeedback({
-          type: 'success',
-          message: `Pedido ${res.nrPedido} registado com sucesso! Os movimentos de saída (SS) foram processados e o stock foi atualizado.${emailNote}`,
-        });
-        // Reset form
+        // Limpar feedback e resetar formulário
+        setFeedback(null);
         setNomeDestinatario('');
         setMorada('');
         setCodigoPostal('');
@@ -271,17 +261,9 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
         </div>
       </div>
 
-      {feedback && (
-        <div
-          className={`p-4 rounded-xl mb-6 text-xs sm:text-sm font-medium flex items-center gap-2.5 ${
-            feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
-        >
-          <span className="material-symbols-outlined text-base">
-            {feedback.type === 'success' ? 'check_circle' : 'error'}
-          </span>
+      {feedback && feedback.type === 'error' && (
+        <div className="p-4 rounded-xl mb-6 text-xs sm:text-sm font-medium flex items-center gap-2.5 bg-rose-50 text-rose-800 border border-rose-200">
+          <span className="material-symbols-outlined text-base">error</span>
           <span>{feedback.message}</span>
         </div>
       )}

@@ -400,132 +400,76 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Tabela de Movimentos Recentes & Fases do Projeto */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Movimentos Recentes */}
-          <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-            <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">history</span>
-              Últimos Movimentos de Stock Registados
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+        {/* Tabela de Movimentos Recentes */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+          <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary">history</span>
+            Últimos Movimentos de Stock Registados
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-2.5 px-3 rounded-l-lg">Tipo</th>
+                  <th className="py-2.5 px-3">Cliente</th>
+                  <th className="py-2.5 px-3">Artigo</th>
+                  <th className="py-2.5 px-3">Armazém Loc</th>
+                  <th className="py-2.5 px-3">Posição</th>
+                  <th className="py-2.5 px-3">Qtd</th>
+                  <th className="py-2.5 px-3 text-right rounded-r-lg">Data Movimento</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                {movimentos && movimentos.length > 0 ? (
+                  movimentos.map((mov) => {
+                    const isEntry = mov.tipo_movimento === 'es' || mov.tipo_movimento === 'et';
+                    return (
+                      <tr key={mov.id} className="hover:bg-surface-container/30 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            mov.tipo_movimento === 'es' ? 'bg-emerald-100 text-emerald-800' :
+                            mov.tipo_movimento === 'ss' ? 'bg-rose-100 text-rose-800' :
+                            mov.tipo_movimento === 'et' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            <span className="material-symbols-outlined text-[12px]">
+                              {isEntry ? 'arrow_downward' : 'arrow_upward'}
+                            </span>
+                            {mov.tipo_movimento}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-semibold">
+                          {mov.clients?.sigla || '-'}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-mono font-medium">{mov.artigo_id?.artigo_id || mov.artigos?.artigo_id}</span>
+                          <span className="text-on-surface-variant text-[11px] block truncate max-w-[140px]">
+                            {mov.artigo_id?.descricao || mov.artigos?.descricao}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-medium text-secondary">
+                          {mov.armazem_loc}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-on-surface-variant">
+                          {mov.posicao || '-'}
+                        </td>
+                        <td className={`py-2.5 px-3 font-mono font-bold ${isEntry ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {isEntry ? '+' : '-'}{Number(mov.quantidade).toLocaleString('pt-PT')}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-[11px] text-on-surface-variant">
+                          {new Date(mov.data_movimento).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
                   <tr>
-                    <th className="py-2.5 px-3 rounded-l-lg">Tipo</th>
-                    <th className="py-2.5 px-3">Cliente</th>
-                    <th className="py-2.5 px-3">Artigo</th>
-                    <th className="py-2.5 px-3">Armazém Loc</th>
-                    <th className="py-2.5 px-3">Posição</th>
-                    <th className="py-2.5 px-3">Qtd</th>
-                    <th className="py-2.5 px-3 text-right rounded-r-lg">Data Movimento</th>
+                    <td colSpan={7} className="py-4 text-center text-on-surface-variant">
+                      Nenhum movimento registado.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                  {movimentos && movimentos.length > 0 ? (
-                    movimentos.map((mov) => {
-                      const isEntry = mov.tipo_movimento === 'es' || mov.tipo_movimento === 'et';
-                      return (
-                        <tr key={mov.id} className="hover:bg-surface-container/30 transition-colors">
-                          <td className="py-2.5 px-3">
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              mov.tipo_movimento === 'es' ? 'bg-emerald-100 text-emerald-800' :
-                              mov.tipo_movimento === 'ss' ? 'bg-rose-100 text-rose-800' :
-                              mov.tipo_movimento === 'et' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                            }`}>
-                              <span className="material-symbols-outlined text-[12px]">
-                                {isEntry ? 'arrow_downward' : 'arrow_upward'}
-                              </span>
-                              {mov.tipo_movimento}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-semibold">
-                            {mov.clients?.sigla || '-'}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <span className="font-mono font-medium">{mov.artigo_id?.artigo_id || mov.artigos?.artigo_id}</span>
-                            <span className="text-on-surface-variant text-[11px] block truncate max-w-[140px]">
-                              {mov.artigo_id?.descricao || mov.artigos?.descricao}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-medium text-secondary">
-                            {mov.armazem_loc}
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-on-surface-variant">
-                            {mov.posicao || '-'}
-                          </td>
-                          <td className={`py-2.5 px-3 font-mono font-bold ${isEntry ? 'text-emerald-700' : 'text-rose-700'}`}>
-                            {isEntry ? '+' : '-'}{Number(mov.quantidade).toLocaleString('pt-PT')}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-[11px] text-on-surface-variant">
-                            {new Date(mov.data_movimento).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={7} className="py-4 text-center text-on-surface-variant">
-                        Nenhum movimento registado.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Fases do Projeto & Regras de Integridade */}
-          <div className="space-y-6">
-            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-              <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">checklist</span>
-                Fases do Projeto
-              </h2>
-              <ul className="space-y-3 text-xs">
-                <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  Fase 1: Login & Autenticação Supabase
-                </li>
-                <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  Fase 2: Clientes (Siglas ≤ 4) & Perfis
-                </li>
-                <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  Fase 3: Artigos & 7 Tipos de Armazéns
-                </li>
-                <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  Fase 4: Movimentos & Views de Stock
-                </li>
-                <li className="flex items-center gap-2 text-emerald-800 font-medium">
-                  <span className="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  Fase 5: Pedidos & Expedição (FEFO)
-                </li>
-              </ul>
-            </div>
-
-            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-              <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">verified</span>
-                Regras de Integridade Farma
-              </h2>
-              <ul className="space-y-2 text-xs text-on-surface-variant">
-                <li className="flex items-start gap-1.5">
-                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
-                  <span><strong>Critério FEFO:</strong> Menor validade selecionada automaticamente</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
-                  <span><strong>Débito SS:</strong> Saída em tempo real no Armazém 01</span>
-                </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">done</span>
-                  <span><strong>Filtro Pedidos:</strong> Sincronizado com <code className="bg-surface-container px-1 rounded">vw_stock_pedidos</code></span>
-                </li>
-              </ul>
-            </div>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </main>

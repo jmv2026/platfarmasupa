@@ -7,6 +7,7 @@ import {
   gerarEmailTesteHtml,
   enviarEmailTesteAdmin,
 } from '../../src/lib/email.ts';
+import { gerarExcelPedido } from '../../src/lib/excel.ts';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ujyqepohbtbgxjsksnyn.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqeXFlcG9oYnRiZ3hqc2tzbnluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2OTY2NDEsImV4cCI6MjEwMjI3MjY0MX0.dKrvcNTmk-Kwr1eg_NEM6-G0kFOhBl9fRv_xLwVuaqg';
@@ -124,24 +125,26 @@ async function runTests() {
 
     const htmlOutput = gerarEmailPedidoHtml(testPayload);
     const textOutput = gerarEmailPedidoTexto(testPayload);
+    const excelBuffer = await gerarExcelPedido(testPayload);
 
     const hasNrPedido = htmlOutput.includes('PED-2026-TEST-RESEND') && textOutput.includes('PED-2026-TEST-RESEND');
     const hasDestino = htmlOutput.includes('Hospital Curry Cabral') && htmlOutput.includes('1069-166');
     const hasArtigo = htmlOutput.includes('MED-001') && htmlOutput.includes('LOTE-001');
     const hasAdminRecipient = htmlOutput.includes('joao.melo@sermail.pt') && textOutput.includes('joao.melo@sermail.pt');
+    const isExcelValid = Buffer.isBuffer(excelBuffer) && excelBuffer.length > 2000;
 
-    if (hasNrPedido && hasDestino && hasArtigo && hasAdminRecipient) {
+    if (hasNrPedido && hasDestino && hasArtigo && hasAdminRecipient && isExcelValid) {
       printPass(
-        'Template HTML e Texto compilados com sucesso contendo todos os dados obrigatórios do pedido',
-        'Contém: Nº Pedido, Cliente, Destino, Artigos, Lotes FEFO, Validades, Qtds e Requerente'
+        'Template HTML, Texto e Ficheiro Excel (.xlsx) compilados com sucesso contendo todos os dados do pedido',
+        `Contém: Nº Pedido, Cliente, Destino, Artigos FEFO e Anexo Excel gerado (${excelBuffer.length} bytes)`
       );
       passedCount++;
     } else {
-      printFail('O template gerado não contém todos os campos requeridos do pedido', 'Campos em falta');
+      printFail('O template ou ficheiro Excel gerado não contém todos os campos requeridos do pedido', 'Campos em falta');
       failedCount++;
     }
   } catch (err) {
-    printFail('Erro ao validar templates de email', err.message);
+    printFail('Erro ao validar templates de email e Excel', err.message);
     failedCount++;
   }
 
