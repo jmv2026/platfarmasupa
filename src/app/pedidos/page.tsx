@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
 import NovoPedidoForm from './novo-pedido-form';
-import PedidosLista from './pedidos-lista';
-import { Client, StockPedido, PedidoComLinhas, UserProfile } from '@/lib/supabase/types';
+import { Client, StockPedido, UserProfile } from '@/lib/supabase/types';
 
 export default async function PedidosPage() {
   const supabase = await createClient();
@@ -27,23 +26,19 @@ export default async function PedidosPage() {
 
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
-  let pedidosQuery = supabase.from('pedidos').select('*, clients(id, name, sigla), pedido_linhas(*)').order('created_at', { ascending: false });
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    pedidosQuery = pedidosQuery.eq('client_id', userClientId);
   }
 
   // Buscar dados em paralelo
   const [
     { data: clients },
     { data: stockPedidos },
-    { data: pedidos },
   ] = await Promise.all([
     clientsQuery,
     stockPedidosQuery,
-    pedidosQuery,
   ]);
 
   return (
@@ -122,26 +117,13 @@ export default async function PedidosPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Banner */}
-        <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-              Gestão e Registo de Pedidos de Entrega
-            </h1>
-          </div>
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
-        </div>
-
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Formulário de Criação de Pedido */}
         <NovoPedidoForm
           clients={(clients as Client[]) || []}
           stockPedidos={(stockPedidos as StockPedido[]) || []}
           currentUserProfile={(profile as UserProfile) || null}
         />
-
-        {/* Lista de Pedidos Existentes */}
-        <PedidosLista pedidos={(pedidos as PedidoComLinhas[]) || []} />
       </main>
     </div>
   );

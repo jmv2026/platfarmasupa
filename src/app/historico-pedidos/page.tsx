@@ -120,18 +120,10 @@ export default async function HistoricoPedidosPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Banner */}
         <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative z-10">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline">
               Histórico Pedidos
             </h1>
-
-            <Link
-              href="/pedidos"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-secondary text-on-secondary hover:bg-secondary/90 font-bold text-xs tracking-wide transition-all shadow-lg hover:shadow-xl self-start sm:self-auto shrink-0"
-            >
-              <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-              Criar Novo Pedido
-            </Link>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
