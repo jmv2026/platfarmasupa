@@ -2,11 +2,10 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
-import NovoPedidoForm from './novo-pedido-form';
-import PedidosLista from './pedidos-lista';
-import { Client, StockPedido, PedidoComLinhas, UserProfile } from '@/lib/supabase/types';
+import StocksView from './stocks-view';
+import { Client, StockAtual, StockPedido, UserProfile } from '@/lib/supabase/types';
 
-export default async function PedidosPage() {
+export default async function StocksPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,24 +25,24 @@ export default async function PedidosPage() {
   const userClientId = profile?.client_id;
 
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
-  let pedidosQuery = supabase.from('pedidos').select('*, clients(id, name, sigla), pedido_linhas(*)').order('created_at', { ascending: false });
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
+    stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    pedidosQuery = pedidosQuery.eq('client_id', userClientId);
   }
 
   // Buscar dados em paralelo
   const [
     { data: clients },
+    { data: stockAtual },
     { data: stockPedidos },
-    { data: pedidos },
   ] = await Promise.all([
     clientsQuery,
+    stockAtualQuery,
     stockPedidosQuery,
-    pedidosQuery,
   ]);
 
   return (
@@ -75,14 +74,14 @@ export default async function PedidosPage() {
               </Link>
               <Link
                 href="/stocks"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">inventory_2</span>
                 Stocks
               </Link>
               <Link
                 href="/pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">local_shipping</span>
                 Pedidos & Expedição
@@ -127,21 +126,19 @@ export default async function PedidosPage() {
         <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10">
             <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-              Gestão e Registo de Pedidos de Entrega
+              Stocks
             </h1>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
 
-        {/* Formulário de Criação de Pedido */}
-        <NovoPedidoForm
-          clients={(clients as Client[]) || []}
+        {/* Stocks View & Control Panel */}
+        <StocksView
+          stockAtual={(stockAtual as StockAtual[]) || []}
           stockPedidos={(stockPedidos as StockPedido[]) || []}
+          clients={(clients as Client[]) || []}
           currentUserProfile={(profile as UserProfile) || null}
         />
-
-        {/* Lista de Pedidos Existentes */}
-        <PedidosLista pedidos={(pedidos as PedidoComLinhas[]) || []} />
       </main>
     </div>
   );

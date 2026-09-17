@@ -81,11 +81,25 @@ export default async function ConfiguracaoPage() {
                 Dashboard
               </Link>
               <Link
+                href="/stocks"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">inventory_2</span>
+                Stocks
+              </Link>
+              <Link
                 href="/pedidos"
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">local_shipping</span>
                 Pedidos & Expedição
+              </Link>
+              <Link
+                href="/historico-pedidos"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">receipt_long</span>
+                Histórico Pedidos
               </Link>
               <Link
                 href="/configuracao"

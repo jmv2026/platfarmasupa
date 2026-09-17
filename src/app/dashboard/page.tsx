@@ -84,11 +84,25 @@ export default async function DashboardPage() {
                 Dashboard
               </Link>
               <Link
+                href="/stocks"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">inventory_2</span>
+                Stocks
+              </Link>
+              <Link
                 href="/pedidos"
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">local_shipping</span>
                 Pedidos & Expedição
+              </Link>
+              <Link
+                href="/historico-pedidos"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">receipt_long</span>
+                Histórico Pedidos
               </Link>
               {profile?.role === 'admin' && (
                 <Link
@@ -122,23 +136,9 @@ export default async function DashboardPage() {
         {/* Welcome Banner */}
         <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full text-xs font-bold tracking-wide uppercase">
-                  Fase 5 Concluída
-                </span>
-                <span className="text-xs text-primary-fixed font-medium flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Processo de Pedidos & Rastreabilidade FEFO
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2">
-                Plataforma de Gestão Farmacêutica Sermail
-              </h1>
-              <p className="text-primary-fixed text-sm max-w-2xl">
-                Controlo integral de armazéns, cálculo automático de stocks, sugestão inteligente FEFO e expedição em tempo real.
-              </p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
+              Plataforma de Gestão Farmacêutica Sermail
+            </h1>
 
             <Link
               href="/pedidos"
