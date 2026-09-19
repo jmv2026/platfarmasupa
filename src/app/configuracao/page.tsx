@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Perfil, ImpStk } from '@/lib/supabase/types';
 
 export default async function ConfiguracaoPage() {
   const supabase = await createClient();
@@ -27,17 +27,19 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos e Perfis
+  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis e Importações de Stock
   const [
     { data: usersList },
     { data: clientsList },
     { data: artigosList },
     { data: perfisList },
+    { data: impStkList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
     supabase.from('perfis').select('*').order('codigo'),
+    supabase.from('imp_stk').select('*').order('created_at', { ascending: false }).limit(200),
   ]);
 
   // Dados de Parametrização do Servidor de Email (.env.local)
@@ -156,6 +158,7 @@ export default async function ConfiguracaoPage() {
           clients={(clientsList as Client[]) || []}
           artigos={(artigosList as Artigo[]) || []}
           perfis={(perfisList as Perfil[]) || []}
+          initialImpStk={(impStkList as ImpStk[]) || []}
           serverEmailConfig={serverEmailConfig}
         />
       </main>

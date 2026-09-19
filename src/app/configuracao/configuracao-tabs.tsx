@@ -10,6 +10,7 @@ import {
   UserRole,
   TipoArtigo,
   TipoArmazenamento,
+  ImpStk,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
 } from '@/lib/supabase/types';
@@ -19,6 +20,7 @@ import {
   criarArtigoAction,
   enviarEmailTesteConfigAction,
 } from './actions';
+import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -33,6 +35,7 @@ interface ConfiguracaoTabsProps {
   clients: Client[];
   artigos: Artigo[];
   perfis: Perfil[];
+  initialImpStk?: ImpStk[];
   serverEmailConfig?: ServerEmailConfig;
 }
 
@@ -41,10 +44,11 @@ export default function ConfiguracaoTabs({
   clients,
   artigos,
   perfis,
+  initialImpStk = [],
   serverEmailConfig,
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'movimentos' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -285,6 +289,22 @@ export default function ConfiguracaoTabs({
         >
           <span className="material-symbols-outlined text-base">medication</span>
           Catálogo de Artigos ({artigos.length})
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('movimentos');
+            setFeedback(null);
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'movimentos'
+              ? 'bg-secondary text-on-secondary shadow-md'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">sync_alt</span>
+          Movimentos ({initialImpStk.length})
         </button>
 
         <button
@@ -911,7 +931,14 @@ export default function ConfiguracaoTabs({
       )}
 
       {/* ========================================================================= */}
-      {/* ABA 4: EMAIL & RESEND */}
+      {/* ABA 4: MOVIMENTOS (IMPORTAÇÃO DE STOCKS) */}
+      {/* ========================================================================= */}
+      {activeTab === 'movimentos' && (
+        <ImportacaoMovimentosTab initialImpStk={initialImpStk} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* ABA 5: EMAIL & RESEND */}
       {/* ========================================================================= */}
       {activeTab === 'email' && (
         <div className="space-y-8">

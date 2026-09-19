@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { UserRole, TipoArtigo, TipoArmazenamento } from '@/lib/supabase/types';
+import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -292,5 +292,105 @@ export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) 
   });
 
   return result;
+}
+
+// 5. AÇÃO: Importar Stocks em Lote para a tabela imp_stk (Aba Movimentos)
+export async function importarStocksAction(rows: ImpStkInput[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar stocks.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'O ficheiro não contém linhas de dados válidas para importar.' };
+  }
+
+  try {
+    const BATCH_SIZE = 500;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => ({
+        artigo: r.artigo?.trim() || null,
+        descricao: r.descricao?.trim() || null,
+        armazem: r.armazem?.trim() || null,
+        lote: r.lote?.trim() || null,
+        estado_stock: r.estado_stock?.trim() || 'DISP',
+        stk: typeof r.stk === 'number' ? r.stk : Number(r.stk || 0),
+        data_stock: r.data_stock?.trim() || null,
+        bloqueado: String(r.bloqueado ?? '0'),
+        familia: r.familia?.trim() || null,
+        tipo_artigo: r.tipo_artigo?.trim() || null,
+        sub_familia: r.sub_familia?.trim() || null,
+        filename: r.filename || null,
+      }));
+
+      const { error: insertErr } = await supabase.from('imp_stk').insert(batch);
+      if (insertErr) {
+        console.error('Erro ao inserir lote em imp_stk:', insertErr);
+        return { success: false, error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}` };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação';
+    return { success: false, error: msg };
+  }
+}
+
+// 6. AÇÃO: Limpar Registos de Importação da tabela imp_stk
+export async function limparImportacoesStockAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return { success: false, error: 'Acesso negado: Apenas administradores podem limpar a tabela imp_stk.' };
+  }
+
+  try {
+    const { error: deleteErr } = await supabase
+      .from('imp_stk')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (deleteErr) {
+      return { success: false, error: `Erro ao limpar tabela: ${deleteErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado';
+    return { success: false, error: msg };
+  }
 }
 

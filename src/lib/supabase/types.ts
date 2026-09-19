@@ -260,3 +260,35 @@ export interface NovoPedidoInput {
   observacoes?: string;
   linhas: NovaLinhaPedidoInput[];
 }
+
+export interface ImpStk {
+  id: string;
+  artigo: string | null;
+  descricao: string | null;
+  armazem: string | null;
+  lote: string | null;
+  estado_stock: string | null;
+  stk: number;
+  data_stock: string | null;
+  bloqueado: string | null;
+  familia: string | null;
+  tipo_artigo: string | null;
+  sub_familia: string | null;
+  filename: string | null;
+  created_at?: string;
+}
+
+export interface ImpStkInput {
+  artigo?: string;
+  descricao?: string;
+  armazem?: string;
+  lote?: string;
+  estado_stock?: string;
+  stk?: number;
+  data_stock?: string;
+  bloqueado?: string;
+  familia?: string;
+  tipo_artigo?: string;
+  sub_familia?: string;
+  filename?: string;
+}

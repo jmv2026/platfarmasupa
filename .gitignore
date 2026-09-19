@@ -25,9 +25,14 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# agent / ide configs & local scripts
+.agents/
+scripts/
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
