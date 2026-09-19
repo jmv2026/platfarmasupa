@@ -1,0 +1,268 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Client, UserProfile } from '@/lib/supabase/types';
+
+export interface DashboardStockItem {
+  artigo_id: string;
+  validade: string | null;
+  stock: number;
+  client_id: string;
+}
+
+export interface DashboardStockPedidoItem {
+  stock: number;
+  client_id: string;
+}
+
+export interface DashboardPedidoItem {
+  id: string;
+  client_id: string;
+}
+
+interface DashboardViewProps {
+  clients: Client[];
+  stockAtual: DashboardStockItem[];
+  stockPedidos: DashboardStockPedidoItem[];
+  pedidos: DashboardPedidoItem[];
+  currentUserProfile: UserProfile | null;
+  isManagerOrAdmin: boolean;
+}
+
+export default function DashboardView({
+  clients,
+  stockAtual,
+  stockPedidos,
+  pedidos,
+  currentUserProfile,
+  isManagerOrAdmin,
+}: DashboardViewProps) {
+  const [selectedClientId, setSelectedClientId] = useState<string>('todos');
+
+  // Helper para calcular dias até à validade
+  const getDaysUntilExpiry = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    const expiry = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffTime = expiry.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Filtragem dos dados de acordo com a seleção de cliente
+  const filteredStockAtual = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return stockAtual;
+    }
+    return stockAtual.filter((s) => s.client_id === selectedClientId);
+  }, [stockAtual, selectedClientId, isManagerOrAdmin]);
+
+  const filteredStockPedidos = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return stockPedidos;
+    }
+    return stockPedidos.filter((s) => s.client_id === selectedClientId);
+  }, [stockPedidos, selectedClientId, isManagerOrAdmin]);
+
+  const filteredPedidos = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return pedidos;
+    }
+    return pedidos.filter((p) => p.client_id === selectedClientId);
+  }, [pedidos, selectedClientId, isManagerOrAdmin]);
+
+  // 1. Stock Venda Livre
+  const totalStockVenda = useMemo(() => {
+    return filteredStockPedidos.reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
+  }, [filteredStockPedidos]);
+
+  // 2. Artigos em Risco (> 60d e < 180d) & 3. Artigos Bloqueados (> 0d e <= 60d)
+  const { totalArtigosEmRisco, totalArtigosBloqueados } = useMemo(() => {
+    const artigosEmRiscoSet = new Set<string>();
+    const artigosBloqueadosSet = new Set<string>();
+
+    filteredStockAtual.forEach((item) => {
+      const days = getDaysUntilExpiry(item.validade);
+      if (days !== null) {
+        if (days > 0 && days <= 60) {
+          artigosBloqueadosSet.add(item.artigo_id);
+        } else if (days > 60 && days < 180) {
+          artigosEmRiscoSet.add(item.artigo_id);
+        }
+      }
+    });
+
+    return {
+      totalArtigosEmRisco: artigosEmRiscoSet.size,
+      totalArtigosBloqueados: artigosBloqueadosSet.size,
+    };
+  }, [filteredStockAtual]);
+
+  // 4. Pedidos Registados
+  const totalPedidosCount = useMemo(() => {
+    return filteredPedidos.length;
+  }, [filteredPedidos]);
+
+  // 5. Artigos pertencentes ao cliente (existentes no stock ativo)
+  const totalArtigosCount = useMemo(() => {
+    const artigosSet = new Set<string>();
+    filteredStockAtual.forEach((item) => {
+      if (item.artigo_id) {
+        artigosSet.add(item.artigo_id);
+      }
+    });
+    return artigosSet.size;
+  }, [filteredStockAtual]);
+
+  const selectedClientObj = useMemo(() => {
+    if (selectedClientId === 'todos') return null;
+    return clients.find((c) => c.id === selectedClientId);
+  }, [clients, selectedClientId]);
+
+  return (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Welcome Banner com Pull-Down de Clientes para Admin/Gestor */}
+      <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
+              Painel Informativo
+            </h1>
+            <p className="text-on-primary/80 text-xs sm:text-sm mt-1 max-w-2xl">
+              Visão geral das operações de armazém, encomendas e controlo de stocks.
+            </p>
+            {selectedClientObj && (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/20 text-xs font-semibold text-white mt-3">
+                <span className="material-symbols-outlined text-xs">business</span>
+                Cliente Selecionado: [{selectedClientObj.sigla}] {selectedClientObj.name}
+              </div>
+            )}
+          </div>
+
+          {/* Pull-down de seleção de cliente para Administradores e Gestores */}
+          {isManagerOrAdmin && (
+            <div className="bg-surface-container-lowest/15 backdrop-blur-md border border-white/20 rounded-xl p-3 shadow-md min-w-[260px] sm:min-w-[300px]">
+              <label className="block text-[11px] font-bold text-white/95 mb-1.5 flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">filter_alt</span>
+                Filtrar por Cliente
+              </label>
+              <select
+                id="dashboard-client-select"
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="w-full px-3 py-2 bg-white text-slate-900 border border-white/30 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shadow-sm"
+              >
+                <option value="todos">Todos os Clientes</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    [{c.sigla}] {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
+      </div>
+
+      {/* KPIs Grid (5 Indicadores atualizados dinamicamente) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+        {/* Stock Venda Livre */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Stock Venda Livre</p>
+              <p className="text-2xl font-bold font-headline text-secondary mt-1">
+                {totalStockVenda.toLocaleString('pt-PT')}{' '}
+                <span className="text-xs font-normal text-on-surface-variant">un</span>
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+              <span className="material-symbols-outlined text-xl">inventory_2</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-emerald-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">check_circle</span>
+            Armazém 01 (Venda)
+          </p>
+        </div>
+
+        {/* Artigos em Risco */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Artigos em Risco</p>
+              <p className="text-2xl font-bold font-headline text-amber-600 mt-1">
+                {totalArtigosEmRisco}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+              <span className="material-symbols-outlined text-xl">warning</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-amber-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">schedule</span>
+            Validade 60 a 180 dias
+          </p>
+        </div>
+
+        {/* Artigos Bloqueados */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Artigos Bloqueados</p>
+              <p className="text-2xl font-bold font-headline text-rose-600 mt-1">
+                {totalArtigosBloqueados}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600">
+              <span className="material-symbols-outlined text-xl">block</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-rose-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">error</span>
+            Validade 1 a 60 dias
+          </p>
+        </div>
+
+        {/* Pedidos Registados */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Pedidos Registados</p>
+              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
+                {totalPedidosCount}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700">
+              <span className="material-symbols-outlined text-xl">receipt_long</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-indigo-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">local_shipping</span>
+            Expedições ativas
+          </p>
+        </div>
+
+        {/* Artigos Pertencentes ao Cliente */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Artigos</p>
+              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
+                {totalArtigosCount}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700">
+              <span className="material-symbols-outlined text-xl">medication</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">inventory</span>
+            Artigos em armazém
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
