@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from './sign-out-button';
-import { TIPO_ARTIGO_LABELS, TIPO_ARMAZENAMENTO_LABELS, TipoArtigo, TipoArmazenamento } from '@/lib/supabase/types';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -24,37 +23,34 @@ export default async function DashboardPage() {
   const userClientId = profile?.client_id;
 
   // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
-  let movimentosQuery = supabase.from('movimentos').select('*, clients(name, sigla), artigos(artigo_id, descricao)').order('data_movimento', { ascending: false }).limit(10);
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('*', { count: 'exact', head: true });
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock');
   let pedidosCountQuery = supabase.from('pedidos').select('*', { count: 'exact', head: true });
+  let clientsCountQuery = supabase.from('clients').select('*', { count: 'exact', head: true });
+  let artigosCountQuery = supabase.from('artigos').select('*', { count: 'exact', head: true });
 
   if (!isManagerOrAdmin && userClientId) {
     stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    movimentosQuery = movimentosQuery.eq('client_id', userClientId);
     pedidosCountQuery = pedidosCountQuery.eq('client_id', userClientId);
   }
 
-  // Buscar dados das views e tabelas em paralelo
+  // Buscar dados em paralelo
   const [
-    { data: stockAtual },
+    { count: totalLotes },
     { data: stockPedidos },
-    { data: movimentos },
     { count: totalClientes },
     { count: totalArtigos },
     { count: totalPedidos },
   ] = await Promise.all([
     stockAtualQuery,
     stockPedidosQuery,
-    movimentosQuery,
-    supabase.from('clients').select('*', { count: 'exact', head: true }),
-    supabase.from('artigos').select('*', { count: 'exact', head: true }),
+    clientsCountQuery,
+    artigosCountQuery,
     pedidosCountQuery,
   ]);
 
   const totalStockVenda = stockPedidos?.reduce((acc, curr) => acc + Number(curr.stock || 0), 0) || 0;
-  const totalLotes = stockAtual?.length || 0;
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">
@@ -136,24 +132,38 @@ export default async function DashboardPage() {
         {/* Welcome Banner */}
         <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-              Plataforma de Gestão Farmacêutica Sermail
-            </h1>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold font-headline">
+                Plataforma de Gestão Farmacêutica Sermail
+              </h1>
+              <p className="text-on-primary/80 text-xs sm:text-sm mt-1 max-w-2xl">
+                Visão geral e acesso rápido às operações de armazém, encomendas e controlo de stocks.
+              </p>
+            </div>
 
-            <Link
-              href="/pedidos"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-secondary text-on-secondary hover:bg-secondary/90 font-bold text-xs tracking-wide transition-all shadow-lg hover:shadow-xl self-start md:self-auto shrink-0"
-            >
-              <span className="material-symbols-outlined text-base">add_shopping_cart</span>
-              Criar Novo Pedido
-            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/stocks"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-surface-container-lowest/15 hover:bg-surface-container-lowest/25 text-on-primary border border-white/20 font-bold text-xs tracking-wide transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-base">inventory_2</span>
+                Consultar Stocks
+              </Link>
+              <Link
+                href="/pedidos"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-secondary text-on-secondary hover:bg-secondary/90 font-bold text-xs tracking-wide transition-all shadow-lg hover:shadow-xl"
+              >
+                <span className="material-symbols-outlined text-base">add_shopping_cart</span>
+                Criar Novo Pedido
+              </Link>
+            </div>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
         </div>
 
         {/* KPIs Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-on-surface-variant">Stock Venda Livre</p>
@@ -169,11 +179,11 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-on-surface-variant">Lotes em Armazém</p>
-                <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalLotes}</p>
+                <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalLotes || 0}</p>
               </div>
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                 <span className="material-symbols-outlined text-xl">warehouse</span>
@@ -185,7 +195,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-on-surface-variant">Pedidos Registados</p>
@@ -201,7 +211,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-on-surface-variant">Clientes</p>
@@ -217,7 +227,7 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-on-surface-variant">Artigos</p>
@@ -234,237 +244,103 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* View 1: Stock Disponível para Pedidos (vw_stock_pedidos - Armazém 01) */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-outline-variant/20 gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">shopping_cart_checkout</span>
-                  Stock Disponível para Pedidos (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_pedidos</code>)
-                </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                  Armazém 01 (Venda)
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                Visão de stock para alocação direta de encomendas comerciais (sem informação física de armazém/posição).
-              </p>
-            </div>
-
-            <Link
-              href="/pedidos"
-              className="text-xs font-bold text-secondary hover:text-secondary/80 flex items-center gap-1"
-            >
-              Fazer Pedido com FEFO
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
-          </div>
-
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
-                  <th className="py-2.5 px-3">Código Artigo</th>
-                  <th className="py-2.5 px-3">Descrição</th>
-                  <th className="py-2.5 px-3">Tipo Artigo</th>
-                  <th className="py-2.5 px-3">Conservação</th>
-                  <th className="py-2.5 px-3">Lote</th>
-                  <th className="py-2.5 px-3">Validade</th>
-                  <th className="py-2.5 px-3 text-right rounded-r-lg">Stock Disponível</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                {stockPedidos && stockPedidos.length > 0 ? (
-                  stockPedidos.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
-                      <td className="py-3 px-3 font-semibold">
-                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
-                          {item.cliente_sigla}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                      <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
-                      <td className="py-3 px-3">
-                        <span className="text-[11px] text-on-surface-variant">
-                          {TIPO_ARTIGO_LABELS[item.tipo_artigo as TipoArtigo] || item.tipo_artigo}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          item.tipo_armazenamento === 'TF' ? 'bg-cyan-100 text-cyan-800' :
-                          item.tipo_armazenamento === 'TC' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          <span className="material-symbols-outlined text-[12px]">
-                            {item.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
-                          </span>
-                          {TIPO_ARMAZENAMENTO_LABELS[item.tipo_armazenamento as TipoArmazenamento] || item.tipo_armazenamento}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-semibold text-secondary">{item.lote}</td>
-                      <td className="py-3 px-3 font-mono text-on-surface-variant">
-                        {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
-                        {Number(item.stock).toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-6 text-center text-on-surface-variant">
-                      Nenhum artigo com stock disponível para venda no momento.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* View 2: Stock Consolidado com Localização (vw_stock_atual) */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-outline-variant/20 gap-2">
-            <div>
-              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">inventory</span>
-                Stock Consolidado (<code className="text-xs bg-surface-container px-1.5 py-0.5 rounded font-mono text-secondary">vw_stock_atual</code>)
-              </h2>
-              <p className="text-xs text-on-surface-variant mt-0.5">
-                Visão detalhada por cliente, artigo, lote, validade e armazém (`armazem_loc`).
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
-                  <th className="py-2.5 px-3">Código</th>
-                  <th className="py-2.5 px-3">Descrição Artigo</th>
-                  <th className="py-2.5 px-3">Lote</th>
-                  <th className="py-2.5 px-3">Validade</th>
-                  <th className="py-2.5 px-3">Armazém Loc</th>
-                  <th className="py-2.5 px-3">Tipo Armazém</th>
-                  <th className="py-2.5 px-3 text-right rounded-r-lg">Stock</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                {stockAtual && stockAtual.length > 0 ? (
-                  stockAtual.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
-                      <td className="py-3 px-3">
-                        <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
-                          {item.cliente_sigla}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                      <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
-                      <td className="py-3 px-3 font-mono text-secondary font-semibold">{item.lote}</td>
-                      <td className="py-3 px-3 font-mono text-on-surface-variant">
-                        {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
-                      </td>
-                      <td className="py-3 px-3 font-mono font-semibold text-secondary-600">
-                        {item.armazem_loc}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
-                          item.tipo_armazem === '01' ? 'bg-emerald-100 text-emerald-800' :
-                          item.tipo_armazem === '05' ? 'bg-amber-100 text-amber-800' :
-                          item.tipo_armazem === '02' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          {item.armazem_descricao || `Armazém ${item.tipo_armazem}`}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
-                        {Number(item.stock).toLocaleString('pt-PT')} <span className="text-xs font-normal text-on-surface-variant">un</span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={8} className="py-6 text-center text-on-surface-variant">
-                      Nenhum registo de stock consolidado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Tabela de Movimentos Recentes */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm">
+        {/* Quick Access / Modules Cards */}
+        <div>
           <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary">history</span>
-            Últimos Movimentos de Stock Registados
+            <span className="material-symbols-outlined text-secondary">grid_view</span>
+            Módulos e Acesso Rápido
           </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
-                <tr>
-                  <th className="py-2.5 px-3 rounded-l-lg">Tipo</th>
-                  <th className="py-2.5 px-3">Cliente</th>
-                  <th className="py-2.5 px-3">Artigo</th>
-                  <th className="py-2.5 px-3">Armazém Loc</th>
-                  <th className="py-2.5 px-3">Posição</th>
-                  <th className="py-2.5 px-3">Qtd</th>
-                  <th className="py-2.5 px-3 text-right rounded-r-lg">Data Movimento</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                {movimentos && movimentos.length > 0 ? (
-                  movimentos.map((mov) => {
-                    const isEntry = mov.tipo_movimento === 'es' || mov.tipo_movimento === 'et';
-                    return (
-                      <tr key={mov.id} className="hover:bg-surface-container/30 transition-colors">
-                        <td className="py-2.5 px-3">
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            mov.tipo_movimento === 'es' ? 'bg-emerald-100 text-emerald-800' :
-                            mov.tipo_movimento === 'ss' ? 'bg-rose-100 text-rose-800' :
-                            mov.tipo_movimento === 'et' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            <span className="material-symbols-outlined text-[12px]">
-                              {isEntry ? 'arrow_downward' : 'arrow_upward'}
-                            </span>
-                            {mov.tipo_movimento}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-semibold">
-                          {mov.clients?.sigla || '-'}
-                        </td>
-                        <td className="py-2.5 px-3">
-                          <span className="font-mono font-medium">{mov.artigo_id?.artigo_id || mov.artigos?.artigo_id}</span>
-                          <span className="text-on-surface-variant text-[11px] block truncate max-w-[140px]">
-                            {mov.artigo_id?.descricao || mov.artigos?.descricao}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-medium text-secondary">
-                          {mov.armazem_loc}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-on-surface-variant">
-                          {mov.posicao || '-'}
-                        </td>
-                        <td className={`py-2.5 px-3 font-mono font-bold ${isEntry ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {isEntry ? '+' : '-'}{Number(mov.quantidade).toLocaleString('pt-PT')}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-[11px] text-on-surface-variant">
-                          {new Date(mov.data_movimento).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="py-4 text-center text-on-surface-variant">
-                      Nenhum movimento registado.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Stocks Module */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm flex flex-col justify-between hover:border-secondary/50 transition-colors">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary mb-4">
+                  <span className="material-symbols-outlined text-2xl">inventory_2</span>
+                </div>
+                <h3 className="text-base font-bold text-on-surface">Gestão de Stocks</h3>
+                <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
+                  Consulte o stock disponível para venda (Armazém 01), o stock consolidado detalhado com localizações físicas e o histórico completo de movimentos.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-outline-variant/20">
+                <Link
+                  href="/stocks"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-secondary/80 transition-colors"
+                >
+                  Aceder ao Módulo de Stocks
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Pedidos & Expedição Module */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm flex flex-col justify-between hover:border-secondary/50 transition-colors">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+                  <span className="material-symbols-outlined text-2xl">local_shipping</span>
+                </div>
+                <h3 className="text-base font-bold text-on-surface">Pedidos & Expedição</h3>
+                <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
+                  Crie novos pedidos comerciais com alocação inteligente FEFO (First Expired, First Out) por lote e emita as respetivas guias de expedição.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-outline-variant/20">
+                <Link
+                  href="/pedidos"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Criar Pedido / Expedição
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Histórico Pedidos Module */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm flex flex-col justify-between hover:border-secondary/50 transition-colors">
+              <div>
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-700 mb-4">
+                  <span className="material-symbols-outlined text-2xl">receipt_long</span>
+                </div>
+                <h3 className="text-base font-bold text-on-surface">Histórico de Pedidos</h3>
+                <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
+                  Acompanhe todas as encomendas já registadas, consulte as linhas expedidas, dados de transporte e imprima guias de remessa.
+                </p>
+              </div>
+              <div className="mt-6 pt-4 border-t border-outline-variant/20">
+                <Link
+                  href="/historico-pedidos"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-800 transition-colors"
+                >
+                  Consultar Histórico
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Configuração Module (se admin) */}
+            {profile?.role === 'admin' && (
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 shadow-sm flex flex-col justify-between hover:border-secondary/50 transition-colors">
+                <div>
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-700 mb-4">
+                    <span className="material-symbols-outlined text-2xl">settings</span>
+                  </div>
+                  <h3 className="text-base font-bold text-on-surface">Configurações do Sistema</h3>
+                  <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
+                    Administração global da plataforma: cadastro de clientes, catálogo de artigos farmacêuticos, parametrização de armazéns e gestão de acessos.
+                  </p>
+                </div>
+                <div className="mt-6 pt-4 border-t border-outline-variant/20">
+                  <Link
+                    href="/configuracao"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition-colors"
+                  >
+                    Gerir Configurações
+                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
