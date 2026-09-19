@@ -67,6 +67,8 @@ export interface Client {
   email: string | null;
   telefone: string | null;
   morada: string | null;
+  cod_postal?: string | null;
+  localidade?: string | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;

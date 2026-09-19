@@ -75,6 +75,8 @@ export default function ConfiguracaoTabs({
   const [clientEmail, setClientEmail] = useState('');
   const [clientTelefone, setClientTelefone] = useState('');
   const [clientMorada, setClientMorada] = useState('');
+  const [clientCodPostal, setClientCodPostal] = useState('');
+  const [clientLocalidade, setClientLocalidade] = useState('');
   const [clientAtivo, setClientAtivo] = useState(true);
 
   // Estados Formulário Artigo
@@ -134,6 +136,8 @@ export default function ConfiguracaoTabs({
         email: clientEmail || undefined,
         telefone: clientTelefone || undefined,
         morada: clientMorada || undefined,
+        cod_postal: clientCodPostal || undefined,
+        localidade: clientLocalidade || undefined,
         ativo: clientAtivo,
       });
 
@@ -145,6 +149,8 @@ export default function ConfiguracaoTabs({
         setClientEmail('');
         setClientTelefone('');
         setClientMorada('');
+        setClientCodPostal('');
+        setClientLocalidade('');
         router.refresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao criar cliente.' });
@@ -591,15 +597,41 @@ export default function ConfiguracaoTabs({
                   />
                 </div>
 
-                <div className="lg:col-span-3">
+                <div>
                   <label className="block text-xs font-semibold text-on-surface mb-1">
-                    Morada Completa / Sede
+                    Morada / Sede
                   </label>
                   <input
                     type="text"
                     value={clientMorada}
                     onChange={(e) => setClientMorada(e.target.value)}
-                    placeholder="À Av. da Siderurgia Nacional, 4745-457 Coronado (S. Romão e S. Mamede)"
+                    placeholder="À Av. da Siderurgia Nacional"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Código Postal
+                  </label>
+                  <input
+                    type="text"
+                    value={clientCodPostal}
+                    onChange={(e) => setClientCodPostal(e.target.value)}
+                    placeholder="4745-457"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Localidade
+                  </label>
+                  <input
+                    type="text"
+                    value={clientLocalidade}
+                    onChange={(e) => setClientLocalidade(e.target.value)}
+                    placeholder="Coronado (S. Romão)"
                     className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
                   />
                 </div>
@@ -645,6 +677,8 @@ export default function ConfiguracaoTabs({
                     <th className="py-2.5 px-3">Email</th>
                     <th className="py-2.5 px-3">Telefone</th>
                     <th className="py-2.5 px-3">Morada</th>
+                    <th className="py-2.5 px-3">Cód. Postal</th>
+                    <th className="py-2.5 px-3">Localidade</th>
                     <th className="py-2.5 px-3 text-right rounded-r-lg">Estado</th>
                   </tr>
                 </thead>
@@ -660,9 +694,11 @@ export default function ConfiguracaoTabs({
                       <td className="py-3 px-3 font-mono text-on-surface-variant">{c.nif || '-'}</td>
                       <td className="py-3 px-3 text-on-surface-variant">{c.email || '-'}</td>
                       <td className="py-3 px-3 font-mono text-on-surface-variant">{c.telefone || '-'}</td>
-                      <td className="py-3 px-3 text-on-surface-variant truncate max-w-[200px]" title={c.morada || ''}>
+                      <td className="py-3 px-3 text-on-surface-variant truncate max-w-[180px]" title={c.morada || ''}>
                         {c.morada || '-'}
                       </td>
+                      <td className="py-3 px-3 font-mono text-on-surface-variant">{c.cod_postal || '-'}</td>
+                      <td className="py-3 px-3 text-on-surface-variant">{c.localidade || '-'}</td>
                       <td className="py-3 px-3 text-right">
                         <span className={`inline-flex items-center gap-1 font-medium ${c.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${c.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>

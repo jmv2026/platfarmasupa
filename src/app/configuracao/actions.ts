@@ -118,6 +118,8 @@ export async function criarClienteAction(input: {
   email?: string;
   telefone?: string;
   morada?: string;
+  cod_postal?: string;
+  localidade?: string;
   ativo?: boolean;
 }) {
   const supabase = await createClient();
@@ -162,6 +164,8 @@ export async function criarClienteAction(input: {
         email: input.email?.trim().toLowerCase() || null,
         telefone: input.telefone?.trim() || null,
         morada: input.morada?.trim() || null,
+        cod_postal: input.cod_postal?.trim() || null,
+        localidade: input.localidade?.trim() || null,
         ativo: input.ativo !== undefined ? input.ativo : true,
       })
       .select()
