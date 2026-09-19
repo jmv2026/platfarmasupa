@@ -517,7 +517,7 @@ export default function StocksView({
               }`}
             >
               <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>
-              Stock Venda Livre (Armazém 01)
+              Stock Disponível
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
                 {filteredStockPedidos.length}
               </span>
