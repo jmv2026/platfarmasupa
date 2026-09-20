@@ -93,7 +93,6 @@ export const TIPO_ARMAZENAMENTO_LABELS: Record<TipoArmazenamento, string> = {
 };
 
 export interface Artigo {
-  id: string;
   artigo_id: string;
   descricao: string;
   tipo_artigo: TipoArtigo;

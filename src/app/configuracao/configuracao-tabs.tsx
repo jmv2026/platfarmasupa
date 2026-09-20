@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   UserProfile,
@@ -18,9 +18,11 @@ import {
   criarUtilizadorAction,
   criarClienteAction,
   criarArtigoAction,
+  limparArtigosAction,
   enviarEmailTesteConfigAction,
 } from './actions';
 import ImportacaoMovimentosTab from './importacao-movimentos-tab';
+import ImportacaoArtigosCard from './importacao-artigos-card';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -84,6 +86,7 @@ export default function ConfiguracaoTabs({
   const [clientAtivo, setClientAtivo] = useState(true);
 
   // Estados Formulário Artigo
+  const [artigosList, setArtigosList] = useState<Artigo[]>(artigos);
   const [artigoCodigo, setArtigoCodigo] = useState('');
   const [artigoDescricao, setArtigoDescricao] = useState('');
   const [artigoTipo, setArtigoTipo] = useState<TipoArtigo>('MH');
@@ -91,6 +94,12 @@ export default function ConfiguracaoTabs({
   const [artigoLote, setArtigoLote] = useState(true);
   const [artigoSerie, setArtigoSerie] = useState(false);
   const [artigoAtivo, setArtigoAtivo] = useState(true);
+  const [confirmClearArtigosModal, setConfirmClearArtigosModal] = useState(false);
+  const [clearingArtigosLoading, setClearingArtigosLoading] = useState(false);
+
+  useEffect(() => {
+    setArtigosList(artigos);
+  }, [artigos]);
 
   // Handler: Submeter Novo Utilizador
   const handleSubmitUser = async (e: React.FormEvent) => {
@@ -184,6 +193,9 @@ export default function ConfiguracaoTabs({
 
       if (res.success) {
         setFeedback({ type: 'success', message: `Artigo [${res.artigo?.artigo_id}] ${res.artigo?.descricao} criado com sucesso!` });
+        if (res.artigo) {
+          setArtigosList((prev) => [res.artigo as Artigo, ...prev.filter((a) => a.artigo_id !== res.artigo!.artigo_id)]);
+        }
         setArtigoCodigo('');
         setArtigoDescricao('');
         setArtigoTipo('MH');
@@ -198,6 +210,30 @@ export default function ConfiguracaoTabs({
       setFeedback({ type: 'error', message: err instanceof Error ? err.message : 'Erro inesperado' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handler: Limpar Catálogo de Artigos
+  const handleClearArtigos = async () => {
+    setClearingArtigosLoading(true);
+    setFeedback(null);
+    try {
+      const res = await limparArtigosAction();
+      if (res.success) {
+        setArtigosList([]);
+        setFeedback({ type: 'success', message: 'Catálogo de artigos limpo com sucesso.' });
+        setConfirmClearArtigosModal(false);
+        router.refresh();
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Erro ao limpar catálogo de artigos.' });
+        setConfirmClearArtigosModal(false);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar artigos';
+      setFeedback({ type: 'error', message: msg });
+      setConfirmClearArtigosModal(false);
+    } finally {
+      setClearingArtigosLoading(false);
     }
   };
 
@@ -859,12 +895,41 @@ export default function ConfiguracaoTabs({
             </form>
           </div>
 
+          {/* Janela de Importação em Lote de Artigos (TXT / XLSX) */}
+          <ImportacaoArtigosCard
+            onSuccess={(importedArtigos) => {
+              if (importedArtigos && importedArtigos.length > 0) {
+                setArtigosList((prev) => {
+                  const map = new Map<string, Artigo>();
+                  prev.forEach((a) => map.set(a.artigo_id, a));
+                  importedArtigos.forEach((a: Artigo) => map.set(a.artigo_id, a));
+                  return Array.from(map.values()).sort((a, b) => a.artigo_id.localeCompare(b.artigo_id));
+                });
+              }
+              router.refresh();
+            }}
+          />
+
           {/* Tabela de Artigos Existentes */}
           <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
-            <h3 className="text-base font-bold font-headline text-on-surface mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">medication</span>
-              Catálogo de Artigos Farmacêuticos ({artigos.length})
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <h3 className="text-base font-bold font-headline text-on-surface flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">medication</span>
+                Catálogo de Artigos Farmacêuticos ({artigosList.length})
+              </h3>
+              {artigosList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearArtigosModal(true)}
+                  disabled={clearingArtigosLoading}
+                  className="shrink-0 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Limpar todos os artigos do catálogo"
+                >
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                  Limpar Artigos
+                </button>
+              )}
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -880,53 +945,107 @@ export default function ConfiguracaoTabs({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                  {artigos.map((a) => (
-                    <tr key={a.id} className="hover:bg-surface-container/30 transition-colors">
-                      <td className="py-3 px-3 font-mono font-bold text-secondary">{a.artigo_id}</td>
-                      <td className="py-3 px-3 font-medium">{a.descricao}</td>
-                      <td className="py-3 px-3">
-                        <span className="text-[11px] text-on-surface-variant">
-                          {TIPO_ARTIGO_LABELS[a.tipo_artigo] || a.tipo_artigo}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            a.tipo_armazenamento === 'TF'
-                              ? 'bg-cyan-100 text-cyan-800'
-                              : a.tipo_armazenamento === 'TC'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-slate-100 text-slate-800'
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[12px]">
-                            {a.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                  {artigosList.length > 0 ? (
+                    artigosList.map((a) => (
+                      <tr key={a.artigo_id} className="hover:bg-surface-container/30 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-secondary">{a.artigo_id}</td>
+                        <td className="py-3 px-3 font-medium">{a.descricao}</td>
+                        <td className="py-3 px-3">
+                          <span className="text-[11px] text-on-surface-variant">
+                            {TIPO_ARTIGO_LABELS[a.tipo_artigo] || a.tipo_artigo}
                           </span>
-                          {TIPO_ARMAZENAMENTO_LABELS[a.tipo_armazenamento] || a.tipo_armazenamento}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              a.tipo_armazenamento === 'TF'
+                                ? 'bg-cyan-100 text-cyan-800'
+                                : a.tipo_armazenamento === 'TC'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[12px]">
+                              {a.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                            </span>
+                            {TIPO_ARMAZENAMENTO_LABELS[a.tipo_armazenamento] || a.tipo_armazenamento}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`material-symbols-outlined text-sm ${a.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
+                            {a.tratamento_lote ? 'check_circle' : 'cancel'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`material-symbols-outlined text-sm ${a.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
+                            {a.tratamento_serie ? 'check_circle' : 'cancel'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <span className={`inline-flex items-center gap-1 font-medium ${a.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${a.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                            {a.ativo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
+                          medication
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`material-symbols-outlined text-sm ${a.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {a.tratamento_lote ? 'check_circle' : 'cancel'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`material-symbols-outlined text-sm ${a.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
-                          {a.tratamento_serie ? 'check_circle' : 'cancel'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <span className={`inline-flex items-center gap-1 font-medium ${a.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${a.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                          {a.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
+                        <p className="text-xs font-semibold">Nenhum artigo registado no catálogo.</p>
+                        <p className="text-[11px] text-on-surface-variant/80 mt-1">
+                          Utilize o formulário acima para registar um novo artigo farmacêutico.
+                        </p>
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* Modal de Confirmação para Limpar Artigos */}
+          {confirmClearArtigosModal && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+              <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-xl">warning</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-on-surface">Limpar Catálogo de Artigos?</h4>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Esta ação não pode ser revertida.</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-on-surface leading-relaxed">
+                  Tem a certeza de que deseja eliminar permanentemente todos os <strong>{artigos.length} artigos</strong> do catálogo?
+                </p>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmClearArtigosModal(false)}
+                    className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearArtigos}
+                    disabled={clearingArtigosLoading}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete_forever</span>
+                    {clearingArtigosLoading ? 'A eliminar...' : 'Sim, Limpar Artigos'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

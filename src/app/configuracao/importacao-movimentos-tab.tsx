@@ -90,7 +90,7 @@ export default function ImportacaoMovimentosTab({
     }
   };
 
-  // Submeter a gravação das linhas na tabela imp_stk
+  // Submeter a gravação das linhas na tabela imp_stk em lotes
   const handleConfirmImport = async () => {
     if (parsedRows.length === 0) return;
 
@@ -98,39 +98,46 @@ export default function ImportacaoMovimentosTab({
     setFeedback(null);
 
     try {
-      const res = await importarStocksAction(parsedRows);
+      const CHUNK_SIZE = 300;
+      let totalInserted = 0;
+      const totalChunks = Math.ceil(parsedRows.length / CHUNK_SIZE);
 
-      if (res.success) {
-        setFeedback({
-          type: 'success',
-          message: `Importação concluída com sucesso! ${res.count} registos gravados na tabela imp_stk.`,
-        });
-
-        // Adicionar localmente à lista para visualização imediata
-        const newMockItems: ImpStk[] = parsedRows.map((r) => ({
-          artigo: r.artigo || null,
-          descricao: r.descricao || null,
-          armazem: r.armazem || null,
-          lote: r.lote || null,
-          estado_stock: r.estado_stock || 'DISP',
-          stk: r.stk || 0,
-          datastock: r.datastock || null,
-          bloqueado: Boolean(r.bloqueado),
-          familia: r.familia || null,
-          tipo_artigo: r.tipo_artigo || null,
-          sub_familia: r.sub_familia || null,
-          created_at: new Date().toISOString(),
-        }));
-
-        setImpStkList((prev) => [...newMockItems, ...prev]);
-        setSelectedFile(null);
-        setParsedRows([]);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-
-        if (onRefresh) onRefresh();
-      } else {
-        setFeedback({ type: 'error', message: res.error || 'Erro ao importar registos.' });
+      for (let i = 0; i < parsedRows.length; i += CHUNK_SIZE) {
+        const chunk = parsedRows.slice(i, i + CHUNK_SIZE);
+        const res = await importarStocksAction(chunk);
+        if (!res.success) {
+          throw new Error(res.error || `Erro ao importar lote ${Math.floor(i / CHUNK_SIZE) + 1} de ${totalChunks}`);
+        }
+        totalInserted += res.count || chunk.length;
       }
+
+      setFeedback({
+        type: 'success',
+        message: `Importação concluída com sucesso! ${totalInserted} registos gravados na tabela imp_stk.`,
+      });
+
+      // Adicionar localmente à lista para visualização imediata
+      const newMockItems: ImpStk[] = parsedRows.map((r) => ({
+        artigo: r.artigo || null,
+        descricao: r.descricao || null,
+        armazem: r.armazem || null,
+        lote: r.lote || null,
+        estado_stock: r.estado_stock || 'DISP',
+        stk: r.stk || 0,
+        datastock: r.datastock || null,
+        bloqueado: Boolean(r.bloqueado),
+        familia: r.familia || null,
+        tipo_artigo: r.tipo_artigo || null,
+        sub_familia: r.sub_familia || null,
+        created_at: new Date().toISOString(),
+      }));
+
+      setImpStkList((prev) => [...newMockItems, ...prev]);
+      setSelectedFile(null);
+      setParsedRows([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      if (onRefresh) onRefresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro inesperado na importação';
       setFeedback({ type: 'error', message: msg });

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
 import { parseDateStockToISO } from '@/lib/parse-stock-file';
+import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -255,6 +256,150 @@ export async function criarArtigoAction(input: {
     return { success: true, artigo };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado';
+    return { success: false, error: msg };
+  }
+}
+
+// 3.1 AÇÃO: Limpar Todos os Artigos (Acesso restrito a Administradores e Gestores)
+export async function limparArtigosAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar o catálogo de artigos.' };
+  }
+
+  try {
+    const { error: deleteErr } = await supabase
+      .from('artigos')
+      .delete()
+      .neq('artigo_id', '');
+
+    if (deleteErr) {
+      if (deleteErr.code === '23503') {
+        return {
+          success: false,
+          error: 'Não é possível limpar o catálogo de artigos pois existem movimentos de stock ou linhas de pedidos associados a estes artigos.',
+        };
+      }
+      console.error('Erro ao limpar artigos:', deleteErr);
+      return { success: false, error: `Erro ao limpar artigos: ${deleteErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/pedidos');
+    revalidatePath('/dashboard');
+    revalidatePath('/stocks');
+
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar artigos';
+    return { success: false, error: msg };
+  }
+}
+
+// 3.2 AÇÃO: Importar Catálogo de Artigos em Lote (Upsert na tabela artigos)
+export async function importarArtigosAction(rows: ArtigoImportInput[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar artigos.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'O ficheiro não contém artigos válidos para importar.' };
+  }
+
+  try {
+    // 1. Garantir deduplicação estrita de artigo_id para evitar erro de concorrência do Postgres (código 21000)
+    const uniqueMap = new Map<string, ArtigoImportInput>();
+    for (const r of rows) {
+      const code = (r.artigo_id || '').trim().toUpperCase();
+      if (code) {
+        uniqueMap.set(code, {
+          ...r,
+          artigo_id: code,
+          descricao: (r.descricao || '').trim() || code,
+        });
+      }
+    }
+
+    const uniqueRows = Array.from(uniqueMap.values());
+    if (uniqueRows.length === 0) {
+      return { success: false, error: 'Nenhum código de artigo válido encontrado.' };
+    }
+
+    const BATCH_SIZE = 250;
+    let totalUpserted = 0;
+    const allUpsertedData: any[] = [];
+
+    for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
+      const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
+        artigo_id: r.artigo_id,
+        descricao: r.descricao,
+        tipo_artigo: r.tipo_artigo || 'MH',
+        tipo_armazenamento: r.tipo_armazenamento || 'TA',
+        tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
+        tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),
+        ativo: parseArtigoBoolean(r.ativo, true),
+      }));
+
+      const { data: upsertedBatch, error: upsertErr } = await supabase
+        .from('artigos')
+        .upsert(batch, { onConflict: 'artigo_id' })
+        .select();
+
+      if (upsertErr) {
+        console.error('Erro ao importar lote em artigos:', upsertErr);
+        return {
+          success: false,
+          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${upsertErr.message}`,
+        };
+      }
+
+      if (upsertedBatch) {
+        allUpsertedData.push(...upsertedBatch);
+      }
+      totalUpserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/pedidos');
+    revalidatePath('/dashboard');
+    revalidatePath('/stocks');
+
+    return { success: true, count: totalUpserted, artigos: allUpsertedData };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de artigos';
     return { success: false, error: msg };
   }
 }
