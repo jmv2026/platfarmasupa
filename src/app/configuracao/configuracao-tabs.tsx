@@ -934,7 +934,10 @@ export default function ConfiguracaoTabs({
       {/* ABA 4: MOVIMENTOS (IMPORTAÇÃO DE STOCKS) */}
       {/* ========================================================================= */}
       {activeTab === 'movimentos' && (
-        <ImportacaoMovimentosTab initialImpStk={initialImpStk} />
+        <ImportacaoMovimentosTab
+          initialImpStk={initialImpStk}
+          onRefresh={() => router.refresh()}
+        />
       )}
 
       {/* ========================================================================= */}

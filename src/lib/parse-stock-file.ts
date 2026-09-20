@@ -2,35 +2,173 @@ import ExcelJS from 'exceljs';
 import { ImpStkInput } from './supabase/types';
 
 /**
- * Normaliza os nomes de cabeçalhos de ficheiros TXT/CSV/Excel para os campos de imp_stk
+ * Normaliza os nomes de cabeçalhos de ficheiros TXT/CSV/Excel para os campos de imp_stk.
+ * As verificações são estritas e ordenadas para evitar colisões entre palavras compostas
+ * (ex: 'tipo_artigo' não deve colidir com 'artigo', e 'datastock'/'estadostock' não devem colidir com 'stk').
  */
 export function normalizeHeaderKey(key: string): string {
+  if (!key) return '';
+
   const clean = key
+    .replace(/^\uFEFF/, '') // Remover UTF-8 BOM
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '');
 
-  if (clean.includes('artigo') || clean.includes('codigo') || clean === 'cod' || clean === 'sku') return 'artigo';
-  if (clean.includes('desc') || clean.includes('designacao') || clean.includes('produto') || clean.includes('nome')) return 'descricao';
-  if (clean.includes('armazem') || clean.includes('armaz') || clean.includes('wh') || clean.includes('deposito')) return 'armazem';
-  if (clean.includes('lote') || clean.includes('batch') || clean.includes('lot')) return 'lote';
-  if (clean.includes('estadostock') || clean.includes('estado') || clean.includes('status')) return 'estado_stock';
-  if (clean.includes('stk') || clean.includes('stock') || clean.includes('qtd') || clean.includes('quantidade') || clean.includes('qty')) return 'stk';
-  if (clean.includes('datastock') || clean.includes('data') || clean.includes('date') || clean.includes('validade')) return 'data_stock';
-  if (clean.includes('bloqueado') || clean.includes('bloq') || clean.includes('blocked') || clean.includes('lock')) return 'bloqueado';
-  if (clean.includes('subfamilia') || clean.includes('subfam')) return 'sub_familia';
-  if (clean.includes('familia') || clean.includes('fam')) return 'familia';
-  if (clean.includes('tipoartigo') || clean.includes('tipo')) return 'tipo_artigo';
+  // 1. Tipo de Artigo (Verificar antes de 'artigo')
+  if (
+    clean.includes('tipoartigo') ||
+    clean.includes('tipodeartigo') ||
+    clean === 'tipo' ||
+    clean === 'tipoart'
+  ) {
+    return 'tipo_artigo';
+  }
+
+  // 2. Data de Stock (Verificar antes de 'stk' / 'stock')
+  if (
+    clean.includes('datastock') ||
+    clean.includes('dtstock') ||
+    clean.includes('datastk') ||
+    clean.includes('dtstk') ||
+    clean === 'data' ||
+    clean === 'date' ||
+    clean === 'datetime' ||
+    clean === 'validade'
+  ) {
+    return 'datastock';
+  }
+
+  // 3. Estado do Stock (Verificar antes de 'stk' / 'stock')
+  if (
+    clean.includes('estadostock') ||
+    clean.includes('estadostk') ||
+    clean.includes('estado') ||
+    clean.includes('status')
+  ) {
+    return 'estado_stock';
+  }
+
+  // 4. Sub-Família (Verificar antes de 'familia')
+  if (
+    clean.includes('subfamilia') ||
+    clean.includes('subfam') ||
+    clean === 'subf'
+  ) {
+    return 'sub_familia';
+  }
+
+  // 5. Família
+  if (clean.includes('familia') || clean.includes('fam')) {
+    return 'familia';
+  }
+
+  // 6. Artigo / Código do Produto
+  if (
+    clean === 'artigo' ||
+    clean === 'art' ||
+    clean === 'codigo' ||
+    clean === 'cod' ||
+    clean === 'sku' ||
+    clean === 'codartigo' ||
+    clean.includes('artigo')
+  ) {
+    return 'artigo';
+  }
+
+  // 7. Quantidade / Stock
+  if (
+    clean === 'stk' ||
+    clean === 'stock' ||
+    clean === 'qtd' ||
+    clean === 'quantidade' ||
+    clean === 'qty' ||
+    clean === 'qtde' ||
+    clean.includes('stk') ||
+    clean.includes('stock')
+  ) {
+    return 'stk';
+  }
+
+  // 8. Descrição / Designação
+  if (
+    clean.includes('desc') ||
+    clean.includes('designacao') ||
+    clean.includes('produto') ||
+    clean.includes('nome')
+  ) {
+    return 'descricao';
+  }
+
+  // 9. Armazém
+  if (
+    clean.includes('armazem') ||
+    clean.includes('armaz') ||
+    clean.includes('wh') ||
+    clean.includes('deposito') ||
+    clean === 'arm'
+  ) {
+    return 'armazem';
+  }
+
+  // 10. Lote
+  if (
+    clean.includes('lote') ||
+    clean.includes('batch') ||
+    clean.includes('lot')
+  ) {
+    return 'lote';
+  }
+
+  // 11. Bloqueado
+  if (
+    clean.includes('bloqueado') ||
+    clean.includes('bloq') ||
+    clean.includes('blocked') ||
+    clean.includes('lock')
+  ) {
+    return 'bloqueado';
+  }
 
   return clean;
+}
+
+/**
+ * Converte strings de data/hora (ex: "11/12/2025 17:14:32" ou "18/9/2026 17:36:14") para formato ISO compatível com timestamptz
+ */
+export function parseDateStockToISO(val: string | null | undefined): string | null {
+  if (!val) return null;
+  const trimmed = String(val).replace(/^["']|["']$/g, '').trim();
+  if (!trimmed) return null;
+
+  // Formato DD/MM/YYYY HH:mm:ss ou D/M/YYYY HH:mm:ss
+  const dmyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    const year = dmyMatch[3];
+    const hour = (dmyMatch[4] || '00').padStart(2, '0');
+    const min = (dmyMatch[5] || '00').padStart(2, '0');
+    const sec = (dmyMatch[6] || '00').padStart(2, '0');
+    return `${year}-${month}-${day}T${hour}:${min}:${sec}`;
+  }
+
+  // Formato YYYY-MM-DD ou já ISO
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString();
+  }
+
+  return trimmed;
 }
 
 /**
  * Faz o parsing de um ficheiro de texto (.txt ou .csv) delimitado por ponto-e-vírgula, vírgula ou tab
  */
 export function parseTextStockFile(textContent: string, filename: string): ImpStkInput[] {
-  const lines = textContent
+  const cleanContent = textContent.replace(/^\uFEFF/, ''); // Remover BOM inicial
+  const lines = cleanContent
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
@@ -68,6 +206,8 @@ export function parseTextStockFile(textContent: string, filename: string): ImpSt
     });
 
     const parsedStk = parseFloat((row['stk'] || '0').replace(',', '.'));
+    const rawDateStock = row['datastock'] || row['data_stock'] || '';
+    const formattedDateStock = parseDateStockToISO(rawDateStock) || rawDateStock;
 
     results.push({
       artigo: row['artigo'] || '',
@@ -76,7 +216,7 @@ export function parseTextStockFile(textContent: string, filename: string): ImpSt
       lote: row['lote'] || '',
       estado_stock: row['estado_stock'] || 'DISP',
       stk: isNaN(parsedStk) ? 0 : parsedStk,
-      data_stock: row['data_stock'] || '',
+      datastock: formattedDateStock,
       bloqueado: row['bloqueado'] || '0',
       familia: row['familia'] || '',
       tipo_artigo: row['tipo_artigo'] || '',
@@ -117,7 +257,7 @@ export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename: st
         if (key) {
           let val = '';
           if (cell.value instanceof Date) {
-            val = cell.value.toLocaleString('pt-PT');
+            val = cell.value.toISOString();
           } else if (typeof cell.value === 'object' && cell.value !== null) {
             // Textos ricos ou fórmulas
             val = 'text' in cell.value ? String((cell.value as { text: string }).text) : String(cell.value);
@@ -129,6 +269,8 @@ export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename: st
       });
 
       const parsedStk = parseFloat((rowData['stk'] || '0').replace(',', '.'));
+      const rawDateStock = rowData['datastock'] || rowData['data_stock'] || '';
+      const formattedDateStock = parseDateStockToISO(rawDateStock) || rawDateStock;
 
       results.push({
         artigo: rowData['artigo'] || '',
@@ -137,7 +279,7 @@ export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename: st
         lote: rowData['lote'] || '',
         estado_stock: rowData['estado_stock'] || 'DISP',
         stk: isNaN(parsedStk) ? 0 : parsedStk,
-        data_stock: rowData['data_stock'] || '',
+        datastock: formattedDateStock,
         bloqueado: rowData['bloqueado'] || '0',
         familia: rowData['familia'] || '',
         tipo_artigo: rowData['tipo_artigo'] || '',

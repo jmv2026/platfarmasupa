@@ -1,6 +1,10 @@
 -- ==============================================================================
 -- CRIAÇÃO DA TABELA: public.imp_stk (Importação de Ficheiros de Stock TXT/Excel)
 -- ==============================================================================
+-- Campos mapeados do ficheiro de stock:
+-- Artigo, Descricao, Armazem, Lote, EstadoStock, Stk, DataStock (Data-Hora),
+-- Bloqueado, Familia, tipo_artigo, SubFamilia
+-- ==============================================================================
 
 CREATE TABLE IF NOT EXISTS public.imp_stk (
     artigo TEXT,
@@ -9,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.imp_stk (
     lote TEXT,
     estado_stock TEXT,
     stk NUMERIC DEFAULT 0,
-    data_stock TEXT,
+    datastock TIMESTAMPTZ,
     bloqueado TEXT,
     familia TEXT,
     tipo_artigo TEXT,
@@ -18,10 +22,16 @@ CREATE TABLE IF NOT EXISTS public.imp_stk (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Ativar RLS
+-- Índices para otimização de consultas e relatórios
+CREATE INDEX IF NOT EXISTS idx_imp_stk_artigo ON public.imp_stk(artigo);
+CREATE INDEX IF NOT EXISTS idx_imp_stk_armazem ON public.imp_stk(armazem);
+CREATE INDEX IF NOT EXISTS idx_imp_stk_lote ON public.imp_stk(lote);
+CREATE INDEX IF NOT EXISTS idx_imp_stk_datastock ON public.imp_stk(datastock);
+
+-- Ativar RLS (Row Level Security)
 ALTER TABLE public.imp_stk ENABLE ROW LEVEL SECURITY;
 
--- Política de acesso total para utilizadores autenticados
+-- Políticas de RLS
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -31,6 +41,17 @@ BEGIN
     ON public.imp_stk
     FOR ALL
     TO authenticated
+    USING (true)
+    WITH CHECK (true);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'imp_stk' AND policyname = 'Acesso total a imp_stk para anon'
+  ) THEN
+    CREATE POLICY "Acesso total a imp_stk para anon"
+    ON public.imp_stk
+    FOR ALL
+    TO anon
     USING (true)
     WITH CHECK (true);
   END IF;

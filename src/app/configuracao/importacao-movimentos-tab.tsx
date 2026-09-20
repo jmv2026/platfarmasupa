@@ -5,6 +5,26 @@ import { ImpStk, ImpStkInput } from '@/lib/supabase/types';
 import { parseTextStockFile, parseExcelStockFile } from '@/lib/parse-stock-file';
 import { importarStocksAction, limparImportacoesStockAction } from './actions';
 
+function formatDateStockDisplay(d: string | null | undefined): string {
+  if (!d) return '-';
+  try {
+    const parsed = new Date(d);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toLocaleString('pt-PT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    }
+  } catch {
+    // fallback
+  }
+  return d;
+}
+
 interface ImportacaoMovimentosTabProps {
   initialImpStk: ImpStk[];
   onRefresh?: () => void;
@@ -94,7 +114,7 @@ export default function ImportacaoMovimentosTab({
           lote: r.lote || null,
           estado_stock: r.estado_stock || 'DISP',
           stk: r.stk || 0,
-          data_stock: r.data_stock || null,
+          datastock: r.datastock || null,
           bloqueado: r.bloqueado || '0',
           familia: r.familia || null,
           tipo_artigo: r.tipo_artigo || null,
@@ -155,7 +175,7 @@ export default function ImportacaoMovimentosTab({
 
     let csv = 'Artigo;Descricao;Armazem;Lote;EstadoStock;Stk;DataStock;Bloqueado;Familia;TipoArtigo;SubFamilia;Ficheiro;DataImportacao\n';
     impStkList.forEach((r) => {
-      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.data_stock || ''}";"${r.bloqueado || ''}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.filename || ''}";"${r.created_at || ''}"\n`;
+      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.datastock || ''}";"${r.bloqueado || ''}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.filename || ''}";"${r.created_at || ''}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -386,7 +406,7 @@ export default function ImportacaoMovimentosTab({
                       <td className="py-2 px-3 text-right font-bold text-on-surface">
                         {row.stk?.toLocaleString('pt-PT')}
                       </td>
-                      <td className="py-2 px-3 text-on-surface-variant">{row.data_stock || '-'}</td>
+                      <td className="py-2 px-3 text-on-surface-variant font-mono">{formatDateStockDisplay(row.datastock)}</td>
                       <td className="py-2 px-3">{row.familia || '-'}</td>
                       <td className="py-2 px-3">{row.sub_familia || '-'}</td>
                     </tr>
@@ -545,7 +565,7 @@ export default function ImportacaoMovimentosTab({
             <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
               {filteredList.length > 0 ? (
                 filteredList.map((item, idx) => (
-                  <tr key={`${item.artigo || ''}-${item.lote || ''}-${item.armazem || ''}-${item.data_stock || ''}-${idx}`} className="hover:bg-surface-container/30 transition-colors">
+                  <tr key={`${item.artigo || ''}-${item.lote || ''}-${item.armazem || ''}-${item.datastock || ''}-${idx}`} className="hover:bg-surface-container/30 transition-colors">
                     <td className="py-2.5 px-3 font-mono font-bold text-secondary">{item.artigo || '-'}</td>
                     <td className="py-2.5 px-3 font-medium truncate max-w-[200px]" title={item.descricao || ''}>
                       {item.descricao || '-'}
@@ -565,7 +585,7 @@ export default function ImportacaoMovimentosTab({
                       {Number(item.stk || 0).toLocaleString('pt-PT')}
                     </td>
                     <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant">
-                      {item.data_stock || '-'}
+                      {formatDateStockDisplay(item.datastock)}
                     </td>
                     <td className="py-2.5 px-3 font-mono text-center">
                       <span

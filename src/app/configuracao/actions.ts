@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
+import { parseDateStockToISO } from '@/lib/parse-stock-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -330,8 +331,7 @@ export async function importarStocksAction(rows: ImpStkInput[]) {
         armazem: r.armazem?.trim() || null,
         lote: r.lote?.trim() || null,
         estado_stock: r.estado_stock?.trim() || 'DISP',
-        stk: typeof r.stk === 'number' ? r.stk : Number(r.stk || 0),
-        data_stock: r.data_stock?.trim() || null,
+        datastock: parseDateStockToISO(r.datastock) || r.datastock?.trim() || null,
         bloqueado: String(r.bloqueado ?? '0'),
         familia: r.familia?.trim() || null,
         tipo_artigo: r.tipo_artigo?.trim() || null,
