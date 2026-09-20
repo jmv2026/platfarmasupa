@@ -115,7 +115,7 @@ export default function ImportacaoMovimentosTab({
           estado_stock: r.estado_stock || 'DISP',
           stk: r.stk || 0,
           datastock: r.datastock || null,
-          bloqueado: r.bloqueado || '0',
+          bloqueado: Boolean(r.bloqueado),
           familia: r.familia || null,
           tipo_artigo: r.tipo_artigo || null,
           sub_familia: r.sub_familia || null,
@@ -174,7 +174,7 @@ export default function ImportacaoMovimentosTab({
 
     let csv = 'Artigo;Descricao;Armazem;Lote;EstadoStock;Stk;DataStock;Bloqueado;Familia;TipoArtigo;SubFamilia;DataImportacao\n';
     impStkList.forEach((r) => {
-      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.datastock || ''}";"${r.bloqueado || ''}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.created_at || ''}"\n`;
+      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.datastock || ''}";"${r.bloqueado ? '1' : '0'}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.created_at || ''}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -587,12 +587,12 @@ export default function ImportacaoMovimentosTab({
                     <td className="py-2.5 px-3 font-mono text-center">
                       <span
                         className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                          item.bloqueado === '1' || item.bloqueado === 'true'
+                          item.bloqueado
                             ? 'bg-rose-100 text-rose-800'
                             : 'bg-slate-100 text-slate-700'
                         }`}
                       >
-                        {item.bloqueado || '0'}
+                        {item.bloqueado ? 'Sim' : 'Não'}
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-on-surface-variant">{item.familia || '-'}</td>

@@ -164,9 +164,19 @@ export function parseDateStockToISO(val: string | null | undefined): string | nu
 }
 
 /**
+ * Converte valores de bloqueado (ex: "0", "1", "true", "false", "sim", "nao") para boolean (default false)
+ */
+export function parseBloqueadoToBoolean(val: unknown): boolean {
+  if (typeof val === 'boolean') return val;
+  if (!val) return false;
+  const clean = String(val).trim().toLowerCase();
+  return clean === '1' || clean === 'true' || clean === 't' || clean === 'sim' || clean === 's';
+}
+
+/**
  * Faz o parsing de um ficheiro de texto (.txt ou .csv) delimitado por ponto-e-vírgula, vírgula ou tab
  */
-export function parseTextStockFile(textContent: string, filename: string): ImpStkInput[] {
+export function parseTextStockFile(textContent: string, filename?: string): ImpStkInput[] {
   const cleanContent = textContent.replace(/^\uFEFF/, ''); // Remover BOM inicial
   const lines = cleanContent
     .split(/\r?\n/)
@@ -217,7 +227,7 @@ export function parseTextStockFile(textContent: string, filename: string): ImpSt
       estado_stock: row['estado_stock'] || 'DISP',
       stk: isNaN(parsedStk) ? 0 : parsedStk,
       datastock: formattedDateStock,
-      bloqueado: row['bloqueado'] || '0',
+      bloqueado: parseBloqueadoToBoolean(row['bloqueado']),
       familia: row['familia'] || '',
       tipo_artigo: row['tipo_artigo'] || '',
       sub_familia: row['sub_familia'] || '',
@@ -279,7 +289,7 @@ export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename?: s
         estado_stock: rowData['estado_stock'] || 'DISP',
         stk: isNaN(parsedStk) ? 0 : parsedStk,
         datastock: formattedDateStock,
-        bloqueado: rowData['bloqueado'] || '0',
+        bloqueado: parseBloqueadoToBoolean(rowData['bloqueado']),
         familia: rowData['familia'] || '',
         tipo_artigo: rowData['tipo_artigo'] || '',
         sub_familia: rowData['sub_familia'] || '',

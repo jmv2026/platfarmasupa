@@ -335,7 +335,9 @@ export async function importarStocksAction(rows: ImpStkInput[]) {
         estado_stock: r.estado_stock?.trim() || 'DISP',
         stk: typeof r.stk === 'number' ? r.stk : Number(r.stk || 0),
         datastock: parseDateStockToISO(r.datastock) || (r.datastock ? r.datastock.trim() : null),
-        bloqueado: String(r.bloqueado ?? '0'),
+        bloqueado: typeof r.bloqueado === 'boolean'
+          ? r.bloqueado
+          : String(r.bloqueado ?? '0').trim().toLowerCase() === '1' || String(r.bloqueado ?? '').trim().toLowerCase() === 'true',
         familia: r.familia?.trim() || null,
         tipo_artigo: r.tipo_artigo?.trim() || null,
         sub_familia: r.sub_familia?.trim() || null,

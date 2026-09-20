@@ -175,6 +175,13 @@ function parseTextStockFile(textContent, filename) {
     const rawDateStock = row['datastock'] || row['data_stock'] || '';
     const formattedDateStock = parseDateStockToISO(rawDateStock) || rawDateStock;
 
+    function parseBloqueadoToBoolean(val) {
+      if (typeof val === 'boolean') return val;
+      if (!val) return false;
+      const clean = String(val).trim().toLowerCase();
+      return clean === '1' || clean === 'true' || clean === 't' || clean === 'sim' || clean === 's';
+    }
+
     results.push({
       artigo: row['artigo'] || '',
       descricao: row['descricao'] || '',
@@ -183,7 +190,7 @@ function parseTextStockFile(textContent, filename) {
       estado_stock: row['estado_stock'] || 'DISP',
       stk: isNaN(parsedStk) ? 0 : parsedStk,
       datastock: formattedDateStock,
-      bloqueado: row['bloqueado'] || '0',
+      bloqueado: parseBloqueadoToBoolean(row['bloqueado']),
       familia: row['familia'] || '',
       tipo_artigo: row['tipo_artigo'] || '',
       sub_familia: row['sub_familia'] || '',
@@ -209,6 +216,10 @@ parsed.forEach((item, idx) => {
   }
   if (typeof item.stk !== 'number' || isNaN(item.stk)) {
     console.error(`ERRO: Linha ${idx + 1} com stk inválido!`);
+    errors++;
+  }
+  if (typeof item.bloqueado !== 'boolean') {
+    console.error(`ERRO: Linha ${idx + 1} com bloqueado não-booleano!`);
     errors++;
   }
 });

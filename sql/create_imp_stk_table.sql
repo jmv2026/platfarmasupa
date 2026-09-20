@@ -3,7 +3,7 @@
 -- ==============================================================================
 -- Campos mapeados do ficheiro de stock:
 -- Artigo, Descricao, Armazem, Lote, EstadoStock, Stk, DataStock (Data-Hora),
--- Bloqueado, Familia, tipo_artigo, SubFamilia
+-- Bloqueado (Boolean default false), Familia, tipo_artigo, SubFamilia
 -- ==============================================================================
 
 CREATE TABLE IF NOT EXISTS public.imp_stk (
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.imp_stk (
     estado_stock TEXT,
     stk NUMERIC DEFAULT 0,
     datastock TIMESTAMPTZ,
-    bloqueado TEXT,
+    bloqueado BOOLEAN DEFAULT false,
     familia TEXT,
     tipo_artigo TEXT,
     sub_familia TEXT,

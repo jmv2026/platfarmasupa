@@ -269,7 +269,7 @@ export interface ImpStk {
   estado_stock: string | null;
   stk: number;
   datastock: string | null;
-  bloqueado: string | null;
+  bloqueado: boolean;
   familia: string | null;
   tipo_artigo: string | null;
   sub_familia: string | null;
@@ -284,7 +284,7 @@ export interface ImpStkInput {
   estado_stock?: string;
   stk?: number;
   datastock?: string;
-  bloqueado?: string;
+  bloqueado?: boolean | string;
   familia?: string;
   tipo_artigo?: string;
   sub_familia?: string;
