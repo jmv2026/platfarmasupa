@@ -221,7 +221,6 @@ export function parseTextStockFile(textContent: string, filename: string): ImpSt
       familia: row['familia'] || '',
       tipo_artigo: row['tipo_artigo'] || '',
       sub_familia: row['sub_familia'] || '',
-      filename: filename,
     });
   }
 
@@ -231,7 +230,7 @@ export function parseTextStockFile(textContent: string, filename: string): ImpSt
 /**
  * Faz o parsing de um ficheiro Excel (.xlsx / .xls)
  */
-export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename: string): Promise<ImpStkInput[]> {
+export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename?: string): Promise<ImpStkInput[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(arrayBuffer);
 
@@ -284,7 +283,6 @@ export async function parseExcelStockFile(arrayBuffer: ArrayBuffer, filename: st
         familia: rowData['familia'] || '',
         tipo_artigo: rowData['tipo_artigo'] || '',
         sub_familia: rowData['sub_familia'] || '',
-        filename: filename,
       });
     }
   });

@@ -312,7 +312,9 @@ export async function importarStocksAction(rows: ImpStkInput[]) {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar stocks.' };
   }
 
@@ -331,12 +333,12 @@ export async function importarStocksAction(rows: ImpStkInput[]) {
         armazem: r.armazem?.trim() || null,
         lote: r.lote?.trim() || null,
         estado_stock: r.estado_stock?.trim() || 'DISP',
-        datastock: parseDateStockToISO(r.datastock) || r.datastock?.trim() || null,
+        stk: typeof r.stk === 'number' ? r.stk : Number(r.stk || 0),
+        datastock: parseDateStockToISO(r.datastock) || (r.datastock ? r.datastock.trim() : null),
         bloqueado: String(r.bloqueado ?? '0'),
         familia: r.familia?.trim() || null,
         tipo_artigo: r.tipo_artigo?.trim() || null,
         sub_familia: r.sub_familia?.trim() || null,
-        filename: r.filename || null,
       }));
 
       const { error: insertErr } = await supabase.from('imp_stk').insert(batch);
@@ -372,7 +374,9 @@ export async function limparImportacoesStockAction() {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar a tabela imp_stk.' };
   }
 

@@ -273,7 +273,6 @@ export interface ImpStk {
   familia: string | null;
   tipo_artigo: string | null;
   sub_familia: string | null;
-  filename: string | null;
   created_at?: string;
 }
 
@@ -289,5 +288,4 @@ export interface ImpStkInput {
   familia?: string;
   tipo_artigo?: string;
   sub_familia?: string;
-  filename?: string;
 }

@@ -187,7 +187,6 @@ function parseTextStockFile(textContent, filename) {
       familia: row['familia'] || '',
       tipo_artigo: row['tipo_artigo'] || '',
       sub_familia: row['sub_familia'] || '',
-      filename: filename,
     });
   }
 

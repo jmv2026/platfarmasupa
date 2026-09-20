@@ -119,7 +119,6 @@ export default function ImportacaoMovimentosTab({
           familia: r.familia || null,
           tipo_artigo: r.tipo_artigo || null,
           sub_familia: r.sub_familia || null,
-          filename: r.filename || null,
           created_at: new Date().toISOString(),
         }));
 
@@ -173,9 +172,9 @@ export default function ImportacaoMovimentosTab({
   const handleExportCSV = () => {
     if (impStkList.length === 0) return;
 
-    let csv = 'Artigo;Descricao;Armazem;Lote;EstadoStock;Stk;DataStock;Bloqueado;Familia;TipoArtigo;SubFamilia;Ficheiro;DataImportacao\n';
+    let csv = 'Artigo;Descricao;Armazem;Lote;EstadoStock;Stk;DataStock;Bloqueado;Familia;TipoArtigo;SubFamilia;DataImportacao\n';
     impStkList.forEach((r) => {
-      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.datastock || ''}";"${r.bloqueado || ''}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.filename || ''}";"${r.created_at || ''}"\n`;
+      csv += `"${r.artigo || ''}";"${(r.descricao || '').replace(/"/g, '""')}";"${r.armazem || ''}";"${r.lote || ''}";"${r.estado_stock || ''}";${r.stk};"${r.datastock || ''}";"${r.bloqueado || ''}";"${r.familia || ''}";"${r.tipo_artigo || ''}";"${r.sub_familia || ''}";"${r.created_at || ''}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -221,8 +220,7 @@ export default function ImportacaoMovimentosTab({
         r.armazem?.toLowerCase().includes(q) ||
         r.lote?.toLowerCase().includes(q) ||
         r.familia?.toLowerCase().includes(q) ||
-        r.sub_familia?.toLowerCase().includes(q) ||
-        r.filename?.toLowerCase().includes(q)
+        r.sub_familia?.toLowerCase().includes(q)
     );
   }, [impStkList, searchTerm]);
 
@@ -559,7 +557,6 @@ export default function ImportacaoMovimentosTab({
                 <th className="py-2.5 px-3">Bloq.</th>
                 <th className="py-2.5 px-3">Família</th>
                 <th className="py-2.5 px-3">Sub-Família</th>
-                <th className="py-2.5 px-3">Ficheiro Origem</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
@@ -600,14 +597,11 @@ export default function ImportacaoMovimentosTab({
                     </td>
                     <td className="py-2.5 px-3 text-on-surface-variant">{item.familia || '-'}</td>
                     <td className="py-2.5 px-3 font-medium text-on-surface-variant">{item.sub_familia || '-'}</td>
-                    <td className="py-2.5 px-3 text-on-surface-variant text-[11px] truncate max-w-[150px]" title={item.filename || ''}>
-                      {item.filename || '-'}
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={11} className="py-12 text-center text-on-surface-variant">
+                  <td colSpan={10} className="py-12 text-center text-on-surface-variant">
                     <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
                       inventory_2
                     </span>

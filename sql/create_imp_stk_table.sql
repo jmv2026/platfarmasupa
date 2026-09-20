@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS public.imp_stk (
     familia TEXT,
     tipo_artigo TEXT,
     sub_familia TEXT,
-    filename TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
