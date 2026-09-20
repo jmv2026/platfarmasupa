@@ -262,7 +262,6 @@ export interface NovoPedidoInput {
 }
 
 export interface ImpStk {
-  id: string;
   artigo: string | null;
   descricao: string | null;
   armazem: string | null;

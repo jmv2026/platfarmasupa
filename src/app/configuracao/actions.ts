@@ -372,21 +372,24 @@ export async function limparImportacoesStockAction() {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
-    return { success: false, error: 'Acesso negado: Apenas administradores podem limpar a tabela imp_stk.' };
+  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar a tabela imp_stk.' };
   }
 
   try {
     const { error: deleteErr } = await supabase
       .from('imp_stk')
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+      .gte('created_at', '1970-01-01T00:00:00Z');
 
     if (deleteErr) {
+      console.error('Erro ao limpar imp_stk:', deleteErr);
       return { success: false, error: `Erro ao limpar tabela: ${deleteErr.message}` };
     }
 
     revalidatePath('/configuracao');
+    revalidatePath('/dashboard');
+    revalidatePath('/stocks');
     return { success: true };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado';

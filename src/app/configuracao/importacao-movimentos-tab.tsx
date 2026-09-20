@@ -87,8 +87,7 @@ export default function ImportacaoMovimentosTab({
         });
 
         // Adicionar localmente à lista para visualização imediata
-        const newMockItems: ImpStk[] = parsedRows.map((r, idx) => ({
-          id: `temp-${Date.now()}-${idx}`,
+        const newMockItems: ImpStk[] = parsedRows.map((r) => ({
           artigo: r.artigo || null,
           descricao: r.descricao || null,
           armazem: r.armazem || null,
@@ -235,14 +234,27 @@ export default function ImportacaoMovimentosTab({
 
       {/* Janela de Importação de Stocks */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-        <div>
-          <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary">upload_file</span>
-            Janela de Importação de Stocks (Tabela imp_stk)
-          </h3>
-          <p className="text-xs text-on-surface-variant leading-relaxed">
-            Selecione ou arraste um ficheiro de stock em formato <strong>TXT</strong> (delimitado por ponto-e-vírgula <code>;</code>) ou <strong>Excel (.xlsx / .csv)</strong> para carregar na tabela <code>imp_stk</code>.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-secondary">upload_file</span>
+              Janela de Importação de Stocks (Tabela imp_stk)
+            </h3>
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Selecione ou arraste um ficheiro de stock em formato <strong>TXT</strong> (delimitado por ponto-e-vírgula <code>;</code>) ou <strong>Excel (.xlsx / .csv)</strong> para carregar na tabela <code>imp_stk</code>.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setConfirmClearModal(true)}
+            disabled={clearingLoading}
+            className="shrink-0 px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            title="Limpar todos os dados armazenados na tabela imp_stk"
+          >
+            <span className="material-symbols-outlined text-base">delete_sweep</span>
+            Limpar Dados de Stock
+          </button>
         </div>
 
         {/* Zona de Upload / Drag & Drop */}
@@ -532,8 +544,8 @@ export default function ImportacaoMovimentosTab({
             </thead>
             <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
               {filteredList.length > 0 ? (
-                filteredList.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-container/30 transition-colors">
+                filteredList.map((item, idx) => (
+                  <tr key={`${item.artigo || ''}-${item.lote || ''}-${item.armazem || ''}-${item.data_stock || ''}-${idx}`} className="hover:bg-surface-container/30 transition-colors">
                     <td className="py-2.5 px-3 font-mono font-bold text-secondary">{item.artigo || '-'}</td>
                     <td className="py-2.5 px-3 font-medium truncate max-w-[200px]" title={item.descricao || ''}>
                       {item.descricao || '-'}

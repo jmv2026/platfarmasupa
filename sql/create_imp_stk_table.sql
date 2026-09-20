@@ -3,7 +3,6 @@
 -- ==============================================================================
 
 CREATE TABLE IF NOT EXISTS public.imp_stk (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     artigo TEXT,
     descricao TEXT,
     armazem TEXT,
