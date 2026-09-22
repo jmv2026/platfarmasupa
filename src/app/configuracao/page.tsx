@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil, ImpStk } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem } from '@/lib/supabase/types';
+import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export default async function ConfiguracaoPage() {
   const supabase = await createClient();
@@ -27,20 +28,35 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis e Importações de Stock
+  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns e Importações de Stock
   const [
     { data: usersList },
     { data: clientsList },
     { data: artigosList },
     { data: perfisList },
     { data: impStkList },
+    { data: movimentosList },
+    { data: armazensList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
     supabase.from('perfis').select('*').order('codigo'),
     supabase.from('imp_stk').select('*').order('created_at', { ascending: false }).limit(200),
+    supabase
+      .from('movimentos')
+      .select('*, clients(name, sigla), artigos(descricao)')
+      .order('data_movimento', { ascending: false })
+      .limit(300),
+    supabase.from('armazens').select('*').order('tipo_armazem'),
   ]);
+
+  const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
+    ...m,
+    cliente_nome: m.clients?.name,
+    cliente_sigla: m.sigla || m.clients?.sigla,
+    artigo_descricao: m.artigos?.descricao,
+  }));
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -159,6 +175,8 @@ export default async function ConfiguracaoPage() {
           artigos={(artigosList as Artigo[]) || []}
           perfis={(perfisList as Perfil[]) || []}
           initialImpStk={(impStkList as ImpStk[]) || []}
+          initialMovimentos={formattedMovimentos}
+          armazens={(armazensList as Armazem[]) || []}
           serverEmailConfig={serverEmailConfig}
         />
       </main>

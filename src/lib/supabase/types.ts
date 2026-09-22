@@ -137,6 +137,7 @@ export interface Movimento {
   id: string;
   artigo_id: string;
   client_id: string;
+  sigla?: string | null;
   tipo_movimento: TipoMovimento;
   quantidade: number;
   tipo_armazem: TipoArmazem;

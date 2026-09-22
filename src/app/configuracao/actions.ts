@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
 import { parseDateStockToISO } from '@/lib/parse-stock-file';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
+import { MovimentoImportInput } from '@/lib/parse-movimentos-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -550,4 +551,173 @@ export async function limparImportacoesStockAction() {
     return { success: false, error: msg };
   }
 }
+
+// 7. AÇÃO: Importar Movimentos de Stock em Lote para a tabela movimentos
+export async function importarMovimentosAction(
+  rows: MovimentoImportInput[],
+  defaultClientId?: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, client_id')
+    .eq('id', user.id)
+    .single();
+
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
+    return {
+      success: false,
+      error: 'Acesso negado: Apenas administradores e gestores podem importar movimentos.',
+    };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'O ficheiro não contém linhas de movimentos válidas para importar.' };
+  }
+
+  try {
+    // 1. Obter mapa de clientes para resolução de sigla -> client_id
+    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    const clientMapBySigla = new Map<string, string>();
+    const clientMapById = new Map<string, string>();
+
+    (clientsData || []).forEach((c) => {
+      if (c.sigla) clientMapBySigla.set(c.sigla.toUpperCase(), c.id);
+      if (c.id) clientMapById.set(c.id, c.sigla);
+    });
+
+    // 2. Obter primeiro cliente disponível caso seja necessário fallback
+    const firstClient = clientsData && clientsData.length > 0 ? clientsData[0] : null;
+    const fallbackClientId = defaultClientId || profile?.client_id || firstClient?.id;
+
+    if (!fallbackClientId && clientMapBySigla.size === 0) {
+      return {
+        success: false,
+        error: 'Nenhum cliente cadastrado no sistema para associar aos movimentos.',
+      };
+    }
+
+    const BATCH_SIZE = 250;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
+        // Resolver client_id
+        let resolvedClientId = fallbackClientId;
+        if (r.client_id && clientMapById.has(r.client_id)) {
+          resolvedClientId = r.client_id;
+        } else if (r.sigla && clientMapBySigla.has(r.sigla.toUpperCase())) {
+          resolvedClientId = clientMapBySigla.get(r.sigla.toUpperCase())!;
+        }
+
+        const resolvedSigla = r.sigla
+          ? r.sigla.toUpperCase()
+          : resolvedClientId
+          ? clientMapById.get(resolvedClientId) || null
+          : null;
+
+        const tipoArmazem = r.tipo_armazem || '01';
+        const armazemLoc = r.armazem_loc || (resolvedSigla ? `${resolvedSigla}-${tipoArmazem}` : `ARM-${tipoArmazem}`);
+
+        return {
+          artigo_id: r.artigo_id.trim(),
+          client_id: resolvedClientId,
+          sigla: resolvedSigla,
+          tipo_movimento: r.tipo_movimento || 'es',
+          quantidade: Number(r.quantidade),
+          tipo_armazem: tipoArmazem,
+          armazem_loc: armazemLoc,
+          posicao: r.posicao?.trim() || null,
+          lote: r.lote?.trim() || null,
+          nr_serie: r.nr_serie?.trim() || null,
+          validade: r.validade || null,
+          data_fabrico: r.data_fabrico || null,
+          data_movimento: r.data_movimento || new Date().toISOString(),
+          documento_ref: r.documento_ref?.trim() || null,
+          observacoes: r.observacoes?.trim() || null,
+          created_by: user.id,
+        };
+      });
+
+      const { error: insertErr } = await supabase.from('movimentos').insert(batch);
+      if (insertErr) {
+        console.error('Erro ao inserir lote em movimentos:', insertErr);
+        return {
+          success: false,
+          error: `Erro na gravação dos movimentos (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
+        };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    revalidatePath('/dashboard');
+    revalidatePath('/pedidos');
+    revalidatePath('/historico-pedidos');
+
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de movimentos';
+    return { success: false, error: msg };
+  }
+}
+
+// 8. AÇÃO: Limpar Registos da tabela movimentos (Acesso restrito a Admin)
+export async function limparMovimentosAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return {
+      success: false,
+      error: 'Acesso negado: Apenas administradores podem limpar a tabela de movimentos.',
+    };
+  }
+
+  try {
+    const { error: deleteErr } = await supabase
+      .from('movimentos')
+      .delete()
+      .gte('created_at', '1970-01-01T00:00:00Z');
+
+    if (deleteErr) {
+      console.error('Erro ao limpar movimentos:', deleteErr);
+      return { success: false, error: `Erro ao limpar movimentos: ${deleteErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    revalidatePath('/dashboard');
+    revalidatePath('/pedidos');
+    revalidatePath('/historico-pedidos');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar movimentos';
+    return { success: false, error: msg };
+  }
+}
+
 

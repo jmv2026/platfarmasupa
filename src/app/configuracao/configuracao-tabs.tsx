@@ -11,9 +11,11 @@ import {
   TipoArtigo,
   TipoArmazenamento,
   ImpStk,
+  Armazem,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
 } from '@/lib/supabase/types';
+import { MovimentoWithDetails } from './importacao-movimentos-tab';
 import {
   criarUtilizadorAction,
   criarClienteAction,
@@ -38,6 +40,8 @@ interface ConfiguracaoTabsProps {
   artigos: Artigo[];
   perfis: Perfil[];
   initialImpStk?: ImpStk[];
+  initialMovimentos?: MovimentoWithDetails[];
+  armazens?: Armazem[];
   serverEmailConfig?: ServerEmailConfig;
 }
 
@@ -47,6 +51,8 @@ export default function ConfiguracaoTabs({
   artigos,
   perfis,
   initialImpStk = [],
+  initialMovimentos = [],
+  armazens = [],
   serverEmailConfig,
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
@@ -343,7 +349,7 @@ export default function ConfiguracaoTabs({
           }`}
         >
           <span className="material-symbols-outlined text-base">sync_alt</span>
-          Movimentos ({initialImpStk.length})
+          Movimentos ({initialMovimentos.length})
         </button>
 
         <button
@@ -1074,11 +1080,15 @@ export default function ConfiguracaoTabs({
       )}
 
       {/* ========================================================================= */}
-      {/* ABA 4: MOVIMENTOS (IMPORTAÇÃO DE STOCKS) */}
+      {/* ABA 4: MOVIMENTOS (IMPORTAÇÃO E GESTÃO) */}
       {/* ========================================================================= */}
       {activeTab === 'movimentos' && (
         <ImportacaoMovimentosTab
           initialImpStk={initialImpStk}
+          initialMovimentos={initialMovimentos}
+          clients={clients}
+          artigos={artigos}
+          armazens={armazens}
           onRefresh={() => router.refresh()}
         />
       )}
