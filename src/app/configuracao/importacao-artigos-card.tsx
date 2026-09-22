@@ -10,6 +10,8 @@ import {
   ArtigoImportInput,
   parseTextArtigosFile,
   parseExcelArtigosFile,
+  generateArtigosSampleCSV,
+  generateArtigosSampleExcel,
 } from '@/lib/parse-artigos-file';
 import { importarArtigosAction } from './actions';
 
@@ -134,6 +136,41 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Download do Modelo Excel de Artigos
+  const handleDownloadExcelTemplate = async () => {
+    try {
+      const blob = await generateArtigosSampleExcel();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'modelo_catalogo_artigos_platfarma.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao gerar modelo';
+      setFeedback({ type: 'error', message: `Erro ao descarregar modelo Excel: ${msg}` });
+    }
+  };
+
+  // Download do Modelo CSV de Artigos
+  const handleDownloadCSVTemplate = () => {
+    try {
+      const csv = generateArtigosSampleCSV();
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'modelo_catalogo_artigos_platfarma.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao gerar modelo';
+      setFeedback({ type: 'error', message: `Erro ao descarregar modelo CSV: ${msg}` });
+    }
+  };
+
   // Estatísticas do ficheiro
   const stats = useMemo(() => {
     let comLote = 0;
@@ -181,16 +218,36 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowHelp(!showHelp)}
-          className="text-xs font-semibold text-secondary hover:text-secondary/80 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-        >
-          <span className="material-symbols-outlined text-sm">
-            {showHelp ? 'visibility_off' : 'help'}
-          </span>
-          {showHelp ? 'Ocultar Estrutura' : 'Ver Estrutura do Ficheiro'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadExcelTemplate}
+            className="px-3 py-1.5 bg-surface border border-outline-variant/40 hover:bg-surface-container text-on-surface text-xs font-semibold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            title="Descarregar folha de cálculo Excel modelo com colunas formatadas"
+          >
+            <span className="material-symbols-outlined text-sm text-emerald-600">table_chart</span>
+            Modelo Excel
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadCSVTemplate}
+            className="px-3 py-1.5 bg-surface border border-outline-variant/40 hover:bg-surface-container text-on-surface text-xs font-semibold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+            title="Descarregar ficheiro CSV modelo"
+          >
+            <span className="material-symbols-outlined text-sm text-secondary">description</span>
+            Modelo CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowHelp(!showHelp)}
+            className="text-xs font-semibold text-secondary hover:text-secondary/80 flex items-center gap-1 cursor-pointer ml-1"
+          >
+            <span className="material-symbols-outlined text-sm">
+              {showHelp ? 'visibility_off' : 'help'}
+            </span>
+            {showHelp ? 'Ocultar Estrutura' : 'Ver Estrutura'}
+          </button>
+        </div>
       </div>
 
       {/* Ajuda / Estrutura do Ficheiro */}

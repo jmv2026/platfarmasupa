@@ -14,6 +14,8 @@ export interface ArtigoImportInput {
 
 /**
  * Normaliza os nomes de cabeçalhos de ficheiros TXT/CSV/Excel para os campos de Artigo.
+ * Ordem estrita: descrições e nomes são avaliados ANTES de 'artigo' para não haver colisões
+ * (ex: 'Descrição do Artigo' deve ser 'descricao' e 'Código do Artigo' deve ser 'artigo_id').
  */
 export function normalizeArtigoHeaderKey(key: string): string {
   if (!key) return '';
@@ -25,60 +27,76 @@ export function normalizeArtigoHeaderKey(key: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '');
 
-  // 1. Tratamento Série (antes de 'serie')
+  // 1. Descrição / Designação / Nome do Artigo (AVALIAR PRIMEIRO para evitar que 'artigo' capture 'descrição do artigo')
+  if (
+    clean.includes('desc') ||
+    clean.includes('designacao') ||
+    clean.includes('nome') ||
+    clean.includes('produto') ||
+    clean.includes('denominacao') ||
+    clean.includes('titulo') ||
+    clean.includes('rotulo')
+  ) {
+    return 'descricao';
+  }
+
+  // 2. Tratamento Série (antes de 'serie')
   if (
     clean.includes('tratamentoserie') ||
-    clean.includes('tratamentoseries') ||
     clean.includes('tratserie') ||
-    clean.includes('tratseries') ||
     clean.includes('controloserie') ||
-    clean.includes('controloseries') ||
-    clean === 'serie' ||
+    clean.includes('controleserie') ||
+    clean.includes('serie') ||
     clean === 'series' ||
     clean === 'serial' ||
     clean === 'nrserie' ||
-    clean === 'numserie'
+    clean === 'numserie' ||
+    clean === 'sn'
   ) {
     return 'tratamento_serie';
   }
 
-  // 2. Tratamento Lote (antes de 'lote')
+  // 3. Tratamento Lote (antes de 'lote')
   if (
     clean.includes('tratamentolote') ||
-    clean.includes('tratamentolotes') ||
     clean.includes('tratlote') ||
-    clean.includes('tratlotes') ||
     clean.includes('contrololote') ||
-    clean.includes('contrololotes') ||
-    clean === 'lote' ||
+    clean.includes('controlelote') ||
+    clean.includes('lote') ||
     clean === 'lotes' ||
     clean === 'batch'
   ) {
     return 'tratamento_lote';
   }
 
-  // 3. Tipo de Artigo
+  // 4. Tipo de Artigo / Classificação Regulamentar
   if (
     clean.includes('tipoartigo') ||
     clean.includes('tipodeartigo') ||
     clean === 'tipoart' ||
-    clean === 'tipo'
+    clean === 'tipo' ||
+    clean === 'classificacao' ||
+    clean === 'categoria' ||
+    clean === 'familia' ||
+    clean === 'subfamilia'
   ) {
     return 'tipo_artigo';
   }
 
-  // 4. Tipo de Armazenamento / Conservação
+  // 5. Tipo de Armazenamento / Condição de Conservação Térmica
   if (
     clean.includes('tipoarmazenamento') ||
     clean.includes('armazenamento') ||
     clean.includes('conservacao') ||
     clean.includes('temperatura') ||
-    clean === 'armaz'
+    clean.includes('condicao') ||
+    clean === 'armaz' ||
+    clean === 'temp'
   ) {
     return 'tipo_armazenamento';
   }
 
-  // 5. PVP / Preço de Venda ao Público
+  // 6. PVP / Preço de Venda ao Público
   if (
     clean === 'pvp' ||
     clean.includes('pvp') ||
@@ -87,12 +105,24 @@ export function normalizeArtigoHeaderKey(key: string): string {
     clean === 'precopvp' ||
     clean === 'valorpvp' ||
     clean === 'pvpunitario' ||
-    clean === 'price'
+    clean === 'price' ||
+    clean === 'valor'
   ) {
     return 'pvp';
   }
 
-  // 6. Artigo ID / Código
+  // 7. Ativo / Estado
+  if (
+    clean === 'ativo' ||
+    clean === 'active' ||
+    clean === 'estado' ||
+    clean === 'status' ||
+    clean === 'habilitado'
+  ) {
+    return 'ativo';
+  }
+
+  // 8. Artigo ID / Código Único do Produto (avaliado por último)
   if (
     clean === 'artigo' ||
     clean === 'art' ||
@@ -100,48 +130,76 @@ export function normalizeArtigoHeaderKey(key: string): string {
     clean === 'artigo_id' ||
     clean === 'artigoid' ||
     clean === 'codartigo' ||
+    clean === 'codigoartigo' ||
+    clean === 'codart' ||
     clean === 'codigo' ||
     clean === 'cod' ||
     clean === 'sku' ||
-    clean.includes('artigo')
+    clean === 'ref' ||
+    clean === 'referencia' ||
+    clean === 'cnpv' ||
+    clean === 'ean' ||
+    clean.includes('artigo') ||
+    clean.includes('codigo')
   ) {
     return 'artigo_id';
-  }
-
-  // 7. Descrição / Designação Comercial
-  if (
-    clean.includes('desc') ||
-    clean.includes('designacao') ||
-    clean.includes('nome') ||
-    clean.includes('produto')
-  ) {
-    return 'descricao';
-  }
-
-  // 8. Ativo / Estado
-  if (
-    clean === 'ativo' ||
-    clean === 'active' ||
-    clean === 'estado' ||
-    clean === 'status'
-  ) {
-    return 'ativo';
   }
 
   return clean;
 }
 
 /**
- * Normaliza valores numéricos/decimais (ex: '12,50', '12.50', 12.5)
+ * Extrai texto limpo de uma célula do ExcelJS (suporta RichText, fórmulas, hyperlinks, números, etc.)
+ */
+export function extractExcelCellValue(val: unknown): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val.trim();
+  if (typeof val === 'number') return String(val);
+  if (typeof val === 'boolean') return val ? '1' : '0';
+  if (val instanceof Date) return val.toISOString();
+
+  if (typeof val === 'object') {
+    // RichText: { richText: [ { text: '...' } ] }
+    if ('richText' in val && Array.isArray((val as { richText: unknown[] }).richText)) {
+      return (val as { richText: { text?: string }[] }).richText
+        .map((t) => t.text || '')
+        .join('')
+        .trim();
+    }
+    // Formula result: { formula: '...', result: '...' }
+    if ('result' in val) {
+      const res = (val as { result: unknown }).result;
+      if (res === null || res === undefined) return '';
+      if (typeof res === 'object') return extractExcelCellValue(res);
+      return String(res).trim();
+    }
+    // Hyperlink: { text: '...', hyperlink: '...' }
+    if ('text' in val) {
+      return String((val as { text: unknown }).text || '').trim();
+    }
+    // Shared string
+    if ('sharedString' in val) {
+      return String((val as { sharedString: unknown }).sharedString || '').trim();
+    }
+  }
+
+  return String(val).trim();
+}
+
+/**
+ * Normaliza valores numéricos/decimais (ex: '12,50', '12.50', '12.50 €', 12.5)
  */
 export function parseArtigoNumeric(val: unknown, defaultValue = 0): number {
   if (val === undefined || val === null || val === '') return defaultValue;
   if (typeof val === 'number') return isNaN(val) ? defaultValue : val;
-  if (typeof val === 'object' && val !== null) {
-    if ('result' in val) return parseArtigoNumeric((val as { result: unknown }).result, defaultValue);
-    if ('text' in val) return parseArtigoNumeric((val as { text: unknown }).text, defaultValue);
-  }
-  const clean = String(val).trim().replace(/\s/g, '').replace(',', '.');
+
+  const rawStr = extractExcelCellValue(val);
+  const clean = rawStr
+    .replace(/\s/g, '')
+    .replace(/€/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+
   const num = parseFloat(clean);
   return isNaN(num) ? defaultValue : Math.round(num * 100) / 100;
 }
@@ -154,15 +212,28 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
   if (val === undefined || val === null || val === '') return defaultValue;
   if (typeof val === 'boolean') return val;
   if (typeof val === 'number') return val === 1;
-  if (typeof val === 'object' && val !== null) {
-    if ('result' in val) return parseArtigoBoolean((val as { result: unknown }).result, defaultValue);
-    if ('text' in val) return parseArtigoBoolean((val as { text: unknown }).text, defaultValue);
-  }
-  const clean = String(val).trim().toLowerCase();
-  if (clean === '1' || clean === 'true' || clean === 't' || clean === 'sim' || clean === 's' || clean === 'yes' || clean === 'y') {
+
+  const clean = extractExcelCellValue(val).toLowerCase();
+  if (
+    clean === '1' ||
+    clean === 'true' ||
+    clean === 't' ||
+    clean === 'sim' ||
+    clean === 's' ||
+    clean === 'yes' ||
+    clean === 'y'
+  ) {
     return true;
   }
-  if (clean === '0' || clean === 'false' || clean === 'f' || clean === 'nao' || clean === 'não' || clean === 'n' || clean === 'no') {
+  if (
+    clean === '0' ||
+    clean === 'false' ||
+    clean === 'f' ||
+    clean === 'nao' ||
+    clean === 'não' ||
+    clean === 'n' ||
+    clean === 'no'
+  ) {
     return false;
   }
   return defaultValue;
@@ -173,22 +244,42 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
  */
 export function normalizeTipoArtigo(val: unknown): TipoArtigo {
   if (!val) return 'MH';
-  const clean = String(val).trim().toUpperCase();
-  if (clean === 'MH' || clean === 'MED' || clean === 'M' || clean === 'HUMANO' || clean === 'MEDICAMENTO') {
+  const clean = extractExcelCellValue(val).toUpperCase();
+
+  if (
+    clean === 'MH' ||
+    clean.includes('HUMAN') ||
+    clean.includes('MEDICAMENTO') ||
+    clean === 'MED' ||
+    clean === 'M'
+  ) {
     return 'MH';
   }
-  if (clean === 'MV' || clean === 'VET' || clean === 'VETERINARIO') {
+  if (clean === 'MV' || clean.includes('VET')) {
     return 'MV';
   }
-  if (clean === 'DM' || clean === 'DISPOSITIVO') {
+  if (clean === 'DM' || clean.includes('DISP') || clean.includes('DISPOSITIVO')) {
     return 'DM';
   }
-  if (clean === 'DC' || clean === 'DERMO' || clean === 'COSMETICO' || clean === 'SA' || clean === 'SUPLEMENTO') {
+  if (
+    clean === 'DC' ||
+    clean.includes('DERMO') ||
+    clean.includes('COSM') ||
+    clean.includes('HIGIENE') ||
+    clean.includes('SUPL') ||
+    clean === 'SA'
+  ) {
     return 'DC';
   }
-  if (clean === 'SC' || clean === 'CONTROLADA' || clean === 'ESTUPEFACIENTE') {
+  if (
+    clean === 'SC' ||
+    clean.includes('CONTROL') ||
+    clean.includes('ESTUPEFACIENTE') ||
+    clean.includes('PSICO')
+  ) {
     return 'SC';
   }
+
   return 'MH';
 }
 
@@ -197,16 +288,24 @@ export function normalizeTipoArtigo(val: unknown): TipoArtigo {
  */
 export function normalizeTipoArmazenamento(val: unknown): TipoArmazenamento {
   if (!val) return 'TA';
-  const clean = String(val).trim().toUpperCase();
-  if (clean === 'TA' || clean === 'AMBIENTE' || clean === 'AMB') {
+  const clean = extractExcelCellValue(val).toUpperCase();
+
+  if (clean === 'TA' || clean.includes('AMB') || clean.includes('NORMAL')) {
     return 'TA';
   }
   if (clean === 'TC' || clean.includes('CONTROL') || clean.includes('15-25')) {
     return 'TC';
   }
-  if (clean === 'TF' || clean.includes('FRIO') || clean.includes('2-8') || clean.includes('REFRIG')) {
+  if (
+    clean === 'TF' ||
+    clean.includes('FRIO') ||
+    clean.includes('2-8') ||
+    clean.includes('REFRIG') ||
+    clean.includes('FRIGOR')
+  ) {
     return 'TF';
   }
+
   return 'TA';
 }
 
@@ -233,22 +332,45 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
     delimiter = ',';
   }
 
-  const rawHeaders = firstLine.split(delimiter).map((h) => h.replace(/^["']|["']$/g, '').trim());
+  const parseCsvLine = (line: string): string[] => {
+    const res: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delimiter && !inQuotes) {
+        res.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    res.push(current.trim());
+    return res;
+  };
+
+  const rawHeaders = parseCsvLine(firstLine).map((h) => h.replace(/^["']|["']$/g, '').trim());
   const headerKeys = rawHeaders.map((h) => normalizeArtigoHeaderKey(h));
 
   const hasStandardColumns = headerKeys.includes('artigo_id') && headerKeys.includes('descricao');
-
   const rows: ArtigoImportInput[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const rawLine = lines[i];
     if (!rawLine) continue;
 
-    // Se tiver delimitador ';' e houver semicolons extras na descrição
-    const parts = rawLine.split(delimiter).map((p) => p.replace(/^["']|["']$/g, '').trim());
+    const parts = parseCsvLine(rawLine).map((p) => p.replace(/^["']|["']$/g, '').trim());
 
     if (hasStandardColumns && rawHeaders.length === 6 && parts.length > 6) {
-      // Formato clássico: artigo_id;Descricao;tratamento_serie;tratamento_lote;tipo_artigo;tipo_armazenamento
+      // Formato clássico com ponto-e-vírgula na descrição
       const artigo_id = parts[0];
       const tipo_armazenamento = parts[parts.length - 1];
       const tipo_artigo = parts[parts.length - 2];
@@ -296,7 +418,7 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
     });
   }
 
-  // Deduplicar por artigo_id (mantém a última ocorrência no ficheiro)
+  // Deduplicar por artigo_id
   const uniqueMap = new Map<string, ArtigoImportInput>();
   for (const r of rows) {
     if (r.artigo_id) {
@@ -308,68 +430,76 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
 }
 
 /**
- * Parser para ficheiros Excel (.xlsx/.xls) de catálogo de artigos via ExcelJS
+ * Parser para ficheiros Excel (.xlsx/.xls) de catálogo de artigos via ExcelJS.
+ * Suporta múltiplas folhas, deteção inteligente da linha de cabeçalho e extração de RichText/números.
  */
 export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<ArtigoImportInput[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(arrayBuffer);
 
-  const worksheet = workbook.worksheets[0];
+  // Encontrar a primeira folha que tenha linhas
+  const worksheet =
+    workbook.worksheets.find((ws) => ws.rowCount > 0) || workbook.worksheets[0];
+
   if (!worksheet) return [];
 
-  const rawHeaders: string[] = [];
-  let headerRowIndex = 1;
+  let headerRowIndex = -1;
+  let headers: string[] = [];
 
+  // 1. Procurar a linha de cabeçalhos mais provável nas primeiras 15 linhas
   worksheet.eachRow((row, rowNumber) => {
-    if (rawHeaders.length > 0) return;
-    const values = Array.isArray(row.values) ? row.values.slice(1) : [];
-    const strValues = values.map((v) => (v ? String(v).trim() : ''));
-    const matches = strValues.some(
-      (v) =>
-        normalizeArtigoHeaderKey(v) === 'artigo_id' ||
-        normalizeArtigoHeaderKey(v) === 'descricao' ||
-        normalizeArtigoHeaderKey(v) === 'tipo_artigo'
-    );
-    if (matches) {
+    if (headerRowIndex !== -1 || rowNumber > 15) return;
+
+    const cellCount = Math.max(row.cellCount || 0, 15);
+    const rowHeaders: string[] = [];
+
+    for (let c = 1; c <= cellCount; c++) {
+      const cellVal = extractExcelCellValue(row.getCell(c).value);
+      rowHeaders.push(cellVal);
+    }
+
+    const mappedKeys = rowHeaders.map((h) => normalizeArtigoHeaderKey(h));
+    const hasArtigo = mappedKeys.includes('artigo_id');
+    const hasDesc = mappedKeys.includes('descricao');
+
+    // Se a linha tiver pelo menos 'artigo_id' e 'descricao', é a linha de cabeçalhos
+    if (hasArtigo && hasDesc) {
       headerRowIndex = rowNumber;
-      rawHeaders.push(...strValues);
+      headers = mappedKeys;
     }
   });
 
-  if (rawHeaders.length === 0) {
+  // Se não encontrou linha com 'artigo_id' e 'descricao', tentar a linha 1 como fallback
+  if (headerRowIndex === -1) {
     const firstRow = worksheet.getRow(1);
-    const values = Array.isArray(firstRow.values) ? firstRow.values.slice(1) : [];
-    rawHeaders.push(...values.map((v) => (v ? String(v).trim() : '')));
+    const cellCount = Math.max(firstRow.cellCount || 0, 10);
+    const rowHeaders: string[] = [];
+
+    for (let c = 1; c <= cellCount; c++) {
+      rowHeaders.push(extractExcelCellValue(firstRow.getCell(c).value));
+    }
+
+    headers = rowHeaders.map((h) => normalizeArtigoHeaderKey(h));
+    headerRowIndex = 1;
+
+    // Se nem assim tiver artigo_id e descricao, assume mapeamento padrão por posição (Col 1: Artigo, Col 2: Descrição)
+    if (!headers.includes('artigo_id')) headers[0] = 'artigo_id';
+    if (!headers.includes('descricao')) headers[1] = 'descricao';
   }
 
-  const headerKeys = rawHeaders.map((h) => normalizeArtigoHeaderKey(h));
   const rows: ArtigoImportInput[] = [];
 
+  // 2. Extrair os dados a partir da linha seguinte aos cabeçalhos
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber <= headerRowIndex) return;
 
-    const values = Array.isArray(row.values) ? row.values.slice(1) : [];
-    const rowObj: Record<string, unknown> = {};
+    const rowObj: Record<string, string> = {};
 
-    for (let c = 0; c < headerKeys.length; c++) {
-      const key = headerKeys[c];
-      if (key && c < values.length) {
-        const rawCell = values[c];
-        let cellStr = '';
-        if (rawCell !== null && rawCell !== undefined) {
-          if (typeof rawCell === 'object') {
-            if ('text' in rawCell) {
-              cellStr = String((rawCell as { text: unknown }).text ?? '');
-            } else if ('result' in rawCell) {
-              cellStr = String((rawCell as { result: unknown }).result ?? '');
-            } else {
-              cellStr = String(rawCell);
-            }
-          } else {
-            cellStr = String(rawCell).trim();
-          }
-        }
-        rowObj[key] = cellStr;
+    for (let c = 0; c < headers.length; c++) {
+      const key = headers[c];
+      if (key) {
+        const cellVal = extractExcelCellValue(row.getCell(c + 1).value);
+        rowObj[key] = cellVal;
       }
     }
 
@@ -391,7 +521,7 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
     });
   });
 
-  // Deduplicar por artigo_id
+  // 3. Deduplicar por artigo_id (mantém a última ocorrência)
   const uniqueMap = new Map<string, ArtigoImportInput>();
   for (const r of rows) {
     if (r.artigo_id) {
@@ -400,4 +530,111 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
   }
 
   return Array.from(uniqueMap.values());
+}
+
+/**
+ * Gera um ficheiro CSV de exemplo/modelo para catálogo de artigos.
+ */
+export function generateArtigosSampleCSV(): string {
+  const headers = [
+    'artigo_id',
+    'Descricao',
+    'tratamento_serie',
+    'tratamento_lote',
+    'tipo_artigo',
+    'tipo_armazenamento',
+    'pvp',
+    'ativo',
+  ];
+
+  const sampleRows = [
+    ['024273070', 'LUVION 200MG + 6F 2ML', '0', '1', 'MH', 'TA', '12.50', '1'],
+    ['00 1275627', 'SELOKEN 1MG/ML SOL INJ', '0', '1', 'MH', 'TC', '8.90', '1'],
+    ['023616055', 'VACINA VETERINÁRIA 2-8 ºC', '1', '1', 'MV', 'TF', '34.20', '1'],
+    ['000155152', 'MULTICATH 16 CM (DISPOSITIVO)', '0', '1', 'DM', 'TA', '4.50', '1'],
+  ];
+
+  const lines = [
+    headers.join(';'),
+    ...sampleRows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(';')),
+  ];
+
+  return lines.join('\n');
+}
+
+/**
+ * Gera um ficheiro Excel (.xlsx) de exemplo/modelo para catálogo de artigos.
+ */
+export async function generateArtigosSampleExcel(): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Catálogo de Artigos');
+
+  worksheet.columns = [
+    { header: 'Código do Artigo', key: 'artigo_id', width: 18 },
+    { header: 'Descrição Comercial', key: 'descricao', width: 35 },
+    { header: 'Tratamento Lote', key: 'tratamento_lote', width: 16 },
+    { header: 'Tratamento Série', key: 'tratamento_serie', width: 16 },
+    { header: 'Tipo Artigo', key: 'tipo_artigo', width: 22 },
+    { header: 'Condição Conservação', key: 'tipo_armazenamento', width: 22 },
+    { header: 'PVP (€)', key: 'pvp', width: 14 },
+    { header: 'Ativo', key: 'ativo', width: 10 },
+  ];
+
+  // Estilo de cabeçalho
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF0F766E' }, // Teal PlatFarma
+  };
+
+  worksheet.addRow({
+    artigo_id: '024273070',
+    descricao: 'LUVION 200MG + 6F 2ML',
+    tratamento_lote: 'Sim',
+    tratamento_serie: 'Não',
+    tipo_artigo: 'Medicamento Uso Humano (MH)',
+    tipo_armazenamento: 'Temperatura Ambiente (TA)',
+    pvp: 12.50,
+    ativo: 'Sim',
+  });
+
+  worksheet.addRow({
+    artigo_id: '00 1275627',
+    descricao: 'SELOKEN 1MG/ML SOL INJ 5ML',
+    tratamento_lote: 'Sim',
+    tratamento_serie: 'Não',
+    tipo_artigo: 'Medicamento Uso Humano (MH)',
+    tipo_armazenamento: 'Temperatura Controlada (TC 15-25ºC)',
+    pvp: 8.90,
+    ativo: 'Sim',
+  });
+
+  worksheet.addRow({
+    artigo_id: '023616055',
+    descricao: 'VACINA VETERINÁRIA FRASCO 10ML',
+    tratamento_lote: 'Sim',
+    tratamento_serie: 'Sim',
+    tipo_artigo: 'Medicamento Veterinário (MV)',
+    tipo_armazenamento: 'Frio (TF 2-8ºC)',
+    pvp: 34.20,
+    ativo: 'Sim',
+  });
+
+  worksheet.addRow({
+    artigo_id: '000155152',
+    descricao: 'MULTICATH 16 CM CATETER',
+    tratamento_lote: 'Sim',
+    tratamento_serie: 'Não',
+    tipo_artigo: 'Dispositivo Médico (DM)',
+    tipo_armazenamento: 'Temperatura Ambiente (TA)',
+    pvp: 4.50,
+    ativo: 'Sim',
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 }
