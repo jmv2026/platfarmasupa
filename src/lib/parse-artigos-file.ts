@@ -8,6 +8,7 @@ export interface ArtigoImportInput {
   tratamento_lote?: boolean;
   tipo_artigo?: TipoArtigo;
   tipo_armazenamento?: TipoArmazenamento;
+  pvp?: number;
   ativo?: boolean;
 }
 
@@ -77,7 +78,21 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'tipo_armazenamento';
   }
 
-  // 5. Artigo ID / Código
+  // 5. PVP / Preço de Venda ao Público
+  if (
+    clean === 'pvp' ||
+    clean.includes('pvp') ||
+    clean === 'preco' ||
+    clean === 'precovenda' ||
+    clean === 'precopvp' ||
+    clean === 'valorpvp' ||
+    clean === 'pvpunitario' ||
+    clean === 'price'
+  ) {
+    return 'pvp';
+  }
+
+  // 6. Artigo ID / Código
   if (
     clean === 'artigo' ||
     clean === 'art' ||
@@ -93,7 +108,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'artigo_id';
   }
 
-  // 6. Descrição / Designação Comercial
+  // 7. Descrição / Designação Comercial
   if (
     clean.includes('desc') ||
     clean.includes('designacao') ||
@@ -103,7 +118,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'descricao';
   }
 
-  // 7. Ativo / Estado
+  // 8. Ativo / Estado
   if (
     clean === 'ativo' ||
     clean === 'active' ||
@@ -114,6 +129,21 @@ export function normalizeArtigoHeaderKey(key: string): string {
   }
 
   return clean;
+}
+
+/**
+ * Normaliza valores numéricos/decimais (ex: '12,50', '12.50', 12.5)
+ */
+export function parseArtigoNumeric(val: unknown, defaultValue = 0): number {
+  if (val === undefined || val === null || val === '') return defaultValue;
+  if (typeof val === 'number') return isNaN(val) ? defaultValue : val;
+  if (typeof val === 'object' && val !== null) {
+    if ('result' in val) return parseArtigoNumeric((val as { result: unknown }).result, defaultValue);
+    if ('text' in val) return parseArtigoNumeric((val as { text: unknown }).text, defaultValue);
+  }
+  const clean = String(val).trim().replace(/\s/g, '').replace(',', '.');
+  const num = parseFloat(clean);
+  return isNaN(num) ? defaultValue : Math.round(num * 100) / 100;
 }
 
 /**
@@ -261,6 +291,7 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
+      pvp: parseArtigoNumeric(rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
     });
   }
@@ -355,6 +386,7 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
+      pvp: parseArtigoNumeric(rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
     });
   });

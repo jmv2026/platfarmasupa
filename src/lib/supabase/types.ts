@@ -99,6 +99,7 @@ export interface Artigo {
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote: boolean;
   tratamento_serie: boolean;
+  pvp?: number | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;

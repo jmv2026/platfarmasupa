@@ -199,6 +199,7 @@ export async function criarArtigoAction(input: {
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote?: boolean;
   tratamento_serie?: boolean;
+  pvp?: number;
   ativo?: boolean;
 }) {
   const supabase = await createClient();
@@ -237,6 +238,7 @@ export async function criarArtigoAction(input: {
         tipo_armazenamento: input.tipo_armazenamento,
         tratamento_lote: input.tratamento_lote !== undefined ? input.tratamento_lote : true,
         tratamento_serie: input.tratamento_serie !== undefined ? input.tratamento_serie : false,
+        pvp: input.pvp !== undefined && input.pvp !== null ? Number(input.pvp) : 0.00,
         ativo: input.ativo !== undefined ? input.ativo : true,
       })
       .select()
@@ -370,6 +372,7 @@ export async function importarArtigosAction(rows: ArtigoImportInput[]) {
         tipo_armazenamento: r.tipo_armazenamento || 'TA',
         tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
         tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),
+        pvp: r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00,
         ativo: parseArtigoBoolean(r.ativo, true),
       }));
 

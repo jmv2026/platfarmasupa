@@ -240,6 +240,11 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                   <td className="py-2 px-2.5">Condição térmica de conservação (TA, TC, TF)</td>
                   <td className="py-2 px-2.5 font-mono text-on-surface-variant">TA (Ambiente), TC (15-25ºC), TF (2-8ºC)</td>
                 </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">pvp</td>
+                  <td className="py-2 px-2.5">Preço de Venda ao Público / PVP (Opcional)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">12.50, 4.99, 0.00</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -390,6 +395,7 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                   <th className="py-2.5 px-3">Descrição Comercial</th>
                   <th className="py-2.5 px-3">Tipo Artigo</th>
                   <th className="py-2.5 px-3">Conservação</th>
+                  <th className="py-2.5 px-3 text-right">PVP (€)</th>
                   <th className="py-2.5 px-3 text-center">Lote</th>
                   <th className="py-2.5 px-3 text-center">Série</th>
                   <th className="py-2.5 px-3 text-right">Estado</th>
@@ -413,7 +419,7 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                           row.tipo_armazenamento === 'TF'
-                            ? 'bg-cyan-100 text-cyan-800'
+                             ? 'bg-cyan-100 text-cyan-800'
                             : row.tipo_armazenamento === 'TC'
                             ? 'bg-amber-100 text-amber-800'
                             : 'bg-slate-100 text-slate-800'
@@ -424,6 +430,11 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                         </span>
                         {TIPO_ARMAZENAMENTO_LABELS[row.tipo_armazenamento || 'TA'] || row.tipo_armazenamento}
                       </span>
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-mono font-semibold text-on-surface">
+                      {typeof row.pvp === 'number' && row.pvp > 0
+                        ? `${row.pvp.toFixed(2)} €`
+                        : <span className="text-on-surface-variant/50">-</span>}
                     </td>
                     <td className="py-2.5 px-3 text-center">
                       <span className={`material-symbols-outlined text-sm ${row.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
