@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Client, UserProfile } from '@/lib/supabase/types';
+import GraficoPedidosMensal from './grafico-pedidos-mensal';
 
 export interface DashboardStockItem {
   artigo_id: string;
@@ -342,6 +343,12 @@ export default function DashboardView({
           </p>
         </div>
       </div>
+
+      {/* Gráfico de Evolução Mensal do Nº de Pedidos (Tons Verde Pastel & Lima) */}
+      <GraficoPedidosMensal
+        pedidos={filteredPedidos}
+        clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+      />
     </main>
   );
 }
