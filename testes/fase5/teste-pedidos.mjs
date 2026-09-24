@@ -210,7 +210,7 @@ async function runTests() {
           tipo_movimento: 'ss',
           quantidade: testQtd,
           tipo_armazem: '01',
-          armazem_loc: `${fefoTarget.cliente_sigla}-01`,
+          armazem_loc: `${fefoTarget.cliente_sigla}01`,
           posicao: 'A-01-01',
           lote: fefoTarget.lote,
           validade: fefoTarget.validade,

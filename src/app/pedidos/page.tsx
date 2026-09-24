@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import SignOutButton from '../dashboard/sign-out-button';
 import NovoPedidoForm from './novo-pedido-form';
-import { Client, StockPedido, UserProfile } from '@/lib/supabase/types';
+import { Client, StockPedido, UserProfile, Destino } from '@/lib/supabase/types';
 
 export default async function PedidosPage() {
   const supabase = await createClient();
@@ -26,19 +26,23 @@ export default async function PedidosPage() {
 
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let destinosQuery = supabase.from('destinos').select('*').eq('ativo', true).order('codigo');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
+    destinosQuery = destinosQuery.eq('client_id', userClientId);
   }
 
   // Buscar dados em paralelo
   const [
     { data: clients },
     { data: stockPedidos },
+    { data: destinos },
   ] = await Promise.all([
     clientsQuery,
     stockPedidosQuery,
+    destinosQuery,
   ]);
 
   return (
@@ -79,8 +83,8 @@ export default async function PedidosPage() {
                 href="/pedidos"
                 className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-sm">local_shipping</span>
-                Pedidos & Expedição
+                <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
+                Criar Pedido
               </Link>
               <Link
                 href="/historico-pedidos"
@@ -122,6 +126,7 @@ export default async function PedidosPage() {
         <NovoPedidoForm
           clients={(clients as Client[]) || []}
           stockPedidos={(stockPedidos as StockPedido[]) || []}
+          destinos={(destinos as Destino[]) || []}
           currentUserProfile={(profile as UserProfile) || null}
         />
       </main>

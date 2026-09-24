@@ -99,7 +99,7 @@ export interface Artigo {
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote: boolean;
   tratamento_serie: boolean;
-  pvp?: number | null;
+  pva?: number | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;
@@ -201,11 +201,44 @@ export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {
   cancelado: 'Cancelado',
 };
 
+export interface Destino {
+  id: string;
+  client_id: string;
+  codigo: string;
+  nome: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais: string;
+  nif?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  observacoes?: string | null;
+  ativo: boolean;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NovoDestinoInput {
+  client_id: string;
+  nome: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais?: string;
+  nif?: string;
+  telefone?: string;
+  email?: string;
+  observacoes?: string;
+}
+
 export interface Pedido {
   id: string;
   nr_pedido: string;
   ref_documento: string | null;
   client_id: string;
+  destino_id?: string | null;
   nome_destinatario: string;
   morada: string;
   codigo_postal: string;
@@ -235,6 +268,7 @@ export interface PedidoLinha {
 
 export interface PedidoComLinhas extends Pedido {
   clients?: Client;
+  destinos?: Destino;
   pedido_linhas?: PedidoLinha[];
 }
 
@@ -250,6 +284,8 @@ export interface NovaLinhaPedidoInput {
 
 export interface NovoPedidoInput {
   client_id: string;
+  destino_id?: string | null;
+  guardar_novo_destino?: boolean;
   ref_documento?: string;
   nome_destinatario: string;
   morada: string;

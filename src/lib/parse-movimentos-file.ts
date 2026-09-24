@@ -279,25 +279,34 @@ export function parseMovimentoQuantidade(val: unknown): number {
 }
 
 /**
- * Normaliza datas provenientes de ficheiros (Excel serial, ISO, DD/MM/YYYY, etc.).
+ * Normaliza datas provenientes de ficheiros (dia-mês-ano: DD-MM-YYYY, DD/MM/YYYY, Excel serial, ISO, etc.).
+ * Retorna no formato ISO 'YYYY-MM-DD' para gravação correta no Postgres.
  */
 export function parseMovimentoDate(val: unknown): string | null {
-  if (!val) return null;
+  if (val === null || val === undefined) return null;
 
+  // 1. Se for uma instância Date (ex: ExcelJS)
   if (val instanceof Date) {
     if (!isNaN(val.getTime())) {
-      return val.toISOString().split('T')[0];
+      const year = val.getFullYear();
+      const month = String(val.getMonth() + 1).padStart(2, '0');
+      const day = String(val.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
+    return null;
   }
 
+  // 2. Se for número serial do Excel (dias desde 1899-12-30)
   if (typeof val === 'number') {
-    // Número serial do Excel (dias desde 1899-12-30)
     try {
       const utcDays = Math.floor(val - 25569);
       const utcValue = utcDays * 86400;
       const dateInfo = new Date(utcValue * 1000);
       if (!isNaN(dateInfo.getTime())) {
-        return dateInfo.toISOString().split('T')[0];
+        const year = dateInfo.getUTCFullYear();
+        const month = String(dateInfo.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(dateInfo.getUTCDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
     } catch {
       // fallback
@@ -305,33 +314,92 @@ export function parseMovimentoDate(val: unknown): string | null {
   }
 
   const str = String(val).trim();
-  if (!str) return null;
+  if (!str || str === 'NULL' || str === 'N/A' || str === '-') return null;
 
-  // Formato ISO: YYYY-MM-DD
-  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-    return str.split('T')[0];
+  // 3. Formato Prioritário Português/Europeu: DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY (com ou sem hora)
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})(?:[\sT].*)?$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    let year = dmyMatch[3];
+    if (year.length === 2) {
+      year = parseInt(year, 10) > 50 ? `19${year}` : `20${year}`;
+    }
+    const numDay = parseInt(day, 10);
+    const numMonth = parseInt(month, 10);
+    if (numDay >= 1 && numDay <= 31 && numMonth >= 1 && numMonth <= 12) {
+      return `${year}-${month}-${day}`;
+    }
   }
 
-  // Formato Português/Europeu: DD/MM/YYYY ou DD-MM-YYYY
-  const ptMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (ptMatch) {
-    const day = ptMatch[1].padStart(2, '0');
-    const month = ptMatch[2].padStart(2, '0');
-    const year = ptMatch[3];
-    return `${year}-${month}-${day}`;
+  // 4. Formato ISO: YYYY-MM-DD ou YYYY/MM/DD (com ou sem hora)
+  const isoMatch = str.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[\sT].*)?$/);
+  if (isoMatch) {
+    const year = isoMatch[1];
+    const month = isoMatch[2].padStart(2, '0');
+    const day = isoMatch[3].padStart(2, '0');
+    const numDay = parseInt(day, 10);
+    const numMonth = parseInt(month, 10);
+    if (numDay >= 1 && numDay <= 31 && numMonth >= 1 && numMonth <= 12) {
+      return `${year}-${month}-${day}`;
+    }
   }
 
-  // Tentativa com Date.parse
+  // 5. Tentativa com Date.parse
   try {
     const parsed = new Date(str);
     if (!isNaN(parsed.getTime())) {
-      return parsed.toISOString().split('T')[0];
+      const year = parsed.getFullYear();
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const day = String(parsed.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     }
   } catch {
     // ignore
   }
 
   return null;
+}
+
+/**
+ * Normaliza a posição de armazém para o formato estrito de dois dígitos, uma letra e dois dígitos (ex: '01A01').
+ * Não existem espaços ou caracteres especiais entre eles.
+ */
+export function normalizeMovimentoPosicao(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  const str = String(val).trim().toUpperCase();
+  if (!str || str === 'NULL' || str === 'N/A' || str === '-') return null;
+
+  // 1. Já no formato correto de 2 dígitos + 1 letra + 2 dígitos (ex: 01A01, 02B03)
+  if (/^\d{2}[A-Z]\d{2}$/.test(str)) {
+    return str;
+  }
+
+  // 2. Formato Dígitos - Letra - Dígitos (ex: 01-A-01, 01 A 01, 1-A-1)
+  const matchDLD = str.match(/^(\d{1,2})[-_.\s]*([A-Z])[-_.\s]*(\d{1,2})$/);
+  if (matchDLD) {
+    const d1 = matchDLD[1].padStart(2, '0');
+    const letra = matchDLD[2];
+    const d2 = matchDLD[3].padStart(2, '0');
+    return `${d1}${letra}${d2}`;
+  }
+
+  // 3. Formato Letra - Dígitos - Dígitos (ex: A-01-01, A 01 01, A0101)
+  const matchLDD = str.match(/^([A-Z])[-_.\s]*(\d{1,2})[-_.\s]*(\d{1,2})$/);
+  if (matchLDD) {
+    const letra = matchLDD[1];
+    const d1 = matchLDD[2].padStart(2, '0');
+    const d2 = matchLDD[3].padStart(2, '0');
+    return `${d1}${letra}${d2}`;
+  }
+
+  // 4. Limpeza de caracteres não alfanuméricos
+  const clean = str.replace(/[^A-Z0-9]/g, '');
+  if (/^\d{2}[A-Z]\d{2}$/.test(clean)) {
+    return clean;
+  }
+
+  return clean || null;
 }
 
 /**
@@ -390,10 +458,10 @@ export async function parseExcelMovimentosFile(
       const tipoArmazem = normalizeTipoArmazem(rowObj['tipo_armazem']);
       const sigla = rowObj['sigla'] ? String(rowObj['sigla']).trim().toUpperCase() : undefined;
       const armazemLoc = rowObj['armazem_loc']
-        ? String(rowObj['armazem_loc']).trim()
+        ? String(rowObj['armazem_loc']).trim().replace(/[-_ ]/g, '')
         : sigla
-        ? `${sigla}-${tipoArmazem}`
-        : `ARM-${tipoArmazem}`;
+        ? `${sigla}${tipoArmazem}`
+        : `ARM${tipoArmazem}`;
 
       rows.push({
         artigo_id: artigoId,
@@ -402,7 +470,7 @@ export async function parseExcelMovimentosFile(
         quantidade: quantidade,
         tipo_armazem: tipoArmazem,
         armazem_loc: armazemLoc,
-        posicao: rowObj['posicao'] ? String(rowObj['posicao']).trim() : null,
+        posicao: normalizeMovimentoPosicao(rowObj['posicao']),
         lote: rowObj['lote'] ? String(rowObj['lote']).trim() : null,
         nr_serie: rowObj['nr_serie'] ? String(rowObj['nr_serie']).trim() : null,
         validade: parseMovimentoDate(rowObj['validade']),
@@ -498,10 +566,10 @@ export function parseTextMovimentosFile(
       const tipoArmazem = normalizeTipoArmazem(rowObj['tipo_armazem']);
       const sigla = rowObj['sigla'] ? rowObj['sigla'].trim().toUpperCase() : undefined;
       const armazemLoc = rowObj['armazem_loc']
-        ? rowObj['armazem_loc'].trim()
+        ? rowObj['armazem_loc'].trim().replace(/[-_ ]/g, '')
         : sigla
-        ? `${sigla}-${tipoArmazem}`
-        : `ARM-${tipoArmazem}`;
+        ? `${sigla}${tipoArmazem}`
+        : `ARM${tipoArmazem}`;
 
       rows.push({
         artigo_id: artigoId,
@@ -510,7 +578,7 @@ export function parseTextMovimentosFile(
         quantidade: quantidade,
         tipo_armazem: tipoArmazem,
         armazem_loc: armazemLoc,
-        posicao: rowObj['posicao'] ? rowObj['posicao'].trim() : null,
+        posicao: normalizeMovimentoPosicao(rowObj['posicao']),
         lote: rowObj['lote'] ? rowObj['lote'].trim() : null,
         nr_serie: rowObj['nr_serie'] ? rowObj['nr_serie'].trim() : null,
         validade: parseMovimentoDate(rowObj['validade']),
@@ -553,13 +621,13 @@ export function generateMovimentosSampleCSV(): string {
       'ES',
       '100',
       '01',
-      'PFIZ-01',
-      'A-01-01',
+      'PFIZ01',
+      '01A01',
       'LOT-2026-01',
       '',
-      '2028-12-31',
-      '2026-01-15',
-      '2026-09-20',
+      '31-12-2028',
+      '15-01-2026',
+      '20-09-2026',
       'REC-2026-001',
       'Entrada inicial por rececao de fabrica',
     ],
@@ -569,13 +637,13 @@ export function generateMovimentosSampleCSV(): string {
       'SS',
       '15',
       '01',
-      'PFIZ-01',
-      'A-01-01',
+      'PFIZ01',
+      '01A01',
       'LOT-2026-01',
       '',
-      '2028-12-31',
-      '2026-01-15',
-      '2026-09-21',
+      '31-12-2028',
+      '15-01-2026',
+      '21-09-2026',
       'EXP-2026-001',
       'Saida para expedicao de encomenda',
     ],
@@ -585,13 +653,13 @@ export function generateMovimentosSampleCSV(): string {
       'ST',
       '10',
       '01',
-      'PFIZ-01',
-      'A-01-01',
+      'PFIZ01',
+      '01A01',
       'LOT-2026-01',
       '',
-      '2028-12-31',
-      '2026-01-15',
-      '2026-09-22',
+      '31-12-2028',
+      '15-01-2026',
+      '22-09-2026',
       'TRF-2026-001',
       'Saida por transferencia para quarentena',
     ],
@@ -601,13 +669,13 @@ export function generateMovimentosSampleCSV(): string {
       'ET',
       '10',
       '05',
-      'PFIZ-05',
-      'Q-01-01',
+      'PFIZ05',
+      '01Q01',
       'LOT-2026-01',
       '',
-      '2028-12-31',
-      '2026-01-15',
-      '2026-09-22',
+      '31-12-2028',
+      '15-01-2026',
+      '22-09-2026',
       'TRF-2026-001',
       'Entrada por transferencia em quarentena',
     ],

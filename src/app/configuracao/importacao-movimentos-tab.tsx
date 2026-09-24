@@ -8,6 +8,7 @@ import {
   parseExcelMovimentosFile,
   parseTextMovimentosFile,
   generateMovimentosSampleCSV,
+  normalizeMovimentoPosicao,
 } from '@/lib/parse-movimentos-file';
 import { parseTextStockFile, parseExcelStockFile } from '@/lib/parse-stock-file';
 import {
@@ -34,14 +35,24 @@ interface ImportacaoMovimentosTabProps {
 
 function formatDateDisplay(d: string | null | undefined): string {
   if (!d) return '-';
+  const matchIso = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (matchIso) {
+    return `${matchIso[3]}-${matchIso[2]}-${matchIso[1]}`;
+  }
+  const matchDmy = String(d).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (matchDmy) {
+    const dStr = matchDmy[1].padStart(2, '0');
+    const mStr = matchDmy[2].padStart(2, '0');
+    const yStr = matchDmy[3].length === 2 ? '20' + matchDmy[3] : matchDmy[3];
+    return `${dStr}-${mStr}-${yStr}`;
+  }
   try {
     const parsed = new Date(d);
     if (!isNaN(parsed.getTime())) {
-      return parsed.toLocaleDateString('pt-PT', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
+      const day = String(parsed.getDate()).padStart(2, '0');
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const year = parsed.getFullYear();
+      return `${day}-${month}-${year}`;
     }
   } catch {
     // fallback
@@ -210,8 +221,8 @@ export default function ImportacaoMovimentosTab({
           tipo_movimento: r.tipo_movimento,
           quantidade: Number(r.quantidade),
           tipo_armazem: (r.tipo_armazem || '01') as any,
-          armazem_loc: r.armazem_loc || 'PFIZ-01',
-          posicao: r.posicao || null,
+          armazem_loc: r.armazem_loc || `${clientFound?.sigla || 'PFIZ'}01`,
+          posicao: normalizeMovimentoPosicao(r.posicao),
           lote: r.lote || null,
           nr_serie: r.nr_serie || null,
           validade: r.validade || null,
@@ -318,13 +329,13 @@ export default function ImportacaoMovimentosTab({
       tipo_movimento: 'ES',
       quantidade: 100,
       tipo_armazem: '01',
-      armazem_loc: 'PFIZ-01',
-      posicao: 'A-01-01',
+      armazem_loc: 'PFIZ01',
+      posicao: '01A01',
       lote: 'LOT-2026-01',
       nr_serie: '',
-      validade: '2028-12-31',
-      data_fabrico: '2026-01-15',
-      data_movimento: '2026-09-20',
+      validade: '31-12-2028',
+      data_fabrico: '15-01-2026',
+      data_movimento: '20-09-2026',
       documento_ref: 'REC-2026-001',
       observacoes: 'Entrada inicial de lote por recepcao de fabrica',
     });
@@ -335,13 +346,13 @@ export default function ImportacaoMovimentosTab({
       tipo_movimento: 'SS',
       quantidade: 15,
       tipo_armazem: '01',
-      armazem_loc: 'PFIZ-01',
-      posicao: 'A-01-01',
+      armazem_loc: 'PFIZ01',
+      posicao: '01A01',
       lote: 'LOT-2026-01',
       nr_serie: '',
-      validade: '2028-12-31',
-      data_fabrico: '2026-01-15',
-      data_movimento: '2026-09-21',
+      validade: '31-12-2028',
+      data_fabrico: '15-01-2026',
+      data_movimento: '21-09-2026',
       documento_ref: 'EXP-2026-001',
       observacoes: 'Saida para expedicao de encomenda hospitalar',
     });
@@ -352,13 +363,13 @@ export default function ImportacaoMovimentosTab({
       tipo_movimento: 'ST',
       quantidade: 10,
       tipo_armazem: '01',
-      armazem_loc: 'PFIZ-01',
-      posicao: 'A-01-01',
+      armazem_loc: 'PFIZ01',
+      posicao: '01A01',
       lote: 'LOT-2026-01',
       nr_serie: '',
-      validade: '2028-12-31',
-      data_fabrico: '2026-01-15',
-      data_movimento: '2026-09-22',
+      validade: '31-12-2028',
+      data_fabrico: '15-01-2026',
+      data_movimento: '22-09-2026',
       documento_ref: 'TRF-2026-001',
       observacoes: 'Saida por transferencia interna para quarentena',
     });
@@ -369,13 +380,13 @@ export default function ImportacaoMovimentosTab({
       tipo_movimento: 'ET',
       quantidade: 10,
       tipo_armazem: '05',
-      armazem_loc: 'PFIZ-05',
-      posicao: 'Q-01-01',
+      armazem_loc: 'PFIZ05',
+      posicao: '01Q01',
       lote: 'LOT-2026-01',
       nr_serie: '',
-      validade: '2028-12-31',
-      data_fabrico: '2026-01-15',
-      data_movimento: '2026-09-22',
+      validade: '31-12-2028',
+      data_fabrico: '15-01-2026',
+      data_movimento: '22-09-2026',
       documento_ref: 'TRF-2026-001',
       observacoes: 'Entrada por transferencia interna em quarentena',
     });
@@ -808,16 +819,20 @@ export default function ImportacaoMovimentosTab({
                 </p>
               </div>
 
-              <div className="bg-surface-container/30 border border-outline-variant/20 rounded-xl p-3.5 space-y-1 text-xs text-on-surface-variant">
+              <div className="bg-surface-container/30 border border-outline-variant/20 rounded-xl p-3.5 space-y-2 text-xs text-on-surface-variant">
                 <p className="font-bold text-on-surface flex items-center gap-1">
                   <span className="material-symbols-outlined text-sm text-emerald-600">check_circle</span>
-                  Tipos de Movimento Suportados:
+                  Especificações de Importação:
                 </p>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px] pt-1">
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   <div><code>ES</code>: Entrada de Stock</div>
                   <div><code>SS</code>: Saída de Stock</div>
-                  <div><code>ET</code>: Entrada de Transferência</div>
-                  <div><code>ST</code>: Saída de Transferência</div>
+                  <div><code>ET</code>: Entrada Transferência</div>
+                  <div><code>ST</code>: Saída Transferência</div>
+                </div>
+                <div className="pt-1.5 border-t border-outline-variant/20 text-[11px] space-y-0.5">
+                  <p><strong>Datas:</strong> Dia-Mês-Ano (ex: <code>31-12-2028</code>, <code>15-01-2026</code>)</p>
+                  <p><strong>Posição:</strong> 2 dígitos + 1 letra + 2 dígitos (ex: <code>01A01</code>)</p>
                 </div>
               </div>
             </div>

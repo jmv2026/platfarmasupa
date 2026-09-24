@@ -5,7 +5,11 @@ import { createClient } from '@/lib/supabase/server';
 import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
 import { parseDateStockToISO } from '@/lib/parse-stock-file';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
-import { MovimentoImportInput } from '@/lib/parse-movimentos-file';
+import {
+  MovimentoImportInput,
+  normalizeMovimentoPosicao,
+  parseMovimentoDate,
+} from '@/lib/parse-movimentos-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -200,6 +204,7 @@ export async function criarArtigoAction(input: {
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote?: boolean;
   tratamento_serie?: boolean;
+  pva?: number;
   pvp?: number;
   ativo?: boolean;
 }) {
@@ -239,7 +244,9 @@ export async function criarArtigoAction(input: {
         tipo_armazenamento: input.tipo_armazenamento,
         tratamento_lote: input.tratamento_lote !== undefined ? input.tratamento_lote : true,
         tratamento_serie: input.tratamento_serie !== undefined ? input.tratamento_serie : false,
-        pvp: input.pvp !== undefined && input.pvp !== null ? Number(input.pvp) : 0.00,
+        pva: (input.pva !== undefined && input.pva !== null) 
+          ? Number(input.pva) 
+          : (input.pvp !== undefined && input.pvp !== null ? Number(input.pvp) : 0.00),
         ativo: input.ativo !== undefined ? input.ativo : true,
       })
       .select()
@@ -373,7 +380,9 @@ export async function importarArtigosAction(rows: ArtigoImportInput[]) {
         tipo_armazenamento: r.tipo_armazenamento || 'TA',
         tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
         tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),
-        pvp: r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00,
+        pva: r.pva !== undefined && r.pva !== null 
+          ? Number(r.pva) 
+          : (r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00),
         ativo: parseArtigoBoolean(r.ativo, true),
       }));
 
@@ -627,7 +636,11 @@ export async function importarMovimentosAction(
           : null;
 
         const tipoArmazem = r.tipo_armazem || '01';
-        const armazemLoc = r.armazem_loc || (resolvedSigla ? `${resolvedSigla}-${tipoArmazem}` : `ARM-${tipoArmazem}`);
+        const armazemLoc = r.armazem_loc
+          ? r.armazem_loc.trim().replace(/[-_ ]/g, '')
+          : resolvedSigla
+          ? `${resolvedSigla}${tipoArmazem}`
+          : `ARM${tipoArmazem}`;
 
         return {
           artigo_id: r.artigo_id.trim(),
@@ -637,12 +650,12 @@ export async function importarMovimentosAction(
           quantidade: Number(r.quantidade),
           tipo_armazem: tipoArmazem,
           armazem_loc: armazemLoc,
-          posicao: r.posicao?.trim() || null,
+          posicao: normalizeMovimentoPosicao(r.posicao),
           lote: r.lote?.trim() || null,
           nr_serie: r.nr_serie?.trim() || null,
-          validade: r.validade || null,
-          data_fabrico: r.data_fabrico || null,
-          data_movimento: r.data_movimento || new Date().toISOString(),
+          validade: parseMovimentoDate(r.validade),
+          data_fabrico: parseMovimentoDate(r.data_fabrico),
+          data_movimento: parseMovimentoDate(r.data_movimento) || new Date().toISOString(),
           documento_ref: r.documento_ref?.trim() || null,
           observacoes: r.observacoes?.trim() || null,
           created_by: user.id,

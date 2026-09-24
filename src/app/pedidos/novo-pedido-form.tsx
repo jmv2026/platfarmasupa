@@ -2,16 +2,22 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Client, StockPedido, NovaLinhaPedidoInput, UserProfile } from '@/lib/supabase/types';
-import { criarPedidoAction } from './actions';
+import { Client, StockPedido, NovaLinhaPedidoInput, UserProfile, Destino } from '@/lib/supabase/types';
+import { criarPedidoAction, criarDestinoAction } from './actions';
 
 interface NovoPedidoFormProps {
   clients: Client[];
   stockPedidos: StockPedido[];
+  destinos?: Destino[];
   currentUserProfile?: UserProfile | null;
 }
 
-export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfile }: NovoPedidoFormProps) {
+export default function NovoPedidoForm({
+  clients,
+  stockPedidos,
+  destinos = [],
+  currentUserProfile,
+}: NovoPedidoFormProps) {
   const router = useRouter();
 
   // Permissões RBAC: Admin e Gestor podem selecionar qualquer cliente livremente
@@ -24,6 +30,32 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
     }
     return clients[0]?.id || '';
   }, [isManagerOrAdmin, currentUserProfile, clients]);
+
+  // Estados dos Destinos
+  const [localDestinos, setLocalDestinos] = useState<Destino[]>(destinos);
+  const [selectedDestinoId, setSelectedDestinoId] = useState<string>('');
+  const [inputCodigoDestino, setInputCodigoDestino] = useState<string>('');
+  const [codigoNotFound, setCodigoNotFound] = useState(false);
+  const [guardarNovoDestino, setGuardarNovoDestino] = useState(false);
+
+  // Estados do Modal de Novo Destino
+  const [showNovoDestinoModal, setShowNovoDestinoModal] = useState(false);
+  const [novoDestinoLoading, setNovoDestinoLoading] = useState(false);
+  const [novoDestinoFeedback, setNovoDestinoFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [novoDestinoForm, setNovoDestinoForm] = useState({
+    nome: '',
+    morada: '',
+    codigo_postal: '',
+    localidade: '',
+    pais: 'Portugal',
+    nif: '',
+    telefone: '',
+    email: '',
+    observacoes: '',
+  });
 
   // Estados do Cabeçalho
   const [selectedClientId, setSelectedClientId] = useState<string>(initialClientId);
@@ -48,6 +80,23 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
   // Estados de Submissão
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Cliente atualmente selecionado
+  const selectedClient = useMemo(() => {
+    return clients.find((c) => c.id === selectedClientId) || null;
+  }, [clients, selectedClientId]);
+
+  const clientSigla = selectedClient?.sigla || '';
+
+  // Destinos disponíveis para o cliente selecionado
+  const clientDestinos = useMemo(() => {
+    return localDestinos.filter((d) => d.client_id === selectedClientId && d.ativo);
+  }, [localDestinos, selectedClientId]);
+
+  // Destino atualmente selecionado (objeto)
+  const selectedDestinoObj = useMemo(() => {
+    return clientDestinos.find((d) => d.id === selectedDestinoId) || null;
+  }, [clientDestinos, selectedDestinoId]);
 
   // Filtrar stock disponível para o cliente selecionado
   const clientStock = useMemo(() => {
@@ -93,6 +142,146 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
     return availableLotes.find((l) => l.lote === selectedLote) || availableLotes[0] || null;
   }, [availableLotes, selectedLote]);
 
+  // Alteração de Cliente
+  const handleClientChange = (clientId: string) => {
+    setSelectedClientId(clientId);
+    setSelectedDestinoId('');
+    setInputCodigoDestino('');
+    setCodigoNotFound(false);
+    setNomeDestinatario('');
+    setMorada('');
+    setCodigoPostal('');
+    setLocalidade('');
+    setPais('Portugal');
+    setSelectedArtigoId('');
+    setSelectedLote('');
+    setLinhas([]);
+  };
+
+  // Selecionar Destino da Lista de Destinos Arquivados
+  const handleSelectDestino = (destinoId: string) => {
+    setSelectedDestinoId(destinoId);
+    setCodigoNotFound(false);
+    if (!destinoId) {
+      setInputCodigoDestino('');
+      setNomeDestinatario('');
+      setMorada('');
+      setCodigoPostal('');
+      setLocalidade('');
+      setPais('Portugal');
+      return;
+    }
+
+    const dest = clientDestinos.find((d) => d.id === destinoId);
+    if (dest) {
+      setInputCodigoDestino(dest.codigo);
+      setNomeDestinatario(dest.nome);
+      setMorada(dest.morada);
+      setCodigoPostal(dest.codigo_postal);
+      setLocalidade(dest.localidade);
+      setPais(dest.pais || 'Portugal');
+    }
+  };
+
+  // Pesquisar e selecionar destino por introdução manual do código
+  const buscarDestinoPorCodigo = (rawVal: string) => {
+    const val = rawVal.trim().toUpperCase();
+    if (!val) {
+      setCodigoNotFound(false);
+      return;
+    }
+
+    // 1. Tentar correspondência exata do código (ex: CRD-0001, BAYR-0001)
+    let found = clientDestinos.find((d) => d.codigo.toUpperCase() === val);
+
+    // 2. Se for apenas dígitos (ex: 1, 01, 0001), compor com a sigla do cliente
+    if (!found && /^\d+$/.test(val) && clientSigla) {
+      const formattedNum = val.padStart(4, '0');
+      const fullCode = `${clientSigla}-${formattedNum}`.toUpperCase();
+      found = clientDestinos.find((d) => d.codigo.toUpperCase() === fullCode);
+    }
+
+    // 3. Se digitou sigla e número sem hífen (ex: CRD0001)
+    if (!found && clientSigla && val.startsWith(clientSigla)) {
+      const rest = val.replace(clientSigla, '').replace(/^-/, '').padStart(4, '0');
+      const fullCode = `${clientSigla}-${rest}`.toUpperCase();
+      found = clientDestinos.find((d) => d.codigo.toUpperCase() === fullCode);
+    }
+
+    if (found) {
+      setCodigoNotFound(false);
+      setInputCodigoDestino(found.codigo);
+      setSelectedDestinoId(found.id);
+      setNomeDestinatario(found.nome);
+      setMorada(found.morada);
+      setCodigoPostal(found.codigo_postal);
+      setLocalidade(found.localidade);
+      setPais(found.pais || 'Portugal');
+    } else {
+      setCodigoNotFound(true);
+    }
+  };
+
+  // Criar Novo Destino via Modal
+  const handleCreateNovoDestino = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !novoDestinoForm.nome ||
+      !novoDestinoForm.morada ||
+      !novoDestinoForm.codigo_postal ||
+      !novoDestinoForm.localidade
+    ) {
+      setNovoDestinoFeedback({ type: 'error', message: 'Preencha todos os campos obrigatórios (*)' });
+      return;
+    }
+
+    setNovoDestinoLoading(true);
+    setNovoDestinoFeedback(null);
+
+    try {
+      const res = await criarDestinoAction({
+        client_id: selectedClientId,
+        nome: novoDestinoForm.nome,
+        morada: novoDestinoForm.morada,
+        codigo_postal: novoDestinoForm.codigo_postal,
+        localidade: novoDestinoForm.localidade,
+        pais: novoDestinoForm.pais || 'Portugal',
+        nif: novoDestinoForm.nif || undefined,
+        telefone: novoDestinoForm.telefone || undefined,
+        email: novoDestinoForm.email || undefined,
+        observacoes: novoDestinoForm.observacoes || undefined,
+      });
+
+      if (res.success && res.destino) {
+        setLocalDestinos((prev) => [...prev, res.destino!]);
+        handleSelectDestino(res.destino.id);
+        setShowNovoDestinoModal(false);
+        setNovoDestinoForm({
+          nome: '',
+          morada: '',
+          codigo_postal: '',
+          localidade: '',
+          pais: 'Portugal',
+          nif: '',
+          telefone: '',
+          email: '',
+          observacoes: '',
+        });
+        setFeedback({
+          type: 'success',
+          message: `Destino ${res.destino.codigo} (${res.destino.nome}) arquivado e selecionado com sucesso!`,
+        });
+      } else {
+        setNovoDestinoFeedback({ type: 'error', message: res.error || 'Erro ao criar destino' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado';
+      setNovoDestinoFeedback({ type: 'error', message: msg });
+    } finally {
+      setNovoDestinoLoading(false);
+    }
+  };
+
   // Atualizar seleção de artigo e sugerir FEFO automaticamente
   const handleSelectArtigo = (artigoId: string) => {
     setSelectedArtigoId(artigoId);
@@ -105,7 +294,6 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
       });
 
     if (lotesForArtigo.length > 0) {
-      // Sugere o lote com menor data de validade (FEFO)
       setSelectedLote(lotesForArtigo[0].lote || '');
       setQuantidade(1);
     } else {
@@ -135,7 +323,6 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
       return;
     }
 
-    // Verificar se a combinação artigo + lote já foi adicionada
     const existingIndex = linhas.findIndex(
       (l) => l.artigo_id === selectedArtigoId && l.lote === currentLoteObj.lote
     );
@@ -177,9 +364,8 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
   // Submeter Pedido Completo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const finalClientId = !isManagerOrAdmin && currentUserProfile?.client_id
-      ? currentUserProfile.client_id
-      : selectedClientId;
+    const finalClientId =
+      !isManagerOrAdmin && currentUserProfile?.client_id ? currentUserProfile.client_id : selectedClientId;
 
     if (!finalClientId) {
       setFeedback({
@@ -204,6 +390,8 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
     try {
       const res = await criarPedidoAction({
         client_id: finalClientId,
+        destino_id: selectedDestinoId || undefined,
+        guardar_novo_destino: !selectedDestinoId && guardarNovoDestino,
         ref_documento: refDocumento || undefined,
         nome_destinatario: nomeDestinatario,
         morada,
@@ -217,8 +405,13 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
       });
 
       if (res.success) {
-        // Limpar feedback e resetar formulário
-        setFeedback(null);
+        setFeedback({
+          type: 'success',
+          message: `Pedido ${res.nrPedido} registado com sucesso com saída de stock automática!`,
+        });
+        setSelectedDestinoId('');
+        setInputCodigoDestino('');
+        setCodigoNotFound(false);
         setNomeDestinatario('');
         setMorada('');
         setCodigoPostal('');
@@ -228,6 +421,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
         setLinhas([]);
         setSelectedArtigoId('');
         setSelectedLote('');
+        setGuardarNovoDestino(false);
         if (!isManagerOrAdmin && currentUserProfile?.client_id) {
           setSelectedClientId(currentUserProfile.client_id);
         } else {
@@ -256,14 +450,23 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
             Criar Novo Pedido de Entrega
           </h2>
           <p className="text-xs text-on-surface-variant mt-1">
-            Registe uma nova ordem de expedição com alocação em tempo real e sugestão automática de lote <strong>FEFO</strong>.
+            Registe uma nova ordem de expedição com seleção por código ou pull-down de destinos e sugestão{' '}
+            <strong>FEFO</strong>.
           </p>
         </div>
       </div>
 
-      {feedback && feedback.type === 'error' && (
-        <div className="p-4 rounded-xl mb-6 text-xs sm:text-sm font-medium flex items-center gap-2.5 bg-rose-50 text-rose-800 border border-rose-200">
-          <span className="material-symbols-outlined text-base">error</span>
+      {feedback && (
+        <div
+          className={`p-4 rounded-xl mb-6 text-xs sm:text-sm font-medium flex items-center gap-2.5 ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              : 'bg-rose-50 text-rose-800 border border-rose-200'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">
+            {feedback.type === 'success' ? 'check_circle' : 'error'}
+          </span>
           <span>{feedback.message}</span>
         </div>
       )}
@@ -285,12 +488,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
               {isManagerOrAdmin ? (
                 <select
                   value={selectedClientId}
-                  onChange={(e) => {
-                    setSelectedClientId(e.target.value);
-                    setSelectedArtigoId('');
-                    setSelectedLote('');
-                    setLinhas([]);
-                  }}
+                  onChange={(e) => handleClientChange(e.target.value)}
                   className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
                   required
                 >
@@ -360,12 +558,125 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
           </div>
         </div>
 
-        {/* SECÇÃO 2: Dados de Destino / Morada */}
+        {/* SECÇÃO 2: Dados de Destino / Morada (Com Seleção por Código Rápido e Pull-Down) */}
         <div className="space-y-4 pt-4 border-t border-outline-variant/20">
-          <h3 className="text-sm font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-base">local_shipping</span>
-            2. Informações de Destino & Destinatário
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base">local_shipping</span>
+                2. Informações de Destino & Destinatário
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Introduza o <strong>código rápido</strong>, selecione no <strong>pull-down</strong> ou preencha manualmente.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setNovoDestinoFeedback(null);
+                setShowNovoDestinoModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/30 transition-colors w-fit cursor-pointer shadow-sm"
+            >
+              <span className="material-symbols-outlined text-sm">add_location_alt</span>
+              + Novo Destino Arquivado
+            </button>
+          </div>
+
+          {/* Caixa de Seleção Rápida: Código Manual + Pull-Down */}
+          <div className="p-4 bg-surface-container/50 rounded-xl border border-outline-variant/30 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-secondary">bookmark</span>
+                Destinos Arquivados ({clientDestinos.length} registado{clientDestinos.length === 1 ? '' : 's'})
+              </label>
+
+              {selectedDestinoObj && (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                    <span className="material-symbols-outlined text-xs">verified</span>
+                    Destino Ativo: {selectedDestinoObj.codigo}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectDestino('')}
+                    className="px-2 py-1 rounded-lg text-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors flex items-center gap-1 cursor-pointer"
+                    title="Limpar seleção para introduzir manualmente"
+                  >
+                    <span className="material-symbols-outlined text-xs">clear</span>
+                    Limpar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+              {/* Campo 1: Introdução Manual do Código */}
+              <div className="sm:col-span-4 lg:col-span-3">
+                <label className="block text-[11px] font-semibold text-on-surface mb-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs text-secondary">pin</span>
+                  Código do Destino (Rápido)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={inputCodigoDestino}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      setInputCodigoDestino(val);
+                      buscarDestinoPorCodigo(val);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        buscarDestinoPorCodigo(inputCodigoDestino);
+                      }
+                    }}
+                    placeholder={`Ex: ${clientSigla ? `${clientSigla}-0001` : '0001'}`}
+                    className={`w-full bg-surface-container-lowest border rounded-lg px-3 py-2 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-2 uppercase tracking-wide transition-all ${
+                      selectedDestinoObj
+                        ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/20 text-emerald-900'
+                        : codigoNotFound && inputCodigoDestino
+                        ? 'border-amber-500 focus:ring-amber-500 text-amber-900'
+                        : 'border-outline-variant/40 focus:ring-secondary'
+                    }`}
+                  />
+                  {selectedDestinoObj && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 material-symbols-outlined text-base pointer-events-none">
+                      check_circle
+                    </span>
+                  )}
+                </div>
+                {codigoNotFound && inputCodigoDestino && (
+                  <p className="text-[10px] text-amber-700 font-medium mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">info</span>
+                    Código &quot;{inputCodigoDestino}&quot; não encontrado para este cliente.
+                  </p>
+                )}
+              </div>
+
+              {/* Campo 2: Pull-Down / Seleção na Lista */}
+              <div className="sm:col-span-8 lg:col-span-9">
+                <label className="block text-[11px] font-semibold text-on-surface mb-1 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs text-secondary">list</span>
+                  Ou Escolher no Pull-Down
+                </label>
+                <select
+                  value={selectedDestinoId}
+                  onChange={(e) => handleSelectDestino(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                >
+                  <option value="">-- Preenchimento Manual (ou Novo Destino) --</option>
+                  {clientDestinos.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      [{d.codigo}] {d.nome} - {d.localidade} ({d.codigo_postal})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="lg:col-span-2">
@@ -377,7 +688,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
                 value={nomeDestinatario}
                 onChange={(e) => setNomeDestinatario(e.target.value)}
                 placeholder="Ex: Hospital de Santa Maria / Farmácia Central"
-                className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
                 required
               />
             </div>
@@ -436,6 +747,23 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
               />
             </div>
           </div>
+
+          {/* Opção para guardar automaticamente o destino caso seja novo / manual */}
+          {!selectedDestinoId && (
+            <div className="pt-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-on-surface-variant hover:text-on-surface font-medium">
+                <input
+                  type="checkbox"
+                  checked={guardarNovoDestino}
+                  onChange={(e) => setGuardarNovoDestino(e.target.checked)}
+                  className="rounded border-outline-variant/50 text-secondary focus:ring-secondary cursor-pointer h-4 w-4"
+                />
+                <span>
+                  Guardar estes dados como <strong>novo destino arquivado</strong> para futuros pedidos deste cliente
+                </span>
+              </label>
+            </div>
+          )}
         </div>
 
         {/* SECÇÃO 3: Adição de Linhas do Pedido (com FEFO Inteligente) */}
@@ -460,7 +788,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
               <select
                 value={selectedArtigoId}
                 onChange={(e) => handleSelectArtigo(e.target.value)}
-                className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer"
               >
                 <option value="">-- Selecionar Artigo --</option>
                 {availableArtigos.map((art) => (
@@ -480,11 +808,12 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
                 value={selectedLote}
                 onChange={(e) => setSelectedLote(e.target.value)}
                 disabled={!selectedArtigoId || availableLotes.length === 0}
-                className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-50"
+                className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary disabled:opacity-50 cursor-pointer"
               >
                 {availableLotes.map((l, index) => (
                   <option key={l.lote} value={l.lote || ''}>
-                    {index === 0 ? '⭐ [FEFO] ' : ''}Lote: {l.lote} | Val: {l.validade ? new Date(l.validade).toLocaleDateString('pt-PT') : 'N/D'} | Disp: {l.stock} un
+                    {index === 0 ? '⭐ [FEFO] ' : ''}Lote: {l.lote} | Val:{' '}
+                    {l.validade ? new Date(l.validade).toLocaleDateString('pt-PT') : 'N/D'} | Disp: {l.stock} un
                   </option>
                 ))}
               </select>
@@ -512,7 +841,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
                 type="button"
                 onClick={handleAddLinha}
                 disabled={!currentLoteObj || quantidade <= 0}
-                className="w-full bg-secondary text-on-secondary px-3 py-2 rounded-lg text-xs font-bold hover:bg-secondary/90 transition-colors flex items-center justify-center gap-1 shadow-sm disabled:opacity-50"
+                className="w-full bg-secondary text-on-secondary px-3 py-2 rounded-lg text-xs font-bold hover:bg-secondary/90 transition-colors flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">add</span>
                 Adicionar
@@ -554,13 +883,14 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
                         {linha.validade ? new Date(linha.validade).toLocaleDateString('pt-PT') : '-'}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-secondary">
-                        {linha.quantidade.toLocaleString('pt-PT')} <span className="text-[10px] font-normal text-on-surface-variant">un</span>
+                        {linha.quantidade.toLocaleString('pt-PT')}{' '}
+                        <span className="text-[10px] font-normal text-on-surface-variant">un</span>
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveLinha(idx)}
-                          className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition-colors"
+                          className="text-rose-600 hover:text-rose-800 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Remover linha"
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>
@@ -571,7 +901,7 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
                 ) : (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-on-surface-variant">
-                      Nenhuma linha adicionada. Selecione um artigo e lote acima e clique em "Adicionar".
+                      Nenhuma linha adicionada. Selecione um artigo e lote acima e clique em &quot;Adicionar&quot;.
                     </td>
                   </tr>
                 )}
@@ -598,7 +928,9 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
             <div className="text-xs text-on-surface-variant flex items-center gap-1.5">
               <span className="material-symbols-outlined text-emerald-600 text-sm">bolt</span>
-              <span>Os movimentos de saída <strong>SS</strong> serão criados automaticamente em tempo real.</span>
+              <span>
+                Os movimentos de saída <strong>SS</strong> serão criados automaticamente em tempo real.
+              </span>
             </div>
 
             <button
@@ -621,6 +953,160 @@ export default function NovoPedidoForm({ clients, stockPedidos, currentUserProfi
           </div>
         </div>
       </form>
+
+      {/* MODAL: Criar Novo Destino */}
+      {showNovoDestinoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-outline-variant/20">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">add_location_alt</span>
+                <h3 className="text-base font-bold font-headline text-on-surface">Arquivar Novo Destino</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNovoDestinoModal(false)}
+                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-container cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-on-surface-variant">
+              O destino será associado ao cliente selecionado e receberá automaticamente um código sequencial no formato{' '}
+              <strong>[SIGLA]-0001</strong>.
+            </p>
+
+            {novoDestinoFeedback && (
+              <div
+                className={`p-3 rounded-lg text-xs font-medium flex items-center gap-2 ${
+                  novoDestinoFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {novoDestinoFeedback.type === 'success' ? 'check_circle' : 'error'}
+                </span>
+                <span>{novoDestinoFeedback.message}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateNovoDestino} className="space-y-4">
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Nome da Entidade / Destinatário <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoDestinoForm.nome}
+                    onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, nome: e.target.value })}
+                    placeholder="Ex: Farmácia Central de Lisboa / Hospital São João"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1">
+                    Morada Completa <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={novoDestinoForm.morada}
+                    onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, morada: e.target.value })}
+                    placeholder="Ex: Rua Direita, nº 123, 2º Esq"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      Código Postal <span className="text-rose-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={novoDestinoForm.codigo_postal}
+                      onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, codigo_postal: e.target.value })}
+                      placeholder="1000-001"
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      Localidade <span className="text-rose-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={novoDestinoForm.localidade}
+                      onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, localidade: e.target.value })}
+                      placeholder="Lisboa"
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">NIF (Opcional)</label>
+                    <input
+                      type="text"
+                      value={novoDestinoForm.nif}
+                      onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, nif: e.target.value })}
+                      placeholder="500000000"
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">Telefone (Opcional)</label>
+                    <input
+                      type="text"
+                      value={novoDestinoForm.telefone}
+                      onChange={(e) => setNovoDestinoForm({ ...novoDestinoForm, telefone: e.target.value })}
+                      placeholder="210000000"
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setShowNovoDestinoModal(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={novoDestinoLoading}
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-secondary text-on-secondary hover:bg-secondary/90 transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                >
+                  {novoDestinoLoading ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                      A arquivar...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">save</span>
+                      Guardar Destino
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,8 +2,103 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { NovoPedidoInput } from '@/lib/supabase/types';
+import { NovoPedidoInput, NovoDestinoInput, Destino } from '@/lib/supabase/types';
 import { enviarEmailConfirmacaoPedido } from '@/lib/email';
+
+export async function criarDestinoAction(input: NovoDestinoInput) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Utilizador não autenticado' };
+  }
+
+  // 0. Obter perfil do utilizador para controlo de acesso RBAC
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, client_id')
+    .eq('id', user.id)
+    .single();
+
+  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
+
+  let targetClientId = input.client_id;
+  if (!isManagerOrAdmin) {
+    if (!profile?.client_id) {
+      return {
+        success: false,
+        error: 'O seu utilizador não tem cliente proprietário associado.',
+      };
+    }
+    targetClientId = profile.client_id;
+  }
+
+  if (!targetClientId) {
+    return { success: false, error: 'Cliente proprietário é obrigatório' };
+  }
+
+  if (!input.nome || !input.morada || !input.codigo_postal || !input.localidade) {
+    return { success: false, error: 'Preencha todos os campos obrigatórios do destino' };
+  }
+
+  // Inserir destino na tabela destinos (o trigger do Supabase gera o código [SIGLA]-0001 automaticamente)
+  const { data: destino, error } = await supabase
+    .from('destinos')
+    .insert({
+      client_id: targetClientId,
+      codigo: '', // O trigger preenche com a sigla do cliente e o número sequencial de 4 dígitos
+      nome: input.nome.trim(),
+      morada: input.morada.trim(),
+      codigo_postal: input.codigo_postal.trim(),
+      localidade: input.localidade.trim(),
+      pais: input.pais?.trim() || 'Portugal',
+      nif: input.nif?.trim() || null,
+      telefone: input.telefone?.trim() || null,
+      email: input.email?.trim() || null,
+      observacoes: input.observacoes?.trim() || null,
+      ativo: true,
+      created_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (error || !destino) {
+    console.error('Erro ao criar destino:', error);
+    return { success: false, error: error?.message || 'Erro ao criar destino' };
+  }
+
+  revalidatePath('/pedidos');
+  revalidatePath('/historico-pedidos');
+  revalidatePath('/configuracao');
+
+  return { success: true, destino: destino as Destino };
+}
+
+export async function obterDestinosPorClienteAction(clientId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Utilizador não autenticado', destinos: [] };
+  }
+
+  const { data, error } = await supabase
+    .from('destinos')
+    .select('*')
+    .eq('client_id', clientId)
+    .eq('ativo', true)
+    .order('codigo', { ascending: true });
+
+  if (error) {
+    return { success: false, error: error.message, destinos: [] };
+  }
+
+  return { success: true, destinos: (data as Destino[]) || [] };
+}
 
 export async function criarPedidoAction(input: NovoPedidoInput) {
   const supabase = await createClient();
@@ -59,6 +154,31 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     return { success: false, error: 'Cliente não encontrado na base de dados' };
   }
 
+  // 1.1 Se o utilizador pediu para guardar o destino e não havia destino_id associado, criar na tabela destinos
+  let finalDestinoId = input.destino_id || null;
+
+  if (input.guardar_novo_destino && !finalDestinoId) {
+    const { data: novoDestino, error: destErr } = await supabase
+      .from('destinos')
+      .insert({
+        client_id: targetClientId,
+        codigo: '', // O trigger preenche com a sigla do cliente e o número sequencial
+        nome: input.nome_destinatario.trim(),
+        morada: input.morada.trim(),
+        codigo_postal: input.codigo_postal.trim(),
+        localidade: input.localidade.trim(),
+        pais: input.pais?.trim() || 'Portugal',
+        ativo: true,
+        created_by: user.id,
+      })
+      .select('id')
+      .single();
+
+    if (!destErr && novoDestino) {
+      finalDestinoId = novoDestino.id;
+    }
+  }
+
   // 2. Gerar número de pedido único sequencial (ex: PED-2026-0001)
   const today = new Date();
   const year = today.getFullYear();
@@ -72,6 +192,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       nr_pedido: nrPedido,
       ref_documento: input.ref_documento || null,
       client_id: targetClientId,
+      destino_id: finalDestinoId,
       nome_destinatario: input.nome_destinatario,
       morada: input.morada,
       codigo_postal: input.codigo_postal,
@@ -91,7 +212,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
   }
 
   // 4. Inserir linhas do pedido e movimentos SS em tempo real
-  const armazemLoc = `${client.sigla}-01`;
+  const armazemLoc = `${client.sigla}01`;
 
   for (const linha of input.linhas) {
     if (linha.quantidade <= 0) {
@@ -123,7 +244,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       quantidade: linha.quantidade,
       tipo_armazem: '01', // Armazém Venda
       armazem_loc: armazemLoc,
-      posicao: 'A-01-01',
+      posicao: '01A01',
       lote: linha.lote,
       validade: linha.validade || null,
       documento_ref: nrPedido,
@@ -172,6 +293,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
 
   revalidatePath('/pedidos');
   revalidatePath('/dashboard');
+  revalidatePath('/historico-pedidos');
 
   return {
     success: true,

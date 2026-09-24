@@ -18,6 +18,8 @@ export interface DashboardStockPedidoItem {
 export interface DashboardPedidoItem {
   id: string;
   client_id: string;
+  data_pedido?: string | null;
+  created_at?: string | null;
 }
 
 interface DashboardViewProps {
@@ -71,7 +73,7 @@ export default function DashboardView({
     return pedidos.filter((p) => p.client_id === selectedClientId);
   }, [pedidos, selectedClientId, isManagerOrAdmin]);
 
-  // 1. Stock Venda Livre
+  // 1. Stock Venda
   const totalStockVenda = useMemo(() => {
     return filteredStockPedidos.reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
   }, [filteredStockPedidos]);
@@ -98,10 +100,49 @@ export default function DashboardView({
     };
   }, [filteredStockAtual]);
 
-  // 4. Pedidos Registados
-  const totalPedidosCount = useMemo(() => {
-    return filteredPedidos.length;
-  }, [filteredPedidos]);
+  // 4. Pedidos do Mês Corrente, Ano Corrente e Total Histórico
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const monthNames = [
+    'Janeiro',
+    'Fevereiro',
+    'Março',
+    'Abril',
+    'Maio',
+    'Junho',
+    'Julho',
+    'Agosto',
+    'Setembro',
+    'Outubro',
+    'Novembro',
+    'Dezembro',
+  ];
+  const currentMonthName = monthNames[currentMonth];
+
+  const { pedidosMesCount, pedidosAnoCount, totalPedidosCount } = useMemo(() => {
+    let mes = 0;
+    let ano = 0;
+
+    filteredPedidos.forEach((p) => {
+      const rawDate = p.data_pedido || p.created_at;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (d.getFullYear() === currentYear) {
+          ano++;
+          if (d.getMonth() === currentMonth) {
+            mes++;
+          }
+        }
+      }
+    });
+
+    return {
+      pedidosMesCount: mes,
+      pedidosAnoCount: ano,
+      totalPedidosCount: filteredPedidos.length,
+    };
+  }, [filteredPedidos, currentYear, currentMonth]);
 
   // 5. Artigos pertencentes ao cliente (existentes no stock ativo)
   const totalArtigosCount = useMemo(() => {
@@ -165,19 +206,19 @@ export default function DashboardView({
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
       </div>
 
-      {/* KPIs Grid (5 Indicadores atualizados dinamicamente) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-        {/* Stock Venda Livre */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+      {/* KPIs Grid (Indicadores atualizados dinamicamente) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-5">
+        {/* 1. Stock Venda */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-on-surface-variant">Stock Venda Livre</p>
+              <p className="text-xs font-medium text-on-surface-variant">Stock Venda</p>
               <p className="text-2xl font-bold font-headline text-secondary mt-1">
                 {totalStockVenda.toLocaleString('pt-PT')}{' '}
                 <span className="text-xs font-normal text-on-surface-variant">un</span>
               </p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+            <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
               <span className="material-symbols-outlined text-xl">inventory_2</span>
             </div>
           </div>
@@ -187,8 +228,8 @@ export default function DashboardView({
           </p>
         </div>
 
-        {/* Artigos em Risco */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* 2. Artigos em Risco */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-on-surface-variant">Artigos em Risco</p>
@@ -196,7 +237,7 @@ export default function DashboardView({
                 {totalArtigosEmRisco}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
               <span className="material-symbols-outlined text-xl">warning</span>
             </div>
           </div>
@@ -206,8 +247,8 @@ export default function DashboardView({
           </p>
         </div>
 
-        {/* Artigos Bloqueados */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* 3. Artigos Bloqueados */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-on-surface-variant">Artigos Bloqueados</p>
@@ -215,7 +256,7 @@ export default function DashboardView({
                 {totalArtigosBloqueados}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600">
+            <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 shrink-0">
               <span className="material-symbols-outlined text-xl">block</span>
             </div>
           </div>
@@ -225,27 +266,65 @@ export default function DashboardView({
           </p>
         </div>
 
-        {/* Pedidos Registados */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* 4. Pedidos do Mês em Curso */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-medium text-on-surface-variant">Pedidos Registados</p>
+              <p className="text-xs font-medium text-on-surface-variant">Pedidos (Mês)</p>
+              <p className="text-2xl font-bold font-headline text-teal-700 mt-1">
+                {pedidosMesCount}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-700 shrink-0">
+              <span className="material-symbols-outlined text-xl">calendar_month</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-teal-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">today</span>
+            {currentMonthName} {currentYear}
+          </p>
+        </div>
+
+        {/* 5. Pedidos do Ano Corrente */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Pedidos (Ano)</p>
+              <p className="text-2xl font-bold font-headline text-indigo-700 mt-1">
+                {pedidosAnoCount}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700 shrink-0">
+              <span className="material-symbols-outlined text-xl">date_range</span>
+            </div>
+          </div>
+          <p className="text-[11px] text-indigo-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">event</span>
+            Ano {currentYear}
+          </p>
+        </div>
+
+        {/* 6. Total Histórico de Pedidos */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-on-surface-variant">Total Pedidos</p>
               <p className="text-2xl font-bold font-headline text-on-surface mt-1">
                 {totalPedidosCount}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700">
+            <div className="w-10 h-10 rounded-lg bg-slate-500/10 flex items-center justify-center text-slate-700 shrink-0">
               <span className="material-symbols-outlined text-xl">receipt_long</span>
             </div>
           </div>
-          <p className="text-[11px] text-indigo-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">local_shipping</span>
-            Expedições ativas
+          <p className="text-[11px] text-slate-700 font-medium mt-3 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">history</span>
+            Total acumulado
           </p>
         </div>
 
-        {/* Artigos Pertencentes ao Cliente */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+        {/* 7. Artigos com Stock */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-on-surface-variant">Artigos</p>
@@ -253,7 +332,7 @@ export default function DashboardView({
                 {totalArtigosCount}
               </p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700">
+            <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700 shrink-0">
               <span className="material-symbols-outlined text-xl">medication</span>
             </div>
           </div>

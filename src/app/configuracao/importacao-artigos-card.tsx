@@ -298,8 +298,8 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                   <td className="py-2 px-2.5 font-mono text-on-surface-variant">TA (Ambiente), TC (15-25ºC), TF (2-8ºC)</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">pvp</td>
-                  <td className="py-2 px-2.5">Preço de Venda ao Público / PVP (Opcional)</td>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">pva</td>
+                  <td className="py-2 px-2.5">Preço de Venda / PVA (Opcional)</td>
                   <td className="py-2 px-2.5 font-mono text-on-surface-variant">12.50, 4.99, 0.00</td>
                 </tr>
               </tbody>
@@ -452,7 +452,7 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                   <th className="py-2.5 px-3">Descrição Comercial</th>
                   <th className="py-2.5 px-3">Tipo Artigo</th>
                   <th className="py-2.5 px-3">Conservação</th>
-                  <th className="py-2.5 px-3 text-right">PVP (€)</th>
+                  <th className="py-2.5 px-3 text-right">PVA (€)</th>
                   <th className="py-2.5 px-3 text-center">Lote</th>
                   <th className="py-2.5 px-3 text-center">Série</th>
                   <th className="py-2.5 px-3 text-right">Estado</th>
@@ -489,8 +489,8 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono font-semibold text-on-surface">
-                      {typeof row.pvp === 'number' && row.pvp > 0
-                        ? `${row.pvp.toFixed(2)} €`
+                      {typeof (row.pva ?? row.pvp) === 'number' && Number(row.pva ?? row.pvp) > 0
+                        ? `${Number(row.pva ?? row.pvp).toFixed(2)} €`
                         : <span className="text-on-surface-variant/50">-</span>}
                     </td>
                     <td className="py-2.5 px-3 text-center">

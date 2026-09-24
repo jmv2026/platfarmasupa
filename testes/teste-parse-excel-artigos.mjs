@@ -74,19 +74,24 @@ function normalizeArtigoHeaderKey(key) {
     return 'tipo_armazenamento';
   }
 
-  // 6. PVP / Preço
+  // 6. PVA / PVP / Preço
   if (
+    clean === 'pva' ||
+    clean.includes('pva') ||
     clean === 'pvp' ||
     clean.includes('pvp') ||
     clean === 'preco' ||
     clean === 'precovenda' ||
+    clean === 'precopva' ||
     clean === 'precopvp' ||
+    clean === 'valorpva' ||
     clean === 'valorpvp' ||
+    clean === 'pvaunitario' ||
     clean === 'pvpunitario' ||
     clean === 'price' ||
     clean === 'valor'
   ) {
-    return 'pvp';
+    return 'pva';
   }
 
   // 7. Ativo / Estado

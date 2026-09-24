@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, validade, stock, client_id');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
-  let pedidosQuery = supabase.from('pedidos').select('id, client_id');
+  let pedidosQuery = supabase.from('pedidos').select('id, client_id, data_pedido, created_at');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
@@ -88,8 +88,8 @@ export default async function DashboardPage() {
                 href="/pedidos"
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-sm">local_shipping</span>
-                Pedidos & Expedição
+                <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
+                Criar Pedido
               </Link>
               <Link
                 href="/historico-pedidos"

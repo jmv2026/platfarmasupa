@@ -8,6 +8,7 @@ export interface ArtigoImportInput {
   tratamento_lote?: boolean;
   tipo_artigo?: TipoArtigo;
   tipo_armazenamento?: TipoArmazenamento;
+  pva?: number;
   pvp?: number;
   ativo?: boolean;
 }
@@ -96,19 +97,24 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'tipo_armazenamento';
   }
 
-  // 6. PVP / Preço de Venda ao Público
+  // 6. PVA / PVP / Preço de Venda
   if (
+    clean === 'pva' ||
+    clean.includes('pva') ||
     clean === 'pvp' ||
     clean.includes('pvp') ||
     clean === 'preco' ||
     clean === 'precovenda' ||
+    clean === 'precopva' ||
     clean === 'precopvp' ||
+    clean === 'valorpva' ||
     clean === 'valorpvp' ||
+    clean === 'pvaunitario' ||
     clean === 'pvpunitario' ||
     clean === 'price' ||
     clean === 'valor'
   ) {
-    return 'pvp';
+    return 'pva';
   }
 
   // 7. Ativo / Estado
@@ -413,7 +419,7 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
-      pvp: parseArtigoNumeric(rowObj.pvp, 0),
+      pva: parseArtigoNumeric(rowObj.pva ?? rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
     });
   }
@@ -516,7 +522,7 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
-      pvp: parseArtigoNumeric(rowObj.pvp, 0),
+      pva: parseArtigoNumeric(rowObj.pva ?? rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
     });
   });
@@ -543,7 +549,7 @@ export function generateArtigosSampleCSV(): string {
     'tratamento_lote',
     'tipo_artigo',
     'tipo_armazenamento',
-    'pvp',
+    'pva',
     'ativo',
   ];
 
@@ -576,7 +582,7 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
     { header: 'Tratamento Série', key: 'tratamento_serie', width: 16 },
     { header: 'Tipo Artigo', key: 'tipo_artigo', width: 22 },
     { header: 'Condição Conservação', key: 'tipo_armazenamento', width: 22 },
-    { header: 'PVP (€)', key: 'pvp', width: 14 },
+    { header: 'PVA (€)', key: 'pva', width: 14 },
     { header: 'Ativo', key: 'ativo', width: 10 },
   ];
 
@@ -596,7 +602,7 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
     tratamento_serie: 'Não',
     tipo_artigo: 'Medicamento Uso Humano (MH)',
     tipo_armazenamento: 'Temperatura Ambiente (TA)',
-    pvp: 12.50,
+    pva: 12.50,
     ativo: 'Sim',
   });
 
@@ -607,7 +613,7 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
     tratamento_serie: 'Não',
     tipo_artigo: 'Medicamento Uso Humano (MH)',
     tipo_armazenamento: 'Temperatura Controlada (TC 15-25ºC)',
-    pvp: 8.90,
+    pva: 8.90,
     ativo: 'Sim',
   });
 
@@ -618,7 +624,7 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
     tratamento_serie: 'Sim',
     tipo_artigo: 'Medicamento Veterinário (MV)',
     tipo_armazenamento: 'Frio (TF 2-8ºC)',
-    pvp: 34.20,
+    pva: 34.20,
     ativo: 'Sim',
   });
 
@@ -629,7 +635,7 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
     tratamento_serie: 'Não',
     tipo_artigo: 'Dispositivo Médico (DM)',
     tipo_armazenamento: 'Temperatura Ambiente (TA)',
-    pvp: 4.50,
+    pva: 4.50,
     ativo: 'Sim',
   });
 

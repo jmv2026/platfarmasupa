@@ -485,7 +485,7 @@ export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: stri
           📦 Demonstração do Formato de Notificação de Pedido:
         </div>
         <p style="margin: 0; font-size: 12px; color: #64748b; line-height: 1.4;">
-          Quando qualquer utilizador submete um pedido no menu <strong>Pedidos & Expedição</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email com todos os detalhes e morada de destino para o requerente e equipa de logística.
+          Quando qualquer utilizador submete um pedido no menu <strong>Criar Pedido</strong>, o sistema calcula os lotes pelo critério <strong>FEFO</strong>, debita os movimentos de saída (<strong>SS</strong>) e dispara um email com todos os detalhes e morada de destino para o requerente e equipa de logística.
         </p>
       </div>
 

@@ -97,7 +97,7 @@ export default function ConfiguracaoTabs({
   const [artigoDescricao, setArtigoDescricao] = useState('');
   const [artigoTipo, setArtigoTipo] = useState<TipoArtigo>('MH');
   const [artigoArmazenamento, setArtigoArmazenamento] = useState<TipoArmazenamento>('TA');
-  const [artigoPvp, setArtigoPvp] = useState('');
+  const [artigoPva, setArtigoPva] = useState('');
   const [artigoLote, setArtigoLote] = useState(true);
   const [artigoSerie, setArtigoSerie] = useState(false);
   const [artigoAtivo, setArtigoAtivo] = useState(true);
@@ -195,7 +195,7 @@ export default function ConfiguracaoTabs({
         tipo_armazenamento: artigoArmazenamento,
         tratamento_lote: artigoLote,
         tratamento_serie: artigoSerie,
-        pvp: artigoPvp ? parseFloat(artigoPvp) : 0.00,
+        pva: artigoPva ? parseFloat(artigoPva) : 0.00,
         ativo: artigoAtivo,
       });
 
@@ -208,7 +208,7 @@ export default function ConfiguracaoTabs({
         setArtigoDescricao('');
         setArtigoTipo('MH');
         setArtigoArmazenamento('TA');
-        setArtigoPvp('');
+        setArtigoPva('');
         setArtigoLote(true);
         setArtigoSerie(false);
         router.refresh();
@@ -860,14 +860,14 @@ export default function ConfiguracaoTabs({
 
                 <div>
                   <label className="block text-xs font-semibold text-on-surface mb-1">
-                    PVP (€)
+                    PVA (€)
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
-                    value={artigoPvp}
-                    onChange={(e) => setArtigoPvp(e.target.value)}
+                    value={artigoPva}
+                    onChange={(e) => setArtigoPva(e.target.value)}
                     placeholder="0.00"
                     className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
                   />
@@ -963,7 +963,7 @@ export default function ConfiguracaoTabs({
                     <th className="py-2.5 px-3">Descrição Comercial</th>
                     <th className="py-2.5 px-3">Tipo Artigo</th>
                     <th className="py-2.5 px-3">Conservação</th>
-                    <th className="py-2.5 px-3 text-right">PVP (€)</th>
+                    <th className="py-2.5 px-3 text-right">PVA (€)</th>
                     <th className="py-2.5 px-3 text-center">Lote</th>
                     <th className="py-2.5 px-3 text-center">Série</th>
                     <th className="py-2.5 px-3 text-right rounded-r-lg">Estado</th>
@@ -997,8 +997,8 @@ export default function ConfiguracaoTabs({
                           </span>
                         </td>
                         <td className="py-3 px-3 text-right font-mono font-semibold text-on-surface">
-                          {typeof a.pvp === 'number' && a.pvp > 0
-                            ? `${a.pvp.toFixed(2)} €`
+                          {typeof a.pva === 'number' && a.pva > 0
+                            ? `${a.pva.toFixed(2)} €`
                             : <span className="text-on-surface-variant/50">-</span>}
                         </td>
                         <td className="py-3 px-3 text-center">
