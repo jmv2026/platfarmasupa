@@ -318,41 +318,41 @@ export default function GraficoTopProdutos({ pedidos, clientName }: GraficoTopPr
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) - Altura 75px */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4">
+      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
         {/* 1. Total Unidades Top 5 */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               Total Unidades Top 5
             </span>
-            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50"></span>
+            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.totalTop5.toLocaleString('pt-PT')}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">un</span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
               {topProdutos.length} artigos
             </span>
           </div>
         </div>
 
         {/* 2. Produto Nº 1 */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px] text-lime-700">emoji_events</span>
-              Produto Nº 1
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
+              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">emoji_events</span>
+              <span>Produto Nº 1</span>
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none">
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
               Líder
             </span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.produtoLider
@@ -361,51 +361,51 @@ export default function GraficoTopProdutos({ pedidos, clientName }: GraficoTopPr
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">un</span>
             </div>
-            <span className="text-[10px] text-emerald-800 font-semibold truncate max-w-[130px] hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal break-all">
               {estatisticas.produtoLider?.codigo || '-'}
             </span>
           </div>
         </div>
 
         {/* 3. Média por Produto Top 5 */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               Média / Artigo
             </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.mediaPorProduto.toLocaleString('pt-PT')}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">un / artigo</span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
               Top 5
             </span>
           </div>
         </div>
 
         {/* 4. Concentração no Top 5 */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               Peso no Total Expedido
             </span>
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
               {estatisticas.concentracaoGeral}%
             </span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.concentracaoGeral}%
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">do volume</span>
             </div>
-            <span className="text-[10px] text-teal-800 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
               {estatisticas.totalProdutosDistintos} artigos no total
             </span>
           </div>

@@ -372,38 +372,38 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) - Altura 75px */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-5">
+      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
         {/* Total no Período */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               Total no Período
             </span>
-            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50"></span>
+            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.total.toLocaleString('pt-PT')}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
               {dadosMensais.length} {dadosMensais.length === 1 ? 'mês' : 'meses'}
             </span>
           </div>
         </div>
 
         {/* Média Mensal */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               Média Mensal
             </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.media.toLocaleString('pt-PT', {
@@ -413,62 +413,62 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos/mês</span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
               Média
             </span>
           </div>
         </div>
 
         {/* Mês de Pico / Recorde */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px] text-lime-700">military_tech</span>
-              Mês de Pico
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
+              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">military_tech</span>
+              <span>Mês de Pico</span>
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none">
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
               Máx
             </span>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.pico ? estatisticas.pico.count : 0}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
             </div>
-            <span className="text-[10px] text-emerald-800 font-semibold truncate hidden sm:inline leading-none">
+            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
               {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
             </span>
           </div>
         </div>
 
         {/* Mês Mais Recente & Tendência */}
-        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide">
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
               {estatisticas.ultimoMes ? estatisticas.ultimoMes.label : 'Mês Recente'}
             </span>
             {estatisticas.variacaoUltimoMes >= 0 ? (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
                 <span className="material-symbols-outlined text-[10px]">trending_up</span>
                 +{estatisticas.variacaoUltimoMes}%
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 leading-none">
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 leading-none shrink-0">
                 <span className="material-symbols-outlined text-[10px]">trending_down</span>
                 {estatisticas.variacaoUltimoMes}%
               </span>
             )}
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
                 {estatisticas.ultimoMes ? estatisticas.ultimoMes.count : 0}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
             </div>
-            <span className="text-[10px] text-teal-800 font-medium hidden sm:inline leading-none">
+            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
               vs. anterior
             </span>
           </div>

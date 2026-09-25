@@ -230,130 +230,130 @@ export default function DashboardView({
         </div>
       )}
 
-      {/* KPIs Grid (6 Indicadores atualizados dinamicamente - Altura 100px) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      {/* KPIs Grid (6 Indicadores atualizados dinamicamente - Texto adaptável em múltiplas linhas) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 items-stretch">
         {/* 1. Artigos em Risco */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Artigos em Risco
             </span>
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
               <span className="material-symbols-outlined text-lg">warning</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-amber-600 leading-none">
               {totalArtigosEmRisco}
             </span>
-            <span className="text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">schedule</span>
-              60 a 180 d
+            <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
+              <span>60 a 180 d</span>
             </span>
           </div>
         </div>
 
         {/* 2. Artigos Bloqueados */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Artigos Bloqueados
             </span>
             <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 shrink-0">
               <span className="material-symbols-outlined text-lg">block</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-rose-600 leading-none">
               {totalArtigosBloqueados}
             </span>
-            <span className="text-[11px] text-rose-700 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">error</span>
-              1 a 60 d
+            <span className="text-[10px] sm:text-[11px] text-rose-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">error</span>
+              <span>1 a 60 d</span>
             </span>
           </div>
         </div>
 
         {/* 3. Pedidos do Mês em Curso */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Pedidos (Mês)
             </span>
             <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-700 shrink-0">
               <span className="material-symbols-outlined text-lg">calendar_month</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-teal-700 leading-none">
               {pedidosMesCount}
             </span>
-            <span className="text-[11px] text-teal-700 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">today</span>
-              {currentMonthName}
+            <span className="text-[10px] sm:text-[11px] text-teal-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">today</span>
+              <span>{currentMonthName}</span>
             </span>
           </div>
         </div>
 
         {/* 4. Pedidos do Ano Corrente */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Pedidos (Ano)
             </span>
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700 shrink-0">
               <span className="material-symbols-outlined text-lg">date_range</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-indigo-700 leading-none">
               {pedidosAnoCount}
             </span>
-            <span className="text-[11px] text-indigo-700 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">event</span>
-              Ano {currentYear}
+            <span className="text-[10px] sm:text-[11px] text-indigo-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">event</span>
+              <span>Ano {currentYear}</span>
             </span>
           </div>
         </div>
 
         {/* 5. Total Histórico de Pedidos */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Total Pedidos
             </span>
             <div className="w-7 h-7 rounded-lg bg-slate-500/10 flex items-center justify-center text-slate-700 shrink-0">
               <span className="material-symbols-outlined text-lg">receipt_long</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-slate-800 leading-none">
               {totalPedidosCount}
             </span>
-            <span className="text-[11px] text-slate-600 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">history</span>
-              Acumulado
+            <span className="text-[10px] sm:text-[11px] text-slate-600 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">history</span>
+              <span>Acumulado</span>
             </span>
           </div>
         </div>
 
         {/* 6. Artigos com Stock */}
-        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
-          <div className="flex items-center justify-between leading-none">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
               Artigos
             </span>
             <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700 shrink-0">
               <span className="material-symbols-outlined text-lg">medication</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
             <span className="text-xl sm:text-2xl font-bold font-headline text-sky-800 leading-none">
               {totalArtigosCount}
             </span>
-            <span className="text-[11px] text-sky-700 font-medium flex items-center gap-0.5 leading-none truncate">
-              <span className="material-symbols-outlined text-xs">inventory</span>
-              Armazém
+            <span className="text-[10px] sm:text-[11px] text-sky-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">inventory</span>
+              <span>Armazém</span>
             </span>
           </div>
         </div>
