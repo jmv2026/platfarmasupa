@@ -203,11 +203,25 @@ export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {
   cancelado: 'Cancelado',
 };
 
+export const CLASSIFICACOES_DESTINO = [
+  'Farmácia',
+  'Grupos Farmacia',
+  'Hospital',
+  'Grossista / Distribuidor',
+  'Exportação',
+  'Clínica / Centro de Saúde',
+  'Laboratório',
+  'Outro',
+] as const;
+
+export type ClassificacaoDestino = (typeof CLASSIFICACOES_DESTINO)[number] | string;
+
 export interface Destino {
   id: string;
   client_id: string;
   codigo: string;
   nome: string;
+  classifica_destino?: string | null;
   morada: string;
   codigo_postal: string;
   localidade: string;
@@ -225,6 +239,7 @@ export interface Destino {
 export interface NovoDestinoInput {
   client_id: string;
   nome: string;
+  classifica_destino?: string;
   morada: string;
   codigo_postal: string;
   localidade: string;
@@ -241,6 +256,7 @@ export interface Pedido {
   ref_documento: string | null;
   client_id: string;
   destino_id?: string | null;
+  classifica_destino?: string | null;
   nome_destinatario: string;
   morada: string;
   codigo_postal: string;
@@ -288,6 +304,7 @@ export interface NovoPedidoInput {
   client_id: string;
   destino_id?: string | null;
   guardar_novo_destino?: boolean;
+  classifica_destino?: string;
   ref_documento?: string;
   nome_destinatario: string;
   morada: string;

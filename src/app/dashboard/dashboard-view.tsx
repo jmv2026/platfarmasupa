@@ -2,8 +2,11 @@
 
 import { useState, useMemo, useRef } from 'react';
 import { Client, UserProfile } from '@/lib/supabase/types';
+import { useLanguage } from '@/lib/i18n/context';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
 import GraficoTopProdutos from './grafico-top-produtos';
+import GraficoPrevisaoStock from './grafico-previsao-stock';
+
 
 export interface DashboardStockItem {
   artigo_id: string;
@@ -51,12 +54,13 @@ export default function DashboardView({
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
+  const { t } = useLanguage();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top5'>('pedidos');
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top5' | 'previsao'>('pedidos');
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top5') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top5' | 'previsao') => {
     setGraficoAtivo(tipo);
     setTimeout(() => {
       if (graficoContainerRef.current) {
@@ -137,21 +141,7 @@ export default function DashboardView({
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
-  const monthNames = [
-    'Janeiro',
-    'Fevereiro',
-    'Março',
-    'Abril',
-    'Maio',
-    'Junho',
-    'Julho',
-    'Agosto',
-    'Setembro',
-    'Outubro',
-    'Novembro',
-    'Dezembro',
-  ];
-  const currentMonthName = monthNames[currentMonth];
+  const currentMonthName = t.dashboard.months[currentMonth] || 'Mês';
 
   const { pedidosMesCount, pedidosAnoCount, totalPedidosCount } = useMemo(() => {
     let mes = 0;
@@ -199,10 +189,10 @@ export default function DashboardView({
       <div className="h-[50px] bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
           <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
-            Painel Informativo
+            {t.dashboard.bannerTitle}
           </h1>
           <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
-            Visão geral das operações de armazém, encomendas e controlo de stocks.
+            {t.dashboard.bannerSubtitle}
           </p>
         </div>
         <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
@@ -213,7 +203,7 @@ export default function DashboardView({
         <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 shadow-xs">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-secondary text-base">filter_alt</span>
-            <span className="text-xs font-bold text-on-surface">Filtrar por Cliente:</span>
+            <span className="text-xs font-bold text-on-surface">{t.dashboard.filterByClient}</span>
             {selectedClientObj && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/10 border border-secondary/20 text-xs font-semibold text-secondary">
                 [{selectedClientObj.sigla}] {selectedClientObj.name}
@@ -226,7 +216,7 @@ export default function DashboardView({
             onChange={(e) => setSelectedClientId(e.target.value)}
             className="px-3 py-1.5 bg-surface-container-low text-on-surface border border-outline-variant/40 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shadow-xs min-w-[240px]"
           >
-            <option value="todos">Todos os Clientes</option>
+            <option value="todos">{t.dashboard.allClients}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>
                 [{c.sigla}] {c.name}
@@ -243,10 +233,10 @@ export default function DashboardView({
           <div className="flex items-start justify-between gap-1.5">
             <div className="flex flex-col min-w-0">
               <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-                Artigos em Risco
+                {t.dashboard.kpiRiskItems}
               </span>
               <span className="text-[9px] sm:text-[9.5px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
-                Medicamentos Uso Humano
+                {t.dashboard.kpiHumanMeds}
               </span>
             </div>
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
@@ -259,7 +249,7 @@ export default function DashboardView({
             </span>
             <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
               <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
-              <span>60 a 180 d</span>
+              <span>{t.dashboard.kpiRiskPeriod}</span>
             </span>
           </div>
         </div>
@@ -268,7 +258,7 @@ export default function DashboardView({
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
             <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Artigos Bloqueados
+              {t.dashboard.kpiBlockedItems}
             </span>
             <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 shrink-0">
               <span className="material-symbols-outlined text-lg">block</span>
@@ -280,7 +270,7 @@ export default function DashboardView({
             </span>
             <span className="text-[10px] sm:text-[11px] text-rose-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
               <span className="material-symbols-outlined text-xs shrink-0">error</span>
-              <span>1 a 60 d</span>
+              <span>{t.dashboard.kpiBlockedPeriod}</span>
             </span>
           </div>
         </div>
@@ -289,7 +279,7 @@ export default function DashboardView({
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
             <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Pedidos (Mês)
+              {t.dashboard.kpiOrdersMonth}
             </span>
             <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-700 shrink-0">
               <span className="material-symbols-outlined text-lg">calendar_month</span>
@@ -310,7 +300,7 @@ export default function DashboardView({
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
             <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Pedidos (Ano)
+              {t.dashboard.kpiOrdersYear}
             </span>
             <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700 shrink-0">
               <span className="material-symbols-outlined text-lg">date_range</span>
@@ -322,7 +312,7 @@ export default function DashboardView({
             </span>
             <span className="text-[10px] sm:text-[11px] text-indigo-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
               <span className="material-symbols-outlined text-xs shrink-0">event</span>
-              <span>Ano {currentYear}</span>
+              <span>{currentYear}</span>
             </span>
           </div>
         </div>
@@ -331,7 +321,7 @@ export default function DashboardView({
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
             <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Total Pedidos
+              {t.dashboard.kpiTotalOrders}
             </span>
             <div className="w-7 h-7 rounded-lg bg-slate-500/10 flex items-center justify-center text-slate-700 shrink-0">
               <span className="material-symbols-outlined text-lg">receipt_long</span>
@@ -343,7 +333,7 @@ export default function DashboardView({
             </span>
             <span className="text-[10px] sm:text-[11px] text-slate-600 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
               <span className="material-symbols-outlined text-xs shrink-0">history</span>
-              <span>Acumulado</span>
+              <span>{t.common.total}</span>
             </span>
           </div>
         </div>
@@ -352,7 +342,7 @@ export default function DashboardView({
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
             <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Artigos
+              {t.dashboard.kpiActiveArticles}
             </span>
             <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700 shrink-0">
               <span className="material-symbols-outlined text-lg">medication</span>
@@ -364,13 +354,13 @@ export default function DashboardView({
             </span>
             <span className="text-[10px] sm:text-[11px] text-sky-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
               <span className="material-symbols-outlined text-xs shrink-0">inventory</span>
-              <span>Armazém</span>
+              <span>{t.common.warehouse}</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Botões Separados de Seleção do Gráfico Ativo (Gráfico Pedidos / Gráfico Top 5) */}
+      {/* Botões Separados de Seleção do Gráfico Ativo (Gráfico Pedidos / Gráfico Top 5 / Gráfico Previsão Stock) */}
       <div className="flex items-center gap-3 pt-1 flex-wrap">
         <button
           type="button"
@@ -382,7 +372,7 @@ export default function DashboardView({
           }`}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">insights</span>
-          <span>Gráfico Pedidos</span>
+          <span>{t.dashboard.chartMonthlyTitle}</span>
         </button>
 
         <button
@@ -395,7 +385,20 @@ export default function DashboardView({
           }`}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">leaderboard</span>
-          <span>Gráfico Top 5</span>
+          <span>{t.dashboard.chartTop5Title}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelecionarGrafico('previsao')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
+            graficoAtivo === 'previsao'
+              ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
+              : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">trending_up</span>
+          <span>{t.dashboard.chartForecastTitle}</span>
         </button>
       </div>
 
@@ -406,8 +409,15 @@ export default function DashboardView({
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
           />
-        ) : (
+        ) : graficoAtivo === 'top5' ? (
           <GraficoTopProdutos
+            pedidos={filteredPedidos}
+            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+          />
+        ) : (
+          <GraficoPrevisaoStock
+            stockAtual={filteredStockAtual}
+            stockPedidos={filteredStockPedidos}
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
           />
@@ -416,3 +426,4 @@ export default function DashboardView({
     </main>
   );
 }
+

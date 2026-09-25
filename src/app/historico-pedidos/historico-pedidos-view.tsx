@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link';
 import {
   PedidoComLinhas,
   Client,
@@ -9,6 +8,7 @@ import {
   StatusPedido,
   UserProfile,
 } from '@/lib/supabase/types';
+import { useLanguage } from '@/lib/i18n/context';
 import { atualizarEstadoPedido } from './actions';
 
 interface HistoricoPedidosViewProps {
@@ -61,6 +61,7 @@ export default function HistoricoPedidosView({
   clients,
   currentUserProfile,
 }: HistoricoPedidosViewProps) {
+  const { t, language } = useLanguage();
   const [pedidosList, setPedidosList] = useState<PedidoComLinhas[]>(pedidos);
   const [updatingPedidoId, setUpdatingPedidoId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
@@ -72,7 +73,6 @@ export default function HistoricoPedidosView({
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterType>('todos');
   const [viewMode, setViewMode] = useState<ViewModeType>('tabela');
-  const [expandedPedidoId, setExpandedPedidoId] = useState<string | null>(null);
 
   const isManagerOrAdmin =
     currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
@@ -80,6 +80,35 @@ export default function HistoricoPedidosView({
   useEffect(() => {
     setPedidosList(pedidos);
   }, [pedidos]);
+
+  const getStatusLabel = (status: StatusPedido | string) => {
+    switch (status) {
+      case 'pendente':
+        return t.historico.statusPendente;
+      case 'confirmado':
+        return t.historico.statusConfirmado;
+      case 'em_preparacao':
+        return t.historico.statusPreparacao;
+      case 'expedido':
+        return t.historico.statusExpedido;
+      case 'entregue':
+        return t.historico.statusEntregue;
+      case 'cancelado':
+        return t.historico.statusCancelado;
+      default:
+        return STATUS_PEDIDO_LABELS[status as StatusPedido] || status;
+    }
+  };
+
+  const formatDate = (dStr: string | null | undefined) => {
+    if (!dStr) return '-';
+    try {
+      const locale = language === 'en' ? 'en-GB' : language === 'es' ? 'es-ES' : 'pt-PT';
+      return new Date(dStr).toLocaleDateString(locale);
+    } catch {
+      return dStr;
+    }
+  };
 
   // Alteração de Estado do Pedido
   const handleStatusChange = async (pedidoId: string, novoStatus: StatusPedido) => {
@@ -101,7 +130,7 @@ export default function HistoricoPedidosView({
     if (res.success) {
       setFeedback({
         type: 'success',
-        message: `Estado do pedido ${pedido.nr_pedido} alterado para "${STATUS_PEDIDO_LABELS[novoStatus]}".`,
+        message: `${language === 'pt' ? 'Estado do pedido' : language === 'es' ? 'Estado del pedido' : 'Order status'} ${pedido.nr_pedido} ${language === 'pt' ? 'alterado para' : language === 'es' ? 'cambiado a' : 'changed to'} "${getStatusLabel(novoStatus)}".`,
       });
       setTimeout(() => {
         setFeedback((curr) => (curr?.message.includes(pedido.nr_pedido) ? null : curr));
@@ -113,7 +142,7 @@ export default function HistoricoPedidosView({
       );
       setFeedback({
         type: 'error',
-        message: res.error || 'Erro ao atualizar o estado do pedido.',
+        message: res.error || t.common.error,
       });
     }
   };
@@ -209,11 +238,12 @@ export default function HistoricoPedidosView({
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
     csvContent +=
-      'Nr Pedido,Data Pedido,Data Entrega,Estado,Cliente,Destinatario,Morada,Codigo Postal,Localidade,Pais,Ref Documento,Observacoes,Codigo Artigo,Descricao Artigo,Lote,Validade,Quantidade\n';
+      'Nr Pedido,Data Pedido,Data Entrega,Estado,Cliente,Destinatario,Classificacao Destino,Morada,Codigo Postal,Localidade,Pais,Ref Documento,Observacoes,Codigo Artigo,Descricao Artigo,Lote,Validade,Quantidade\n';
 
     filteredPedidos.forEach((ped) => {
-      const statusLabel = STATUS_PEDIDO_LABELS[ped.status as StatusPedido] || ped.status;
-      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${ped.nome_destinatario.replace(/"/g, '""')}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
+      const statusLabel = getStatusLabel(ped.status);
+      const classif = ped.classifica_destino || ped.destinos?.classifica_destino || '';
+      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${ped.nome_destinatario.replace(/"/g, '""')}","${classif}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
 
       if (ped.pedido_linhas && ped.pedido_linhas.length > 0) {
         ped.pedido_linhas.forEach((l) => {
@@ -247,7 +277,23 @@ export default function HistoricoPedidosView({
   };
 
   return (
-    <div className="space-y-6">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Banner Topo */}
+      <div className="bg-gradient-to-r from-primary to-primary-container p-6 sm:p-8 rounded-2xl text-on-primary shadow-lg relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold opacity-80 mb-2">
+            <span className="material-symbols-outlined text-sm">receipt_long</span>
+            <span>{t.historico.bannerSubtitle}</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold font-headline tracking-tight">
+            {t.historico.bannerTitle}
+          </h1>
+          <p className="text-sm opacity-90 max-w-2xl mt-1">
+            {t.historico.bannerSubtitle}
+          </p>
+        </div>
+      </div>
+
       {/* Toast Feedback */}
       {feedback && (
         <div
@@ -284,7 +330,7 @@ export default function HistoricoPedidosView({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Pesquisar por nº pedido, destinatário, morada, ref. doc, código de artigo ou lote..."
+              placeholder={t.historico.searchPlaceholder}
               className="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
             />
             {searchTerm && (
@@ -302,10 +348,10 @@ export default function HistoricoPedidosView({
             {hasActiveFilters && (
               <button
                 onClick={handleClearFilters}
-                className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1"
+                className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-                Limpar Filtros
+                {language === 'pt' ? 'Limpar Filtros' : language === 'es' ? 'Limpiar Filtros' : 'Clear Filters'}
               </button>
             )}
 
@@ -313,36 +359,36 @@ export default function HistoricoPedidosView({
             <div className="flex items-center bg-surface-container rounded-xl p-0.5 border border-outline-variant/30">
               <button
                 onClick={() => setViewMode('tabela')}
-                title="Vista Tabela Compacta"
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                title={t.historico.viewTable}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === 'tabela'
                     ? 'bg-surface-container-lowest text-secondary shadow-sm'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">table_rows</span>
-                <span className="hidden sm:inline">Tabela</span>
+                <span className="hidden sm:inline">{t.historico.viewTable}</span>
               </button>
               <button
                 onClick={() => setViewMode('detalhado')}
-                title="Vista Detalhada (Linhas)"
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
+                title={t.historico.viewCards}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === 'detalhado'
                     ? 'bg-surface-container-lowest text-secondary shadow-sm'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm">view_agenda</span>
-                <span className="hidden sm:inline">Linhas</span>
+                <span className="hidden sm:inline">{t.historico.viewCards}</span>
               </button>
             </div>
 
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              className="px-4 py-2 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm text-secondary">download</span>
-              Exportar CSV
+              {t.common.export} CSV
             </button>
           </div>
         </div>
@@ -353,14 +399,14 @@ export default function HistoricoPedidosView({
           {isManagerOrAdmin ? (
             <div>
               <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                Cliente
+                {t.historico.filterClient}
               </label>
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
                 className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
               >
-                <option value="todos">Todos os Clientes</option>
+                <option value="todos">{t.historico.allClients}</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.sigla} - {c.name}
@@ -371,10 +417,10 @@ export default function HistoricoPedidosView({
           ) : (
             <div>
               <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                Cliente
+                {t.historico.filterClient}
               </label>
               <div className="px-3 py-1.5 bg-surface-container/40 border border-outline-variant/30 rounded-lg text-xs font-mono font-bold text-secondary">
-                {currentUserProfile?.empresa || 'Cliente Associado'}
+                {currentUserProfile?.empresa || t.common.client}
               </div>
             </div>
           )}
@@ -382,38 +428,38 @@ export default function HistoricoPedidosView({
           {/* Filtro Estado */}
           <div>
             <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-              Estado do Pedido
+              {t.historico.filterStatus}
             </label>
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
             >
-              <option value="todos">Todos os Estados</option>
-              <option value="pendente">Pendente</option>
-              <option value="confirmado">Confirmado</option>
-              <option value="em_preparacao">Em Preparação</option>
-              <option value="expedido">Expedido</option>
-              <option value="entregue">Entregue</option>
-              <option value="cancelado">Cancelado</option>
+              <option value="todos">{t.historico.allStatuses}</option>
+              <option value="pendente">{t.historico.statusPendente}</option>
+              <option value="confirmado">{t.historico.statusConfirmado}</option>
+              <option value="em_preparacao">{t.historico.statusPreparacao}</option>
+              <option value="expedido">{t.historico.statusExpedido}</option>
+              <option value="entregue">{t.historico.statusEntregue}</option>
+              <option value="cancelado">{t.historico.statusCancelado}</option>
             </select>
           </div>
 
           {/* Filtro Período */}
           <div>
             <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-              Período da Encomenda
+              {t.historico.filterDate}
             </label>
             <select
               value={selectedDateFilter}
               onChange={(e) => setSelectedDateFilter(e.target.value as DateFilterType)}
               className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
             >
-              <option value="todos">Todo o Histórico</option>
-              <option value="hoje">Hoje</option>
-              <option value="7dias">Últimos 7 dias</option>
-              <option value="30dias">Últimos 30 dias</option>
-              <option value="este_mes">Este Mês</option>
+              <option value="todos">{t.historico.allPeriods}</option>
+              <option value="hoje">{t.historico.periodToday}</option>
+              <option value="7dias">{t.historico.period7Days}</option>
+              <option value="30dias">{t.historico.period30Days}</option>
+              <option value="este_mes">{t.historico.periodThisMonth}</option>
             </select>
           </div>
         </div>
@@ -425,16 +471,16 @@ export default function HistoricoPedidosView({
           <div>
             <h2 className="text-xl font-bold font-headline text-on-surface flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">receipt_long</span>
-              Registo Histórico de Ordens de Entrega
+              {t.historico.bannerTitle}
             </h2>
             <p className="text-xs text-on-surface-variant mt-0.5">
-              Consulta detalhada de pedidos registados, artigos, lotes FEFO debitados e moradas de destino.
+              {t.historico.bannerSubtitle}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-secondary-container text-on-secondary-container">
-              {filteredPedidos.length} {filteredPedidos.length === 1 ? 'Pedido' : 'Pedidos'} (
-              {totalUnidadesFiltradas.toLocaleString('pt-PT')} un)
+              {filteredPedidos.length} {t.historico.totalOrders} (
+              {totalUnidadesFiltradas.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un)
             </span>
           </div>
         </div>
@@ -463,6 +509,11 @@ export default function HistoricoPedidosView({
                         <span className="font-semibold text-sm text-on-surface">
                           {ped.nome_destinatario}
                         </span>
+                        {(ped.classifica_destino || ped.destinos?.classifica_destino) && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                            {ped.classifica_destino || ped.destinos?.classifica_destino}
+                          </span>
+                        )}
                         {ped.clients?.sigla && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                             {ped.clients.sigla}
@@ -477,7 +528,7 @@ export default function HistoricoPedidosView({
                             {isUpdating ? (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container border border-outline-variant/30 text-on-surface-variant">
                                 <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                                A gravar...
+                                {t.common.loading}
                               </span>
                             ) : (
                               <div className="relative">
@@ -487,14 +538,14 @@ export default function HistoricoPedidosView({
                                     handleStatusChange(ped.id, e.target.value as StatusPedido)
                                   }
                                   className={`appearance-none cursor-pointer pl-3 pr-8 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-secondary/40 ${statusCfg.bg}`}
-                                  title="Clique para alterar o estado do pedido"
+                                  title={t.historico.changeStatus}
                                 >
-                                  <option value="pendente">Pendente</option>
-                                  <option value="confirmado">Confirmado</option>
-                                  <option value="em_preparacao">Em Preparação</option>
-                                  <option value="expedido">Expedido</option>
-                                  <option value="entregue">Entregue</option>
-                                  <option value="cancelado">Cancelado</option>
+                                  <option value="pendente">{t.historico.statusPendente}</option>
+                                  <option value="confirmado">{t.historico.statusConfirmado}</option>
+                                  <option value="em_preparacao">{t.historico.statusPreparacao}</option>
+                                  <option value="expedido">{t.historico.statusExpedido}</option>
+                                  <option value="entregue">{t.historico.statusEntregue}</option>
+                                  <option value="cancelado">{t.historico.statusCancelado}</option>
                                 </select>
                                 <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-70">
                                   arrow_drop_down
@@ -507,12 +558,12 @@ export default function HistoricoPedidosView({
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.bg}`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
-                            {STATUS_PEDIDO_LABELS[statusKey] || ped.status}
+                            {getStatusLabel(statusKey)}
                           </span>
                         )}
 
                         <span className="text-xs text-on-surface-variant font-mono">
-                          {new Date(ped.data_pedido).toLocaleDateString('pt-PT')}
+                          {formatDate(ped.data_pedido)}
                         </span>
                       </div>
                     </div>
@@ -521,7 +572,7 @@ export default function HistoricoPedidosView({
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs bg-surface-container/40 p-3.5 rounded-lg border border-outline-variant/20">
                       <div>
                         <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
-                          Morada de Entrega
+                          {t.pedidos.address}
                         </span>
                         <span className="text-on-surface font-medium">
                           {ped.morada}, {ped.codigo_postal} {ped.localidade} (
@@ -530,7 +581,7 @@ export default function HistoricoPedidosView({
                       </div>
                       <div>
                         <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
-                          Ref. Documento
+                          {t.pedidos.docRef}
                         </span>
                         <span className="text-on-surface font-mono font-medium">
                           {ped.ref_documento || 'N/A'}
@@ -538,12 +589,10 @@ export default function HistoricoPedidosView({
                       </div>
                       <div>
                         <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
-                          Data Prevista Entrega
+                          {t.pedidos.deliveryDate}
                         </span>
                         <span className="text-on-surface font-mono font-medium">
-                          {ped.data_entrega
-                            ? new Date(ped.data_entrega).toLocaleDateString('pt-PT')
-                            : 'Imediata'}
+                          {ped.data_entrega ? formatDate(ped.data_entrega) : (language === 'pt' ? 'Imediata' : language === 'es' ? 'Inmediata' : 'Immediate')}
                         </span>
                       </div>
                     </div>
@@ -554,11 +603,11 @@ export default function HistoricoPedidosView({
                         <table className="w-full text-left text-xs">
                           <thead className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold bg-surface-container/60">
                             <tr>
-                              <th className="py-2 px-3 rounded-l-md">Código Artigo</th>
-                              <th className="py-2 px-3">Descrição</th>
-                              <th className="py-2 px-3">Lote</th>
-                              <th className="py-2 px-3">Validade</th>
-                              <th className="py-2 px-3 text-right rounded-r-md">Qtd Debitada</th>
+                              <th className="py-2 px-3 rounded-l-md">{t.pedidos.tableArticle}</th>
+                              <th className="py-2 px-3">{t.common.description}</th>
+                              <th className="py-2 px-3">{t.pedidos.tableBatch}</th>
+                              <th className="py-2 px-3">{t.pedidos.tableExpiry}</th>
+                              <th className="py-2 px-3 text-right rounded-r-md">{t.pedidos.tableQty}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -572,12 +621,10 @@ export default function HistoricoPedidosView({
                                   {linha.lote}
                                 </td>
                                 <td className="py-2 px-3 font-mono text-on-surface-variant">
-                                  {linha.validade
-                                    ? new Date(linha.validade).toLocaleDateString('pt-PT')
-                                    : '-'}
+                                  {formatDate(linha.validade)}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-rose-700">
-                                  -{Number(linha.quantidade).toLocaleString('pt-PT')}{' '}
+                                  -{Number(linha.quantidade).toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')}{' '}
                                   <span className="text-[10px] font-normal text-on-surface-variant">
                                     un
                                   </span>
@@ -592,13 +639,13 @@ export default function HistoricoPedidosView({
                     <div className="flex items-center justify-between text-xs text-on-surface-variant pt-2 border-t border-outline-variant/10">
                       <span>
                         {ped.observacoes
-                          ? `Nota: ${ped.observacoes}`
-                          : 'Sem observações adicionais'}
+                          ? `${t.pedidos.notes}: ${ped.observacoes}`
+                          : (language === 'pt' ? 'Sem observações adicionais' : language === 'es' ? 'Sin observaciones adicionales' : 'No additional notes')}
                       </span>
                       <span className="font-semibold text-on-surface">
-                        Total do Pedido:{' '}
+                        {t.historico.colTotalQty}:{' '}
                         <strong className="text-secondary font-mono text-sm">
-                          {totalQtd.toLocaleString('pt-PT')} un
+                          {totalQtd.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un
                         </strong>
                       </span>
                     </div>
@@ -612,15 +659,15 @@ export default function HistoricoPedidosView({
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="py-2.5 px-3 rounded-l-lg">Nº Pedido</th>
-                    <th className="py-2.5 px-3">Data Pedido</th>
-                    <th className="py-2.5 px-3">Cliente</th>
-                    <th className="py-2.5 px-3">Destinatário</th>
-                    <th className="py-2.5 px-3">Localidade</th>
-                    <th className="py-2.5 px-3">Ref. Doc</th>
-                    <th className="py-2.5 px-3 text-center">Linhas</th>
-                    <th className="py-2.5 px-3 text-right">Total Unidades</th>
-                    <th className="py-2.5 px-3 text-center rounded-r-lg">Estado</th>
+                    <th className="py-2.5 px-3 rounded-l-lg">{t.historico.colOrderNumber}</th>
+                    <th className="py-2.5 px-3">{t.historico.colDate}</th>
+                    <th className="py-2.5 px-3">{t.historico.colClient}</th>
+                    <th className="py-2.5 px-3">{t.historico.colDestination}</th>
+                    <th className="py-2.5 px-3">{t.pedidos.city}</th>
+                    <th className="py-2.5 px-3">{t.historico.colDocRef}</th>
+                    <th className="py-2.5 px-3 text-center">{t.historico.colLines}</th>
+                    <th className="py-2.5 px-3 text-right">{t.historico.colTotalQty}</th>
+                    <th className="py-2.5 px-3 text-center rounded-r-lg">{t.historico.colStatus}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -638,14 +685,21 @@ export default function HistoricoPedidosView({
                           {ped.nr_pedido}
                         </td>
                         <td className="py-3 px-3 font-mono text-on-surface-variant">
-                          {new Date(ped.data_pedido).toLocaleDateString('pt-PT')}
+                          {formatDate(ped.data_pedido)}
                         </td>
                         <td className="py-3 px-3">
                           <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                             {ped.clients?.sigla || '-'}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-medium">{ped.nome_destinatario}</td>
+                        <td className="py-3 px-3 font-medium">
+                          <div>{ped.nome_destinatario}</div>
+                          {(ped.classifica_destino || ped.destinos?.classifica_destino) && (
+                            <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-primary/10 text-primary">
+                              {ped.classifica_destino || ped.destinos?.classifica_destino}
+                            </span>
+                          )}
+                        </td>
                         <td className="py-3 px-3 text-on-surface-variant">{ped.localidade}</td>
                         <td className="py-3 px-3 font-mono text-on-surface-variant">
                           {ped.ref_documento || '-'}
@@ -654,14 +708,14 @@ export default function HistoricoPedidosView({
                           {ped.pedido_linhas?.length || 0}
                         </td>
                         <td className="py-3 px-3 text-right font-bold font-mono text-secondary">
-                          {totalQtd.toLocaleString('pt-PT')} un
+                          {totalQtd.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un
                         </td>
                         <td className="py-3 px-3 text-center">
                           {isManagerOrAdmin ? (
                             isUpdating ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-surface-container text-on-surface-variant font-medium">
                                 <span className="w-2.5 h-2.5 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                                A gravar...
+                                {t.common.loading}
                               </span>
                             ) : (
                               <div className="relative inline-block">
@@ -671,14 +725,14 @@ export default function HistoricoPedidosView({
                                     handleStatusChange(ped.id, e.target.value as StatusPedido)
                                   }
                                   className={`appearance-none cursor-pointer pl-2.5 pr-6 py-1 rounded-md text-[11px] font-bold border transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-secondary ${statusCfg.bg}`}
-                                  title="Clique para mudar o estado"
+                                  title={t.historico.changeStatus}
                                 >
-                                  <option value="pendente">Pendente</option>
-                                  <option value="confirmado">Confirmado</option>
-                                  <option value="em_preparacao">Em Preparação</option>
-                                  <option value="expedido">Expedido</option>
-                                  <option value="entregue">Entregue</option>
-                                  <option value="cancelado">Cancelado</option>
+                                  <option value="pendente">{t.historico.statusPendente}</option>
+                                  <option value="confirmado">{t.historico.statusConfirmado}</option>
+                                  <option value="em_preparacao">{t.historico.statusPreparacao}</option>
+                                  <option value="expedido">{t.historico.statusExpedido}</option>
+                                  <option value="entregue">{t.historico.statusEntregue}</option>
+                                  <option value="cancelado">{t.historico.statusCancelado}</option>
                                 </select>
                                 <span className="material-symbols-outlined absolute right-1 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none opacity-70">
                                   arrow_drop_down
@@ -689,7 +743,7 @@ export default function HistoricoPedidosView({
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusCfg.bg}`}
                             >
-                              {STATUS_PEDIDO_LABELS[statusKey] || ped.status}
+                              {getStatusLabel(statusKey)}
                             </span>
                           )}
                         </td>
@@ -704,14 +758,11 @@ export default function HistoricoPedidosView({
           <div className="py-12 text-center text-on-surface-variant border border-dashed border-outline-variant/40 rounded-xl">
             <span className="material-symbols-outlined text-4xl text-outline mb-2">shopping_bag</span>
             <p className="text-sm font-medium">
-              Nenhum pedido de entrega encontrado com os filtros aplicados.
-            </p>
-            <p className="text-xs text-on-surface-variant/70 mt-1">
-              Tente alterar os termos de pesquisa ou limpar os filtros para ver todos os registos.
+              {t.historico.noOrdersFound}
             </p>
           </div>
         )}
       </div>
-    </div>
+    </main>
   );
 }

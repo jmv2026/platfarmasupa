@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import ExcelJS from 'exceljs';
+import { useLanguage } from '@/lib/i18n/context';
 import {
   StockAtual,
   StockPedido,
@@ -14,6 +15,7 @@ import {
   TipoArmazem,
   UserProfile,
 } from '@/lib/supabase/types';
+
 
 interface StocksViewProps {
   stockAtual: StockAtual[];
@@ -30,12 +32,14 @@ export default function StocksView({
   clients,
   currentUserProfile,
 }: StocksViewProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('pedidos');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [selectedArmazenamento, setSelectedArmazenamento] = useState<string>('todos');
   const [selectedTipoArtigo, setSelectedTipoArtigo] = useState<string>('todos');
   const [selectedTipoArmazem, setSelectedTipoArmazem] = useState<string>('todos');
+
 
   const isManagerOrAdmin =
     currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
@@ -463,343 +467,359 @@ export default function StocksView({
   };
 
   return (
-    <div className="space-y-6">
-      {/* KPIs Grid (4 Indicadores atualizados dinamicamente - Formatação adaptável do Dashboard) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
-        {/* 1. Stock Outros Armazéns */}
-        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1.5">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Stock Outros Armazéns
-            </span>
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
-              <span className="material-symbols-outlined text-lg">warehouse</span>
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-            <span className="text-xl sm:text-2xl font-bold font-headline text-on-surface leading-none">
-              {totalStockOutros.toLocaleString('pt-PT')}{' '}
-              <span className="text-xs font-normal text-on-surface-variant">un</span>
-            </span>
-            <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
-              <span className="material-symbols-outlined text-xs shrink-0">info</span>
-              <span>Quarentena / Devoluções</span>
-            </span>
-          </div>
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Banner */}
+      <div className="h-[50px] bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
+        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
+            {t.stocks.bannerTitle}
+          </h1>
+          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
+            {t.stocks.bannerSubtitle}
+          </p>
         </div>
-
-        {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
-        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1.5">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-                Alertas Validade DM
-              </span>
-              <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
-                Dispositivos Médicos
-              </span>
-            </div>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-              artigosAlertaValidadeDM > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
-            }`}>
-              <span className="material-symbols-outlined text-lg">block</span>
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-              artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-600'
-            }`}>
-              {artigosAlertaValidadeDM}
-            </span>
-            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-              artigosAlertaValidadeDM > 0 ? 'text-rose-700' : 'text-emerald-700'
-            }`}>
-              <span className="material-symbols-outlined text-xs shrink-0">error</span>
-              <span>Validade Expirada</span>
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Alertas Validade DC e SA (Expirados - Dermocosméticos e Suplementos Alimentares) */}
-        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1.5">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-                Alertas Validade DC e SA
-              </span>
-              <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
-                Dermocosméticos, Suplementos Alimentares
-              </span>
-            </div>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-              artigosAlertaValidadeDCSA > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
-            }`}>
-              <span className="material-symbols-outlined text-lg">block</span>
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-              artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-600'
-            }`}>
-              {artigosAlertaValidadeDCSA}
-            </span>
-            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-              artigosAlertaValidadeDCSA > 0 ? 'text-rose-700' : 'text-emerald-700'
-            }`}>
-              <span className="material-symbols-outlined text-xs shrink-0">error</span>
-              <span>Validade Expirada</span>
-            </span>
-          </div>
-        </div>
-
-        {/* 4. Alertas Validade MH (< 180 dias - Medicamentos Uso Humano) */}
-        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1.5">
-            <div className="flex flex-col min-w-0">
-              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-                Alertas Validade MH
-              </span>
-              <span className="text-[9.5px] sm:text-[10px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
-                Medicamentos Uso Humano
-              </span>
-            </div>
-            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-              artigosAlertaValidadeMH > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'
-            }`}>
-              <span className="material-symbols-outlined text-lg">warning</span>
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-              artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-600'
-            }`}>
-              {artigosAlertaValidadeMH}
-            </span>
-            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-              artigosAlertaValidadeMH > 0 ? 'text-amber-700' : 'text-emerald-700'
-            }`}>
-              <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
-              <span>Validade &lt; 180 dias</span>
-            </span>
-          </div>
-        </div>
+        <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
       </div>
 
-      {/* Painel de Filtros e Busca */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Barra de Pesquisa */}
-          <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
-              search
-            </span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Pesquisar por código do artigo, descrição, lote ou armazém..."
-              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
-              >
-                <span className="material-symbols-outlined text-sm">close</span>
-              </button>
-            )}
-          </div>
-
-          {/* Botões de Exportação */}
-          <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap sm:flex-nowrap">
-            {hasActiveFilters && (
-              <button
-                onClick={handleClearFilters}
-                className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1"
-              >
-                <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-                Limpar Filtros
-              </button>
-            )}
-            <button
-              onClick={handleExportCSV}
-              className="px-3.5 py-2.5 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
-              title="Exportar dados da vista atual em formato CSV"
-            >
-              <span className="material-symbols-outlined text-sm text-secondary">description</span>
-              Exportar CSV
-            </button>
-            <button
-              onClick={handleExportExcel}
-              className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 active:scale-98"
-              title="Exportar dados da vista atual em formato Excel (.xlsx)"
-            >
-              <span className="material-symbols-outlined text-sm text-emerald-200">table_view</span>
-              Exportar Excel
-            </button>
-          </div>
-        </div>
-
-        {/* Linha de Filtros Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/15">
-          {/* Filtro Cliente (Apenas se Admin/Gestor) */}
-          {isManagerOrAdmin ? (
-            <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                Cliente
-              </label>
-              <select
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
-              >
-                <option value="todos">Todos os Clientes</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.sigla} - {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-                Cliente
-              </label>
-              <div className="px-3 py-1.5 bg-surface-container/40 border border-outline-variant/30 rounded-lg text-xs font-mono font-bold text-secondary">
-                {currentUserProfile?.empresa || 'Cliente Associado'}
+      <div className="space-y-6">
+        {/* KPIs Grid (4 Indicadores atualizados dinamicamente - Formatação adaptável do Dashboard) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+          {/* 1. Stock Outros Armazéns */}
+          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1.5">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                Stock Outros Armazéns
+              </span>
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                <span className="material-symbols-outlined text-lg">warehouse</span>
               </div>
             </div>
-          )}
-
-          {/* Filtro Conservação */}
-          <div>
-            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-              Conservação / Temperatura
-            </label>
-            <select
-              value={selectedArmazenamento}
-              onChange={(e) => setSelectedArmazenamento(e.target.value)}
-              className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
-            >
-              <option value="todos">Todas as Temperaturas</option>
-              <option value="TF">TF - Frio (2-8 ºC)</option>
-              <option value="TC">TC - Controlada (15-25 ºC)</option>
-              <option value="TA">TA - Temperatura Ambiente</option>
-            </select>
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-on-surface leading-none">
+                {totalStockOutros.toLocaleString('pt-PT')}{' '}
+                <span className="text-xs font-normal text-on-surface-variant">un</span>
+              </span>
+              <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+                <span className="material-symbols-outlined text-xs shrink-0">info</span>
+                <span>Quarentena / Devoluções</span>
+              </span>
+            </div>
           </div>
 
-          {/* Filtro Tipo Artigo */}
-          <div>
-            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-              Tipo de Artigo
-            </label>
-            <select
-              value={selectedTipoArtigo}
-              onChange={(e) => setSelectedTipoArtigo(e.target.value)}
-              className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
-            >
-              <option value="todos">Todos os Tipos</option>
-              <option value="MH">MH - Medicamento Humano</option>
-              <option value="MV">MV - Medicamento Veterinário</option>
-              <option value="DM">DM - Dispositivo Médico</option>
-              <option value="DC">DC - Dermo-Cosmético</option>
-              <option value="SC">SC - Substância Controlada</option>
-            </select>
+          {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
+          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                  {t.stocks.alertsDm}
+                </span>
+                <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                  Dispositivos Médicos
+                </span>
+              </div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                artigosAlertaValidadeDM > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+              }`}>
+                <span className="material-symbols-outlined text-lg">block</span>
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+                artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-600'
+              }`}>
+                {artigosAlertaValidadeDM}
+              </span>
+              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+                artigosAlertaValidadeDM > 0 ? 'text-rose-700' : 'text-emerald-700'
+              }`}>
+                <span className="material-symbols-outlined text-xs shrink-0">error</span>
+                <span>{t.stocks.expired}</span>
+              </span>
+            </div>
           </div>
 
-          {/* Filtro Tipo Armazém */}
-          <div>
-            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
-              Tipo de Armazém
-            </label>
-            <select
-              value={selectedTipoArmazem}
-              onChange={(e) => setSelectedTipoArmazem(e.target.value)}
-              className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
-            >
-              <option value="todos">Todos os Armazéns</option>
-              <option value="01">01 - Venda (Disponível)</option>
-              <option value="05">05 - Quarentena</option>
-              <option value="04">04 - Devoluções</option>
-              <option value="02">02 - Expirados</option>
-              <option value="03">03 - Danificados</option>
-              <option value="06">06 - Destruição</option>
-              <option value="07">07 - Farmacoteca</option>
-              <option value="10">10 - MIA</option>
-            </select>
+          {/* 3. Alertas Validade DC e SA (Expirados - Dermocosméticos e Suplementos Alimentares) */}
+          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                  {t.stocks.alertsDcSa}
+                </span>
+                <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                  Dermocosméticos, Suplementos
+                </span>
+              </div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                artigosAlertaValidadeDCSA > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+              }`}>
+                <span className="material-symbols-outlined text-lg">block</span>
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+                artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-600'
+              }`}>
+                {artigosAlertaValidadeDCSA}
+              </span>
+              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+                artigosAlertaValidadeDCSA > 0 ? 'text-rose-700' : 'text-emerald-700'
+              }`}>
+                <span className="material-symbols-outlined text-xs shrink-0">error</span>
+                <span>{t.stocks.expired}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Alertas Validade MH (< 180 dias - Medicamentos Uso Humano) */}
+          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1.5">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                  {t.stocks.alertsMh}
+                </span>
+                <span className="text-[9.5px] sm:text-[10px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
+                  Medicamentos Uso Humano
+                </span>
+              </div>
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                artigosAlertaValidadeMH > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'
+              }`}>
+                <span className="material-symbols-outlined text-lg">warning</span>
+              </div>
+            </div>
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+                artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-600'
+              }`}>
+                {artigosAlertaValidadeMH}
+              </span>
+              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+                artigosAlertaValidadeMH > 0 ? 'text-amber-700' : 'text-emerald-700'
+              }`}>
+                <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
+                <span>{t.stocks.inRisk} (&lt; 180d)</span>
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Abas de Navegação de Stock */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-sm overflow-hidden">
-        <div className="border-b border-outline-variant/20 px-6 pt-4 bg-surface-container/20">
-          <div className="flex items-center gap-2 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('pedidos')}
-              className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'pedidos'
-                  ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>
-              Stock Disponível
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
-                {filteredStockPedidos.length}
+        {/* Painel de Filtros e Busca */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Barra de Pesquisa */}
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
+                search
               </span>
-            </button>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={t.stocks.searchPlaceholder}
+                className="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              )}
+            </div>
 
-            <button
-              onClick={() => setActiveTab('consolidado')}
-              className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'consolidado'
-                  ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">inventory</span>
-              Stock Consolidado (Todos Armazéns)
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
-                {filteredStockAtual.length}
-              </span>
-            </button>
+            {/* Botões de Exportação */}
+            <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap sm:flex-nowrap">
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                  {t.common.cancel}
+                </button>
+              )}
+              <button
+                onClick={handleExportCSV}
+                className="px-3.5 py-2.5 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                title="Exportar CSV"
+              >
+                <span className="material-symbols-outlined text-sm text-secondary">description</span>
+                CSV
+              </button>
+              <button
+                onClick={handleExportExcel}
+                className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 active:scale-98"
+                title="Exportar Excel (.xlsx)"
+              >
+                <span className="material-symbols-outlined text-sm text-emerald-200">table_view</span>
+                {t.stocks.exportExcel}
+              </button>
+            </div>
+          </div>
 
-            <button
-              onClick={() => setActiveTab('artigos')}
-              className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'artigos'
-                  ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">category</span>
-              Resumo por Artigo
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
-                {resumoArtigos.length}
-              </span>
-            </button>
+          {/* Linha de Filtros Dropdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/15">
+            {/* Filtro Cliente (Apenas se Admin/Gestor) */}
+            {isManagerOrAdmin ? (
+              <div>
+                <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                  {t.stocks.filterClient}
+                </label>
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => setSelectedClientId(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                >
+                  <option value="todos">{t.stocks.allClients}</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.sigla} - {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                  {t.stocks.filterClient}
+                </label>
+                <div className="px-3 py-1.5 bg-surface-container/40 border border-outline-variant/30 rounded-lg text-xs font-mono font-bold text-secondary">
+                  {currentUserProfile?.empresa || 'Cliente Associado'}
+                </div>
+              </div>
+            )}
 
-            <button
-              onClick={() => setActiveTab('validade')}
-              className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
-                activeTab === 'validade'
-                  ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                  : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
-              }`}
-            >
-              <span className="material-symbols-outlined text-base">event_upcoming</span>
-              Controlo de Validades (FEFO)
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(artigosAlertaValidadeMH > 0 || artigosAlertaValidadeDM > 0 || artigosAlertaValidadeDCSA > 0) ? 'bg-rose-100 text-rose-800' : 'bg-secondary-container text-on-secondary-container'}`}>
-                {lotesValidade.length}
-              </span>
-            </button>
+            {/* Filtro Conservação */}
+            <div>
+              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                {t.stocks.filterStorage}
+              </label>
+              <select
+                value={selectedArmazenamento}
+                onChange={(e) => setSelectedArmazenamento(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">{t.stocks.allStorage}</option>
+                <option value="TF">TF - Frio (2-8 ºC)</option>
+                <option value="TC">TC - Controlada (15-25 ºC)</option>
+                <option value="TA">TA - Temperatura Ambiente</option>
+              </select>
+            </div>
+
+            {/* Filtro Tipo Artigo */}
+            <div>
+              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                {t.stocks.filterArticleType}
+              </label>
+              <select
+                value={selectedTipoArtigo}
+                onChange={(e) => setSelectedTipoArtigo(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">{t.stocks.allTypes}</option>
+                <option value="MH">MH - Medicamento Humano</option>
+                <option value="MV">MV - Medicamento Veterinário</option>
+                <option value="DM">DM - Dispositivo Médico</option>
+                <option value="DC">DC - Dermo-Cosmético</option>
+                <option value="SC">SC - Substância Controlada</option>
+              </select>
+            </div>
+
+            {/* Filtro Tipo Armazém */}
+            <div>
+              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                {t.stocks.filterWarehouse}
+              </label>
+              <select
+                value={selectedTipoArmazem}
+                onChange={(e) => setSelectedTipoArmazem(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">{t.stocks.allWarehouses}</option>
+                <option value="01">01 - Venda (Disponível)</option>
+                <option value="05">05 - Quarentena</option>
+                <option value="04">04 - Devoluções</option>
+                <option value="02">02 - Expirados</option>
+                <option value="03">03 - Danificados</option>
+                <option value="06">06 - Destruição</option>
+                <option value="07">07 - Farmacoteca</option>
+                <option value="10">10 - MIA</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Abas de Navegação de Stock */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-sm overflow-hidden">
+          <div className="border-b border-outline-variant/20 px-6 pt-4 bg-surface-container/20">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab('pedidos')}
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'pedidos'
+                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>
+                {t.stocks.tabVenda}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                  {filteredStockPedidos.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('consolidado')}
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'consolidado'
+                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">inventory</span>
+                {t.stocks.tabConsolidado}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                  {filteredStockAtual.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('artigos')}
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'artigos'
+                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">category</span>
+                {t.stocks.tabArtigos}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                  {resumoArtigos.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('validade')}
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'validade'
+                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                }`}
+              >
+                <span className="material-symbols-outlined text-base">notification_important</span>
+                {t.stocks.tabValidades}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                  {lotesValidade.length}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Conteúdo da Aba Ativa */}
         <div className="p-6">
+
           {/* TAB 1: Stock Venda Livre (vw_stock_pedidos) */}
           {activeTab === 'pedidos' && (
             <div className="space-y-4">
@@ -1199,6 +1219,7 @@ export default function StocksView({
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }
+
