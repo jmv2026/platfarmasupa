@@ -121,7 +121,20 @@ export default async function PedidosPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Banner */}
+        <div className="h-[50px] bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
+          <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+            <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
+              Criar Pedido
+            </h1>
+            <p className="text-xs sm:text-sm text-on-primary/80 font-normal truncate hidden sm:block">
+              Registo e expedição de ordens de entrega com seleção por código e sugestão FEFO.
+            </p>
+          </div>
+          <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
+        </div>
+
         {/* Formulário de Criação de Pedido */}
         <NovoPedidoForm
           clients={(clients as Client[]) || []}

@@ -147,25 +147,16 @@ export default async function ConfiguracaoPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Banner */}
-        <div className="bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-block px-3 py-1 bg-secondary text-on-secondary rounded-full text-xs font-bold tracking-wide uppercase shadow-sm">
-                Painel de Configuração
-              </span>
-              <span className="text-xs font-semibold text-primary-fixed flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                Administração do Sistema
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline mb-2">
+        <div className="h-[50px] bg-gradient-to-r from-primary to-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
+          <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+            <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
               Configuração & Administração do Sistema
             </h1>
-            <p className="text-xs sm:text-sm text-primary-fixed max-w-2xl">
-              Gestão centralizada de contas de utilizadores, parametrização de clientes (siglas ≤ 4 carateres) e cadastro de artigos com controlo de conservação e lote/série.
+            <p className="text-xs sm:text-sm text-primary-fixed/90 font-normal truncate hidden sm:block">
+              Gestão centralizada de contas de utilizadores, parametrização de clientes e cadastro de artigos.
             </p>
           </div>
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
         </div>
 
         {/* Abas de Configuração */}

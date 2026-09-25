@@ -163,49 +163,46 @@ export default function DashboardView({
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Welcome Banner com Pull-Down de Clientes para Admin/Gestor */}
-      <div className="bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-headline">
-              Painel Informativo
-            </h1>
-            <p className="text-on-primary/80 text-xs sm:text-sm mt-1 max-w-2xl">
-              Visão geral das operações de armazém, encomendas e controlo de stocks.
-            </p>
+      {/* Welcome Banner */}
+      <div className="h-[50px] bg-gradient-to-r from-primary-container to-primary text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
+        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
+            Painel Informativo
+          </h1>
+          <p className="text-xs sm:text-sm text-on-primary/80 font-normal truncate hidden sm:block">
+            Visão geral das operações de armazém, encomendas e controlo de stocks.
+          </p>
+        </div>
+        <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
+      </div>
+
+      {/* Pull-down de seleção de cliente para Administradores e Gestores */}
+      {isManagerOrAdmin && (
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-base">filter_alt</span>
+            <span className="text-xs font-bold text-on-surface">Filtrar por Cliente:</span>
             {selectedClientObj && (
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/20 text-xs font-semibold text-white mt-3">
-                <span className="material-symbols-outlined text-xs">business</span>
-                Cliente Selecionado: [{selectedClientObj.sigla}] {selectedClientObj.name}
-              </div>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/10 border border-secondary/20 text-xs font-semibold text-secondary">
+                [{selectedClientObj.sigla}] {selectedClientObj.name}
+              </span>
             )}
           </div>
-
-          {/* Pull-down de seleção de cliente para Administradores e Gestores */}
-          {isManagerOrAdmin && (
-            <div className="bg-surface-container-lowest/15 backdrop-blur-md border border-white/20 rounded-xl p-3 shadow-md min-w-[260px] sm:min-w-[300px]">
-              <label className="block text-[11px] font-bold text-white/95 mb-1.5 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm">filter_alt</span>
-                Filtrar por Cliente
-              </label>
-              <select
-                id="dashboard-client-select"
-                value={selectedClientId}
-                onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-slate-900 border border-white/30 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shadow-sm"
-              >
-                <option value="todos">Todos os Clientes</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    [{c.sigla}] {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <select
+            id="dashboard-client-select"
+            value={selectedClientId}
+            onChange={(e) => setSelectedClientId(e.target.value)}
+            className="px-3 py-1.5 bg-surface-container-low text-on-surface border border-outline-variant/40 rounded-lg text-xs font-bold focus:outline-none focus:ring-2 focus:ring-secondary cursor-pointer shadow-xs min-w-[240px]"
+          >
+            <option value="todos">Todos os Clientes</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                [{c.sigla}] {c.name}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-secondary/10 pointer-events-none rounded-r-2xl"></div>
-      </div>
+      )}
 
       {/* KPIs Grid (Indicadores atualizados dinamicamente) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-5">
