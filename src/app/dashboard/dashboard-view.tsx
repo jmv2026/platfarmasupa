@@ -10,6 +10,7 @@ export interface DashboardStockItem {
   validade: string | null;
   stock: number;
   client_id: string;
+  tipo_artigo?: string | null;
 }
 
 export interface DashboardStockPedidoItem {
@@ -105,7 +106,7 @@ export default function DashboardView({
     return filteredStockPedidos.reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
   }, [filteredStockPedidos]);
 
-  // 2. Artigos em Risco (> 60d e < 180d) & 3. Artigos Bloqueados (> 0d e <= 60d)
+  // 2. Artigos em Risco (> 60d e < 180d - apenas MH) & 3. Artigos Bloqueados (> 0d e <= 60d)
   const { totalArtigosEmRisco, totalArtigosBloqueados } = useMemo(() => {
     const artigosEmRiscoSet = new Set<string>();
     const artigosBloqueadosSet = new Set<string>();
@@ -116,7 +117,12 @@ export default function DashboardView({
         if (days > 0 && days <= 60) {
           artigosBloqueadosSet.add(item.artigo_id);
         } else if (days > 60 && days < 180) {
-          artigosEmRiscoSet.add(item.artigo_id);
+          // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
+          const tipo = item.tipo_artigo ? String(item.tipo_artigo).trim().toUpperCase() : '';
+          const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
+          if (isMH) {
+            artigosEmRiscoSet.add(item.artigo_id);
+          }
         }
       }
     });
@@ -232,12 +238,17 @@ export default function DashboardView({
 
       {/* KPIs Grid (6 Indicadores atualizados dinamicamente - Texto adaptável em múltiplas linhas) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 items-stretch">
-        {/* 1. Artigos em Risco */}
+        {/* 1. Artigos em Risco (Medicamentos Uso Humano) */}
         <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1.5">
-            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
-              Artigos em Risco
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                Artigos em Risco
+              </span>
+              <span className="text-[9px] sm:text-[9.5px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
+                Medicamentos Uso Humano
+              </span>
+            </div>
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
               <span className="material-symbols-outlined text-lg">warning</span>
             </div>

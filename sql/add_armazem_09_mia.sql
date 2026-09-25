@@ -1,0 +1,2 @@
+-- Nota: O armazém 09 foi alterado para armazém 10 (armazem MIa).
+-- Consulte o ficheiro sql/add_armazem_10_mia.sql para a migração definitiva.

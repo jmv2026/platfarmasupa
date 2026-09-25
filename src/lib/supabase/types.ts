@@ -74,7 +74,7 @@ export interface Client {
   updated_at?: string;
 }
 
-export type TipoArtigo = 'MH' | 'MV' | 'DM' | 'DC' | 'SC';
+export type TipoArtigo = 'MH' | 'MV' | 'DM' | 'DC' | 'SC' | 'SA';
 
 export const TIPO_ARTIGO_LABELS: Record<TipoArtigo, string> = {
   MH: 'Medicamento de uso humano',
@@ -82,6 +82,7 @@ export const TIPO_ARTIGO_LABELS: Record<TipoArtigo, string> = {
   DM: 'Dispositivo médico',
   DC: 'Dermo-Cosmético',
   SC: 'Substância controlada',
+  SA: 'Suplemento alimentar',
 };
 
 export type TipoArmazenamento = 'TA' | 'TC' | 'TF';
@@ -105,7 +106,7 @@ export interface Artigo {
   updated_at?: string;
 }
 
-export type TipoArmazem = '01' | '02' | '03' | '04' | '05' | '06' | '07';
+export type TipoArmazem = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '10';
 
 export const TIPO_ARMAZEM_LABELS: Record<TipoArmazem, string> = {
   '01': 'Venda',
@@ -115,6 +116,7 @@ export const TIPO_ARMAZEM_LABELS: Record<TipoArmazem, string> = {
   '05': 'Quarentena',
   '06': 'Destruição',
   '07': 'Farmacoteca',
+  '10': 'MIA',
 };
 
 export interface Armazem {

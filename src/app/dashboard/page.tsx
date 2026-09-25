@@ -26,7 +26,7 @@ export default async function DashboardPage() {
 
   // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, validade, stock, client_id');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, validade, stock, client_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
   let pedidosQuery = supabase
     .from('pedidos')

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Link from 'next/link';
+import ExcelJS from 'exceljs';
 import {
   StockAtual,
   StockPedido,
@@ -75,11 +75,60 @@ export default function StocksView({
     return artigosSet.size;
   }, [stockAtual]);
 
-  const lotesAlertaValidade = useMemo(() => {
-    return stockAtual.filter((s) => {
-      const days = getDaysUntilExpiry(s.validade);
-      return days !== null && days <= 90;
-    }).length;
+  const artigosAlertaValidadeMH = useMemo(() => {
+    const artigosSet = new Set<string>();
+    stockAtual.forEach((s) => {
+      // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
+      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
+      const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
+      if (isMH) {
+        const days = getDaysUntilExpiry(s.validade);
+        if (days !== null && days < 180) {
+          artigosSet.add(s.artigo_id);
+        }
+      }
+    });
+    return artigosSet.size;
+  }, [stockAtual]);
+
+  const artigosAlertaValidadeDM = useMemo(() => {
+    const artigosSet = new Set<string>();
+    stockAtual.forEach((s) => {
+      // Contabilizar todos os artigos do tipo DM cuja validade esteja expirada (<= 0 dias)
+      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
+      const isDM = tipo === 'DM' || tipo.startsWith('DM') || tipo.includes('DISPOSITIVO');
+      if (isDM) {
+        const days = getDaysUntilExpiry(s.validade);
+        if (days !== null && days <= 0) {
+          artigosSet.add(s.artigo_id);
+        }
+      }
+    });
+    return artigosSet.size;
+  }, [stockAtual]);
+
+  const artigosAlertaValidadeDCSA = useMemo(() => {
+    const artigosSet = new Set<string>();
+    stockAtual.forEach((s) => {
+      // Contabilizar todos os artigos do tipo DC e SA cuja validade esteja expirada (<= 0 dias)
+      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
+      const isDCSA =
+        tipo === 'DC' ||
+        tipo === 'SA' ||
+        tipo.startsWith('DC') ||
+        tipo.startsWith('SA') ||
+        tipo.includes('DERMO') ||
+        tipo.includes('COSM') ||
+        tipo.includes('SUPL');
+
+      if (isDCSA) {
+        const days = getDaysUntilExpiry(s.validade);
+        if (days !== null && days <= 0) {
+          artigosSet.add(s.artigo_id);
+        }
+      }
+    });
+    return artigosSet.size;
   }, [stockAtual]);
 
   // Filtragem para Stock de Venda (vw_stock_pedidos)
@@ -257,6 +306,147 @@ export default function StocksView({
     document.body.removeChild(link);
   };
 
+  // Exportar Excel (.xlsx) com formatação rica via ExcelJS
+  const handleExportExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheetTitles: Record<TabType, string> = {
+      pedidos: 'Stock Disponível',
+      consolidado: 'Stock Consolidado',
+      artigos: 'Resumo por Artigo',
+      validade: 'Controlo de Validades',
+    };
+
+    const worksheet = workbook.addWorksheet(sheetTitles[activeTab] || 'Stocks');
+
+    if (activeTab === 'pedidos') {
+      worksheet.columns = [
+        { header: 'Cliente', key: 'cliente_sigla', width: 12 },
+        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
+        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
+        { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
+        { header: 'Lote', key: 'lote', width: 18 },
+        { header: 'Validade', key: 'validade', width: 14 },
+        { header: 'Stock Disponível', key: 'stock', width: 18 },
+      ];
+
+      filteredStockPedidos.forEach((r) => {
+        worksheet.addRow({
+          cliente_sigla: r.cliente_sigla,
+          artigo_codigo: r.artigo_codigo,
+          artigo_descricao: r.artigo_descricao,
+          tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
+          tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
+          lote: r.lote || '-',
+          validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
+          stock: Number(r.stock),
+        });
+      });
+    } else if (activeTab === 'consolidado') {
+      worksheet.columns = [
+        { header: 'Cliente', key: 'cliente_sigla', width: 12 },
+        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
+        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Lote', key: 'lote', width: 18 },
+        { header: 'Validade', key: 'validade', width: 14 },
+        { header: 'Armazém Loc', key: 'armazem_loc', width: 16 },
+        { header: 'Tipo Armazém', key: 'tipo_armazem', width: 14 },
+        { header: 'Descrição Armazém', key: 'armazem_descricao', width: 22 },
+        { header: 'Stock', key: 'stock', width: 14 },
+      ];
+
+      filteredStockAtual.forEach((r) => {
+        worksheet.addRow({
+          cliente_sigla: r.cliente_sigla,
+          artigo_codigo: r.artigo_codigo,
+          artigo_descricao: r.artigo_descricao,
+          lote: r.lote || '-',
+          validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
+          armazem_loc: r.armazem_loc,
+          tipo_armazem: r.tipo_armazem,
+          armazem_descricao: r.armazem_descricao || `Armazém ${r.tipo_armazem}`,
+          stock: Number(r.stock),
+        });
+      });
+    } else if (activeTab === 'artigos') {
+      worksheet.columns = [
+        { header: 'Cliente', key: 'cliente_sigla', width: 12 },
+        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
+        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
+        { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
+        { header: 'Stock Venda (01)', key: 'stockVenda', width: 18 },
+        { header: 'Stock Outros', key: 'stockOutros', width: 16 },
+        { header: 'Stock Total', key: 'stockTotal', width: 16 },
+        { header: 'Lotes Distintos', key: 'lotesCount', width: 16 },
+      ];
+
+      resumoArtigos.forEach((r) => {
+        worksheet.addRow({
+          cliente_sigla: r.cliente_sigla,
+          artigo_codigo: r.artigo_codigo,
+          artigo_descricao: r.artigo_descricao,
+          tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
+          tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
+          stockVenda: r.stockVenda,
+          stockOutros: r.stockOutros,
+          stockTotal: r.stockTotal,
+          lotesCount: r.lotesCount.size,
+        });
+      });
+    } else {
+      worksheet.columns = [
+        { header: 'Cliente', key: 'cliente_sigla', width: 12 },
+        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
+        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Lote', key: 'lote', width: 18 },
+        { header: 'Validade', key: 'validade', width: 14 },
+        { header: 'Dias Restantes', key: 'dias_restantes', width: 16 },
+        { header: 'Armazém Loc', key: 'armazem_loc', width: 16 },
+        { header: 'Stock', key: 'stock', width: 14 },
+      ];
+
+      lotesValidade.forEach((r) => {
+        const days = getDaysUntilExpiry(r.validade);
+        worksheet.addRow({
+          cliente_sigla: r.cliente_sigla,
+          artigo_codigo: r.artigo_codigo,
+          artigo_descricao: r.artigo_descricao,
+          lote: r.lote || '-',
+          validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
+          dias_restantes: days ?? '-',
+          armazem_loc: r.armazem_loc,
+          stock: Number(r.stock),
+        });
+      });
+    }
+
+    // Estilo elegante de cabeçalho
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1B4332' }, // Verde floresta escuro Sermail
+    };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'left' };
+    headerRow.height = 26;
+
+    // Gerar buffer e download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `stocks_export_${activeTab}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const hasActiveFilters =
     searchTerm !== '' ||
     selectedClientId !== 'todos' ||
@@ -274,96 +464,124 @@ export default function StocksView({
 
   return (
     <div className="space-y-6">
-      {/* KPIs Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Stock Venda Livre</p>
-              <p className="text-2xl font-bold font-headline text-secondary mt-1">
-                {totalStockVenda.toLocaleString('pt-PT')}{' '}
-                <span className="text-xs font-normal text-on-surface-variant">un</span>
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
-              <span className="material-symbols-outlined text-xl">shopping_cart_checkout</span>
+      {/* KPIs Grid (4 Indicadores atualizados dinamicamente - Formatação adaptável do Dashboard) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+        {/* 1. Stock Outros Armazéns */}
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+              Stock Outros Armazéns
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+              <span className="material-symbols-outlined text-lg">warehouse</span>
             </div>
           </div>
-          <p className="text-[11px] text-emerald-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">check_circle</span>
-            Armazém 01 (Expedição Imediata)
-          </p>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-on-surface leading-none">
+              {totalStockOutros.toLocaleString('pt-PT')}{' '}
+              <span className="text-xs font-normal text-on-surface-variant">un</span>
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="material-symbols-outlined text-xs shrink-0">info</span>
+              <span>Quarentena / Devoluções</span>
+            </span>
+          </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Stock Outros Armazéns</p>
-              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
-                {totalStockOutros.toLocaleString('pt-PT')}{' '}
-                <span className="text-xs font-normal text-on-surface-variant">un</span>
-              </p>
+        {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                Alertas Validade DM
+              </span>
+              <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                Dispositivos Médicos
+              </span>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-700">
-              <span className="material-symbols-outlined text-xl">warehouse</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              artigosAlertaValidadeDM > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+            }`}>
+              <span className="material-symbols-outlined text-lg">block</span>
             </div>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">info</span>
-            Quarentena, Devoluções, etc.
-          </p>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+              artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-600'
+            }`}>
+              {artigosAlertaValidadeDM}
+            </span>
+            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+              artigosAlertaValidadeDM > 0 ? 'text-rose-700' : 'text-emerald-700'
+            }`}>
+              <span className="material-symbols-outlined text-xs shrink-0">error</span>
+              <span>Validade Expirada</span>
+            </span>
+          </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Lotes Ativos</p>
-              <p className="text-2xl font-bold font-headline text-on-surface mt-1">{totalLotes}</p>
+        {/* 3. Alertas Validade DC e SA (Expirados - Dermocosméticos e Suplementos Alimentares) */}
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                Alertas Validade DC e SA
+              </span>
+              <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                Dermocosméticos, Suplementos Alimentares
+              </span>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-xl">qr_code_2</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              artigosAlertaValidadeDCSA > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+            }`}>
+              <span className="material-symbols-outlined text-lg">block</span>
             </div>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">inventory_2</span>
-            Rastreabilidade FEFO
-          </p>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+              artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-600'
+            }`}>
+              {artigosAlertaValidadeDCSA}
+            </span>
+            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+              artigosAlertaValidadeDCSA > 0 ? 'text-rose-700' : 'text-emerald-700'
+            }`}>
+              <span className="material-symbols-outlined text-xs shrink-0">error</span>
+              <span>Validade Expirada</span>
+            </span>
+          </div>
         </div>
 
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Artigos em Armazém</p>
-              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
-                {artigosDistintos}
-              </p>
+        {/* 4. Alertas Validade MH (< 180 dias - Medicamentos Uso Humano) */}
+        <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                Alertas Validade MH
+              </span>
+              <span className="text-[9.5px] sm:text-[10px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
+                Medicamentos Uso Humano
+              </span>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700">
-              <span className="material-symbols-outlined text-xl">medication</span>
-            </div>
-          </div>
-          <p className="text-[11px] text-indigo-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">category</span>
-            TF, TC e TA
-          </p>
-        </div>
-
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Alertas Validade</p>
-              <p className={`text-2xl font-bold font-headline mt-1 ${lotesAlertaValidade > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {lotesAlertaValidade}
-              </p>
-            </div>
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${lotesAlertaValidade > 0 ? 'bg-rose-500/10 text-rose-700' : 'bg-emerald-500/10 text-emerald-700'}`}>
-              <span className="material-symbols-outlined text-xl">warning</span>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              artigosAlertaValidadeMH > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'
+            }`}>
+              <span className="material-symbols-outlined text-lg">warning</span>
             </div>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">event_upcoming</span>
-            Expiração ≤ 90 dias
-          </p>
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
+            <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
+              artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-600'
+            }`}>
+              {artigosAlertaValidadeMH}
+            </span>
+            <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
+              artigosAlertaValidadeMH > 0 ? 'text-amber-700' : 'text-emerald-700'
+            }`}>
+              <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
+              <span>Validade &lt; 180 dias</span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -392,8 +610,8 @@ export default function StocksView({
             )}
           </div>
 
-          {/* Botão de Exportar CSV */}
-          <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+          {/* Botões de Exportação */}
+          <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap sm:flex-nowrap">
             {hasActiveFilters && (
               <button
                 onClick={handleClearFilters}
@@ -405,10 +623,19 @@ export default function StocksView({
             )}
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2.5 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              className="px-3.5 py-2.5 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+              title="Exportar dados da vista atual em formato CSV"
             >
-              <span className="material-symbols-outlined text-sm text-secondary">download</span>
+              <span className="material-symbols-outlined text-sm text-secondary">description</span>
               Exportar CSV
+            </button>
+            <button
+              onClick={handleExportExcel}
+              className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 active:scale-98"
+              title="Exportar dados da vista atual em formato Excel (.xlsx)"
+            >
+              <span className="material-symbols-outlined text-sm text-emerald-200">table_view</span>
+              Exportar Excel
             </button>
           </div>
         </div>
@@ -499,6 +726,7 @@ export default function StocksView({
               <option value="03">03 - Danificados</option>
               <option value="06">06 - Destruição</option>
               <option value="07">07 - Farmacoteca</option>
+              <option value="10">10 - MIA</option>
             </select>
           </div>
         </div>
@@ -563,7 +791,7 @@ export default function StocksView({
             >
               <span className="material-symbols-outlined text-base">event_upcoming</span>
               Controlo de Validades (FEFO)
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${lotesAlertaValidade > 0 ? 'bg-rose-100 text-rose-800' : 'bg-secondary-container text-on-secondary-container'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${(artigosAlertaValidadeMH > 0 || artigosAlertaValidadeDM > 0 || artigosAlertaValidadeDCSA > 0) ? 'bg-rose-100 text-rose-800' : 'bg-secondary-container text-on-secondary-container'}`}>
                 {lotesValidade.length}
               </span>
             </button>
@@ -585,13 +813,6 @@ export default function StocksView({
                     Artigos em Armazém 01 disponíveis para saída imediata com ordenação inteligente FEFO.
                   </p>
                 </div>
-                <Link
-                  href="/pedidos"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-on-secondary hover:bg-secondary/90 font-bold text-xs shadow-sm transition-all self-start sm:self-auto"
-                >
-                  <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
-                  Fazer Pedido
-                </Link>
               </div>
 
               <div className="overflow-x-auto">
@@ -749,6 +970,8 @@ export default function StocksView({
                                   ? 'bg-amber-100 text-amber-800'
                                   : item.tipo_armazem === '02'
                                   ? 'bg-rose-100 text-rose-800'
+                                  : item.tipo_armazem === '10'
+                                  ? 'bg-indigo-100 text-indigo-800'
                                   : 'bg-slate-100 text-slate-800'
                               }`}
                             >
