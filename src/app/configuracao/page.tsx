@@ -93,35 +93,35 @@ export default async function ConfiguracaoPage() {
             <nav className="flex items-center gap-1.5">
               <Link
                 href="/dashboard"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors inline-flex items-center gap-1.5 leading-none"
               >
                 <span className="material-symbols-outlined text-sm">dashboard</span>
                 Dashboard
               </Link>
               <Link
                 href="/stocks"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors inline-flex items-center gap-1.5 leading-none"
               >
                 <span className="material-symbols-outlined text-sm">inventory_2</span>
                 Stocks
               </Link>
               <Link
                 href="/pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors inline-flex items-center gap-1.5 leading-none"
               >
                 <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
                 Criar Pedido
               </Link>
               <Link
                 href="/historico-pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
+                className="h-8 px-3 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors inline-flex items-center gap-1.5 leading-none"
               >
                 <span className="material-symbols-outlined text-sm">receipt_long</span>
                 Histórico Pedidos
               </Link>
               <Link
                 href="/configuracao"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-lime-100/60 border border-lime-500 flex items-center gap-1.5 shadow-2xs"
+                className="h-8 px-3 rounded-lg text-xs font-bold text-secondary bg-lime-100/60 border border-lime-500 inline-flex items-center gap-1.5 shadow-2xs leading-none"
               >
                 <span className="material-symbols-outlined text-sm">settings</span>
                 Configuração

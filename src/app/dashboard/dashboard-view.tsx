@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
 import GraficoTopProdutos from './grafico-top-produtos';
@@ -52,6 +52,21 @@ export default function DashboardView({
 }: DashboardViewProps) {
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top5'>('pedidos');
+  const graficoContainerRef = useRef<HTMLDivElement>(null);
+
+  // Posiciona a página para colocar o gráfico no centro do ecrã
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top5') => {
+    setGraficoAtivo(tipo);
+    setTimeout(() => {
+      if (graficoContainerRef.current) {
+        graficoContainerRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+        });
+      }
+    }, 60);
+  };
 
   // Helper para calcular dias até à validade
   const getDaysUntilExpiry = (dateStr: string | null) => {
@@ -348,8 +363,8 @@ export default function DashboardView({
       <div className="flex items-center gap-3 pt-1 flex-wrap">
         <button
           type="button"
-          onClick={() => setGraficoAtivo('pedidos')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs ${
+          onClick={() => handleSelecionarGrafico('pedidos')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
             graficoAtivo === 'pedidos'
               ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
               : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
@@ -361,8 +376,8 @@ export default function DashboardView({
 
         <button
           type="button"
-          onClick={() => setGraficoAtivo('top5')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs ${
+          onClick={() => handleSelecionarGrafico('top5')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
             graficoAtivo === 'top5'
               ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
               : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
@@ -373,18 +388,20 @@ export default function DashboardView({
         </button>
       </div>
 
-      {/* Renderização do Gráfico Selecionado (Por defeito: Pedidos / Mês) */}
-      {graficoAtivo === 'pedidos' ? (
-        <GraficoPedidosMensal
-          pedidos={filteredPedidos}
-          clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-        />
-      ) : (
-        <GraficoTopProdutos
-          pedidos={filteredPedidos}
-          clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-        />
-      )}
+      {/* Container do Gráfico com Ref para Centralização Automática no Ecrã */}
+      <div ref={graficoContainerRef} className="scroll-mt-8 transition-all">
+        {graficoAtivo === 'pedidos' ? (
+          <GraficoPedidosMensal
+            pedidos={filteredPedidos}
+            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+          />
+        ) : (
+          <GraficoTopProdutos
+            pedidos={filteredPedidos}
+            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+          />
+        )}
+      </div>
     </main>
   );
 }
