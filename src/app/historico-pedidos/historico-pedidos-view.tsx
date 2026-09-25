@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   PedidoComLinhas,
@@ -9,6 +9,7 @@ import {
   StatusPedido,
   UserProfile,
 } from '@/lib/supabase/types';
+import { atualizarEstadoPedido } from './actions';
 
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
@@ -19,11 +20,53 @@ interface HistoricoPedidosViewProps {
 type DateFilterType = 'todos' | 'hoje' | '7dias' | '30dias' | 'este_mes';
 type ViewModeType = 'detalhado' | 'tabela';
 
+const STATUS_CONFIG: Record<
+  StatusPedido,
+  { bg: string; dot: string; icon: string }
+> = {
+  pendente: {
+    bg: 'bg-blue-100 text-blue-800 border-blue-200',
+    dot: 'bg-blue-600',
+    icon: 'pending',
+  },
+  confirmado: {
+    bg: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    dot: 'bg-indigo-600',
+    icon: 'check_circle',
+  },
+  em_preparacao: {
+    bg: 'bg-amber-100 text-amber-800 border-amber-200',
+    dot: 'bg-amber-600',
+    icon: 'inventory',
+  },
+  expedido: {
+    bg: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    dot: 'bg-cyan-600',
+    icon: 'local_shipping',
+  },
+  entregue: {
+    bg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-600',
+    icon: 'task_alt',
+  },
+  cancelado: {
+    bg: 'bg-rose-100 text-rose-800 border-rose-200',
+    dot: 'bg-rose-600',
+    icon: 'cancel',
+  },
+};
+
 export default function HistoricoPedidosView({
   pedidos,
   clients,
   currentUserProfile,
 }: HistoricoPedidosViewProps) {
+  const [pedidosList, setPedidosList] = useState<PedidoComLinhas[]>(pedidos);
+  const [updatingPedidoId, setUpdatingPedidoId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
@@ -34,12 +77,53 @@ export default function HistoricoPedidosView({
   const isManagerOrAdmin =
     currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
 
+  useEffect(() => {
+    setPedidosList(pedidos);
+  }, [pedidos]);
+
+  // Alteração de Estado do Pedido
+  const handleStatusChange = async (pedidoId: string, novoStatus: StatusPedido) => {
+    const pedido = pedidosList.find((p) => p.id === pedidoId);
+    if (!pedido || pedido.status === novoStatus) return;
+
+    const statusAnterior = pedido.status as StatusPedido;
+
+    // Atualização otimista
+    setPedidosList((prev) =>
+      prev.map((p) => (p.id === pedidoId ? { ...p, status: novoStatus } : p))
+    );
+    setUpdatingPedidoId(pedidoId);
+    setFeedback(null);
+
+    const res = await atualizarEstadoPedido(pedidoId, novoStatus);
+
+    setUpdatingPedidoId(null);
+    if (res.success) {
+      setFeedback({
+        type: 'success',
+        message: `Estado do pedido ${pedido.nr_pedido} alterado para "${STATUS_PEDIDO_LABELS[novoStatus]}".`,
+      });
+      setTimeout(() => {
+        setFeedback((curr) => (curr?.message.includes(pedido.nr_pedido) ? null : curr));
+      }, 4500);
+    } else {
+      // Reverter alteração otimista em caso de erro
+      setPedidosList((prev) =>
+        prev.map((p) => (p.id === pedidoId ? { ...p, status: statusAnterior } : p))
+      );
+      setFeedback({
+        type: 'error',
+        message: res.error || 'Erro ao atualizar o estado do pedido.',
+      });
+    }
+  };
+
   // Filtragem
   const filteredPedidos = useMemo(() => {
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    return pedidos.filter((ped) => {
+    return pedidosList.filter((ped) => {
       // Filtro de Cliente
       if (selectedClientId !== 'todos' && ped.client_id !== selectedClientId) {
         return false;
@@ -81,7 +165,9 @@ export default function HistoricoPedidosView({
         const matchCP = ped.codigo_postal?.toLowerCase().includes(query);
         const matchRef = ped.ref_documento?.toLowerCase().includes(query);
         const matchObs = ped.observacoes?.toLowerCase().includes(query);
-        const matchCli = ped.clients?.sigla?.toLowerCase().includes(query) || ped.clients?.name?.toLowerCase().includes(query);
+        const matchCli =
+          ped.clients?.sigla?.toLowerCase().includes(query) ||
+          ped.clients?.name?.toLowerCase().includes(query);
 
         // Pesquisa também nas linhas de artigos
         const matchLinha = ped.pedido_linhas?.some(
@@ -108,12 +194,13 @@ export default function HistoricoPedidosView({
 
       return true;
     });
-  }, [pedidos, selectedClientId, selectedStatus, selectedDateFilter, searchTerm]);
+  }, [pedidosList, selectedClientId, selectedStatus, selectedDateFilter, searchTerm]);
 
   // Total de unidades filtradas
   const totalUnidadesFiltradas = useMemo(() => {
     return filteredPedidos.reduce((acc, ped) => {
-      const pedTotal = ped.pedido_linhas?.reduce((lAcc, l) => lAcc + Number(l.quantidade || 0), 0) || 0;
+      const pedTotal =
+        ped.pedido_linhas?.reduce((lAcc, l) => lAcc + Number(l.quantidade || 0), 0) || 0;
       return acc + pedTotal;
     }, 0);
   }, [filteredPedidos]);
@@ -121,10 +208,12 @@ export default function HistoricoPedidosView({
   // Exportar CSV
   const handleExportCSV = () => {
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Nr Pedido,Data Pedido,Data Entrega,Estado,Cliente,Destinatario,Morada,Codigo Postal,Localidade,Pais,Ref Documento,Observacoes,Codigo Artigo,Descricao Artigo,Lote,Validade,Quantidade\n';
+    csvContent +=
+      'Nr Pedido,Data Pedido,Data Entrega,Estado,Cliente,Destinatario,Morada,Codigo Postal,Localidade,Pais,Ref Documento,Observacoes,Codigo Artigo,Descricao Artigo,Lote,Validade,Quantidade\n';
 
     filteredPedidos.forEach((ped) => {
-      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${STATUS_PEDIDO_LABELS[ped.status as StatusPedido] || ped.status}","${ped.clients?.sigla || ''}","${ped.nome_destinatario.replace(/"/g, '""')}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
+      const statusLabel = STATUS_PEDIDO_LABELS[ped.status as StatusPedido] || ped.status;
+      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${ped.nome_destinatario.replace(/"/g, '""')}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
 
       if (ped.pedido_linhas && ped.pedido_linhas.length > 0) {
         ped.pedido_linhas.forEach((l) => {
@@ -157,12 +246,32 @@ export default function HistoricoPedidosView({
     setSelectedDateFilter('todos');
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedPedidoId((prev) => (prev === id ? null : id));
-  };
-
   return (
     <div className="space-y-6">
+      {/* Toast Feedback */}
+      {feedback && (
+        <div
+          className={`p-4 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn ${
+            feedback.type === 'success'
+              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              : 'bg-rose-50 text-rose-900 border-rose-200'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">
+              {feedback.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            <span>{feedback.message}</span>
+          </div>
+          <button
+            onClick={() => setFeedback(null)}
+            className="text-slate-500 hover:text-slate-800"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Painel de Filtros e Busca */}
       <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -324,7 +433,8 @@ export default function HistoricoPedidosView({
           </div>
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-secondary-container text-on-secondary-container">
-              {filteredPedidos.length} {filteredPedidos.length === 1 ? 'Pedido' : 'Pedidos'} ({totalUnidadesFiltradas.toLocaleString('pt-PT')} un)
+              {filteredPedidos.length} {filteredPedidos.length === 1 ? 'Pedido' : 'Pedidos'} (
+              {totalUnidadesFiltradas.toLocaleString('pt-PT')} un)
             </span>
           </div>
         </div>
@@ -336,14 +446,16 @@ export default function HistoricoPedidosView({
               {filteredPedidos.map((ped) => {
                 const totalQtd =
                   ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
-                const isExpanded = expandedPedidoId === ped.id;
+                const statusKey = (ped.status as StatusPedido) || 'pendente';
+                const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
+                const isUpdating = updatingPedidoId === ped.id;
 
                 return (
                   <div
                     key={ped.id}
                     className="border border-outline-variant/30 rounded-xl p-5 bg-surface hover:bg-surface-container/20 transition-all space-y-4 shadow-sm"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <span className="inline-block px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-mono font-bold text-xs shadow-sm">
                           {ped.nr_pedido}
@@ -358,31 +470,47 @@ export default function HistoricoPedidosView({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                            ped.status === 'expedido' || ped.status === 'entregue'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : ped.status === 'pendente'
-                              ? 'bg-blue-100 text-blue-800'
-                              : ped.status === 'em_preparacao'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-slate-100 text-slate-800'
-                          }`}
-                        >
+                      <div className="flex items-center gap-3">
+                        {/* Gestão de Estado */}
+                        {isManagerOrAdmin ? (
+                          <div className="relative flex items-center">
+                            {isUpdating ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container border border-outline-variant/30 text-on-surface-variant">
+                                <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
+                                A gravar...
+                              </span>
+                            ) : (
+                              <div className="relative">
+                                <select
+                                  value={statusKey}
+                                  onChange={(e) =>
+                                    handleStatusChange(ped.id, e.target.value as StatusPedido)
+                                  }
+                                  className={`appearance-none cursor-pointer pl-3 pr-8 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-secondary/40 ${statusCfg.bg}`}
+                                  title="Clique para alterar o estado do pedido"
+                                >
+                                  <option value="pendente">Pendente</option>
+                                  <option value="confirmado">Confirmado</option>
+                                  <option value="em_preparacao">Em Preparação</option>
+                                  <option value="expedido">Expedido</option>
+                                  <option value="entregue">Entregue</option>
+                                  <option value="cancelado">Cancelado</option>
+                                </select>
+                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-70">
+                                  arrow_drop_down
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              ped.status === 'expedido' || ped.status === 'entregue'
-                                ? 'bg-emerald-600'
-                                : ped.status === 'pendente'
-                                ? 'bg-blue-600'
-                                : ped.status === 'em_preparacao'
-                                ? 'bg-amber-600'
-                                : 'bg-slate-600'
-                            }`}
-                          ></span>
-                          {STATUS_PEDIDO_LABELS[ped.status as StatusPedido] || ped.status}
-                        </span>
+                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.bg}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
+                            {STATUS_PEDIDO_LABELS[statusKey] || ped.status}
+                          </span>
+                        )}
+
                         <span className="text-xs text-on-surface-variant font-mono">
                           {new Date(ped.data_pedido).toLocaleDateString('pt-PT')}
                         </span>
@@ -396,7 +524,8 @@ export default function HistoricoPedidosView({
                           Morada de Entrega
                         </span>
                         <span className="text-on-surface font-medium">
-                          {ped.morada}, {ped.codigo_postal} {ped.localidade} ({ped.pais || 'Portugal'})
+                          {ped.morada}, {ped.codigo_postal} {ped.localidade} (
+                          {ped.pais || 'Portugal'})
                         </span>
                       </div>
                       <div>
@@ -435,7 +564,9 @@ export default function HistoricoPedidosView({
                           <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                             {ped.pedido_linhas.map((linha, lIdx) => (
                               <tr key={lIdx} className="hover:bg-surface-container/20">
-                                <td className="py-2 px-3 font-mono font-medium">{linha.artigo_codigo}</td>
+                                <td className="py-2 px-3 font-mono font-medium">
+                                  {linha.artigo_codigo}
+                                </td>
                                 <td className="py-2 px-3 font-medium">{linha.descricao}</td>
                                 <td className="py-2 px-3 font-mono font-semibold text-secondary">
                                   {linha.lote}
@@ -495,7 +626,11 @@ export default function HistoricoPedidosView({
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                   {filteredPedidos.map((ped) => {
                     const totalQtd =
-                      ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
+                      ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) ||
+                      0;
+                    const statusKey = (ped.status as StatusPedido) || 'pendente';
+                    const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
+                    const isUpdating = updatingPedidoId === ped.id;
 
                     return (
                       <tr key={ped.id} className="hover:bg-surface-container/30 transition-colors">
@@ -522,19 +657,41 @@ export default function HistoricoPedidosView({
                           {totalQtd.toLocaleString('pt-PT')} un
                         </td>
                         <td className="py-3 px-3 text-center">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              ped.status === 'expedido' || ped.status === 'entregue'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : ped.status === 'pendente'
-                                ? 'bg-blue-100 text-blue-800'
-                                : ped.status === 'em_preparacao'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-800'
-                            }`}
-                          >
-                            {STATUS_PEDIDO_LABELS[ped.status as StatusPedido] || ped.status}
-                          </span>
+                          {isManagerOrAdmin ? (
+                            isUpdating ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-surface-container text-on-surface-variant font-medium">
+                                <span className="w-2.5 h-2.5 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
+                                A gravar...
+                              </span>
+                            ) : (
+                              <div className="relative inline-block">
+                                <select
+                                  value={statusKey}
+                                  onChange={(e) =>
+                                    handleStatusChange(ped.id, e.target.value as StatusPedido)
+                                  }
+                                  className={`appearance-none cursor-pointer pl-2.5 pr-6 py-1 rounded-md text-[11px] font-bold border transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-secondary ${statusCfg.bg}`}
+                                  title="Clique para mudar o estado"
+                                >
+                                  <option value="pendente">Pendente</option>
+                                  <option value="confirmado">Confirmado</option>
+                                  <option value="em_preparacao">Em Preparação</option>
+                                  <option value="expedido">Expedido</option>
+                                  <option value="entregue">Entregue</option>
+                                  <option value="cancelado">Cancelado</option>
+                                </select>
+                                <span className="material-symbols-outlined absolute right-1 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none opacity-70">
+                                  arrow_drop_down
+                                </span>
+                              </div>
+                            )
+                          ) : (
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusCfg.bg}`}
+                            >
+                              {STATUS_PEDIDO_LABELS[statusKey] || ped.status}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -546,7 +703,9 @@ export default function HistoricoPedidosView({
         ) : (
           <div className="py-12 text-center text-on-surface-variant border border-dashed border-outline-variant/40 rounded-xl">
             <span className="material-symbols-outlined text-4xl text-outline mb-2">shopping_bag</span>
-            <p className="text-sm font-medium">Nenhum pedido de entrega encontrado com os filtros aplicados.</p>
+            <p className="text-sm font-medium">
+              Nenhum pedido de entrega encontrado com os filtros aplicados.
+            </p>
             <p className="text-xs text-on-surface-variant/70 mt-1">
               Tente alterar os termos de pesquisa ou limpar os filtros para ver todos os registos.
             </p>

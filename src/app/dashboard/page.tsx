@@ -28,7 +28,9 @@ export default async function DashboardPage() {
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, validade, stock, client_id');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
-  let pedidosQuery = supabase.from('pedidos').select('id, client_id, data_pedido, created_at');
+  let pedidosQuery = supabase
+    .from('pedidos')
+    .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
@@ -69,31 +71,31 @@ export default async function DashboardPage() {
             </div>
 
             {/* Navigation Links */}
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-1.5">
               <Link
                 href="/dashboard"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-lime-100/60 border border-lime-500 flex items-center gap-1.5 shadow-2xs"
               >
                 <span className="material-symbols-outlined text-sm">dashboard</span>
                 Dashboard
               </Link>
               <Link
                 href="/stocks"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">inventory_2</span>
                 Stocks
               </Link>
               <Link
                 href="/pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
                 Criar Pedido
               </Link>
               <Link
                 href="/historico-pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">receipt_long</span>
                 Histórico Pedidos
@@ -101,7 +103,7 @@ export default async function DashboardPage() {
               {profile?.role === 'admin' && (
                 <Link
                   href="/configuracao"
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
                 >
                   <span className="material-symbols-outlined text-sm">settings</span>
                   Configuração

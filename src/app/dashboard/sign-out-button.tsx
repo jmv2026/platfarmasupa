@@ -20,7 +20,7 @@ export default function SignOutButton() {
     <button
       onClick={handleSignOut}
       disabled={isSigningOut}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:text-error bg-surface-container hover:bg-error-container/50 rounded-lg transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:text-error bg-surface-container hover:bg-error-container/50 border border-lime-400/60 hover:border-lime-500 rounded-lg transition-colors cursor-pointer"
       title="Terminar sessão"
     >
       <span className="material-symbols-outlined text-base">logout</span>

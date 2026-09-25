@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
+import GraficoTopProdutos from './grafico-top-produtos';
 
 export interface DashboardStockItem {
   artigo_id: string;
@@ -16,11 +17,20 @@ export interface DashboardStockPedidoItem {
   client_id: string;
 }
 
+export interface DashboardPedidoLinhaItem {
+  id: string;
+  artigo_id?: string;
+  artigo_codigo: string;
+  descricao: string;
+  quantidade: number;
+}
+
 export interface DashboardPedidoItem {
   id: string;
   client_id: string;
   data_pedido?: string | null;
   created_at?: string | null;
+  pedido_linhas?: DashboardPedidoLinhaItem[];
 }
 
 interface DashboardViewProps {
@@ -169,7 +179,7 @@ export default function DashboardView({
           <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
             Painel Informativo
           </h1>
-          <p className="text-xs sm:text-sm text-on-primary/80 font-normal truncate hidden sm:block">
+          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
             Visão geral das operações de armazém, encomendas e controlo de stocks.
           </p>
         </div>
@@ -204,145 +214,143 @@ export default function DashboardView({
         </div>
       )}
 
-      {/* KPIs Grid (Indicadores atualizados dinamicamente) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-5">
-        {/* 1. Stock Venda */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Stock Venda</p>
-              <p className="text-2xl font-bold font-headline text-secondary mt-1">
-                {totalStockVenda.toLocaleString('pt-PT')}{' '}
-                <span className="text-xs font-normal text-on-surface-variant">un</span>
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary shrink-0">
-              <span className="material-symbols-outlined text-xl">inventory_2</span>
+      {/* KPIs Grid (6 Indicadores atualizados dinamicamente - Altura 100px) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        {/* 1. Artigos em Risco */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Artigos em Risco
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+              <span className="material-symbols-outlined text-lg">warning</span>
             </div>
           </div>
-          <p className="text-[11px] text-emerald-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">check_circle</span>
-            Armazém 01 (Venda)
-          </p>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-amber-600 leading-none">
+              {totalArtigosEmRisco}
+            </span>
+            <span className="text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">schedule</span>
+              60 a 180 d
+            </span>
+          </div>
         </div>
 
-        {/* 2. Artigos em Risco */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Artigos em Risco</p>
-              <p className="text-2xl font-bold font-headline text-amber-600 mt-1">
-                {totalArtigosEmRisco}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
-              <span className="material-symbols-outlined text-xl">warning</span>
+        {/* 2. Artigos Bloqueados */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Artigos Bloqueados
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 shrink-0">
+              <span className="material-symbols-outlined text-lg">block</span>
             </div>
           </div>
-          <p className="text-[11px] text-amber-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">schedule</span>
-            Validade 60 a 180 dias
-          </p>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-rose-600 leading-none">
+              {totalArtigosBloqueados}
+            </span>
+            <span className="text-[11px] text-rose-700 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">error</span>
+              1 a 60 d
+            </span>
+          </div>
         </div>
 
-        {/* 3. Artigos Bloqueados */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Artigos Bloqueados</p>
-              <p className="text-2xl font-bold font-headline text-rose-600 mt-1">
-                {totalArtigosBloqueados}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-600 shrink-0">
-              <span className="material-symbols-outlined text-xl">block</span>
+        {/* 3. Pedidos do Mês em Curso */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Pedidos (Mês)
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-700 shrink-0">
+              <span className="material-symbols-outlined text-lg">calendar_month</span>
             </div>
           </div>
-          <p className="text-[11px] text-rose-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">error</span>
-            Validade 1 a 60 dias
-          </p>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-teal-700 leading-none">
+              {pedidosMesCount}
+            </span>
+            <span className="text-[11px] text-teal-700 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">today</span>
+              {currentMonthName}
+            </span>
+          </div>
         </div>
 
-        {/* 4. Pedidos do Mês em Curso */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Pedidos (Mês)</p>
-              <p className="text-2xl font-bold font-headline text-teal-700 mt-1">
-                {pedidosMesCount}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center text-teal-700 shrink-0">
-              <span className="material-symbols-outlined text-xl">calendar_month</span>
+        {/* 4. Pedidos do Ano Corrente */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Pedidos (Ano)
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700 shrink-0">
+              <span className="material-symbols-outlined text-lg">date_range</span>
             </div>
           </div>
-          <p className="text-[11px] text-teal-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">today</span>
-            {currentMonthName} {currentYear}
-          </p>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-indigo-700 leading-none">
+              {pedidosAnoCount}
+            </span>
+            <span className="text-[11px] text-indigo-700 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">event</span>
+              Ano {currentYear}
+            </span>
+          </div>
         </div>
 
-        {/* 5. Pedidos do Ano Corrente */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Pedidos (Ano)</p>
-              <p className="text-2xl font-bold font-headline text-indigo-700 mt-1">
-                {pedidosAnoCount}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-700 shrink-0">
-              <span className="material-symbols-outlined text-xl">date_range</span>
+        {/* 5. Total Histórico de Pedidos */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Total Pedidos
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-slate-500/10 flex items-center justify-center text-slate-700 shrink-0">
+              <span className="material-symbols-outlined text-lg">receipt_long</span>
             </div>
           </div>
-          <p className="text-[11px] text-indigo-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">event</span>
-            Ano {currentYear}
-          </p>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-slate-800 leading-none">
+              {totalPedidosCount}
+            </span>
+            <span className="text-[11px] text-slate-600 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">history</span>
+              Acumulado
+            </span>
+          </div>
         </div>
 
-        {/* 6. Total Histórico de Pedidos */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Total Pedidos</p>
-              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
-                {totalPedidosCount}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-slate-500/10 flex items-center justify-center text-slate-700 shrink-0">
-              <span className="material-symbols-outlined text-xl">receipt_long</span>
+        {/* 6. Artigos com Stock */}
+        <div className="h-[100px] px-3.5 py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider truncate">
+              Artigos
+            </span>
+            <div className="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700 shrink-0">
+              <span className="material-symbols-outlined text-lg">medication</span>
             </div>
           </div>
-          <p className="text-[11px] text-slate-700 font-medium mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">history</span>
-            Total acumulado
-          </p>
-        </div>
-
-        {/* 7. Artigos com Stock */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-on-surface-variant">Artigos</p>
-              <p className="text-2xl font-bold font-headline text-on-surface mt-1">
-                {totalArtigosCount}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-700 shrink-0">
-              <span className="material-symbols-outlined text-xl">medication</span>
-            </div>
+          <div className="flex items-baseline justify-between gap-1">
+            <span className="text-xl sm:text-2xl font-bold font-headline text-sky-800 leading-none">
+              {totalArtigosCount}
+            </span>
+            <span className="text-[11px] text-sky-700 font-medium flex items-center gap-0.5 leading-none truncate">
+              <span className="material-symbols-outlined text-xs">inventory</span>
+              Armazém
+            </span>
           </div>
-          <p className="text-[11px] text-on-surface-variant mt-3 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">inventory</span>
-            Artigos em armazém
-          </p>
         </div>
       </div>
 
-      {/* Gráfico de Evolução Mensal do Nº de Pedidos (Tons Verde Pastel & Lima) */}
+      {/* Gráfico 1: Evolução Mensal do Nº de Pedidos (Tons Verde Pastel & Lima) */}
       <GraficoPedidosMensal
+        pedidos={filteredPedidos}
+        clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+      />
+
+      {/* Gráfico 2: Top 5 Produtos Mais Pedidos (Tons Verde Pastel & Lima) */}
+      <GraficoTopProdutos
         pedidos={filteredPedidos}
         clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
       />

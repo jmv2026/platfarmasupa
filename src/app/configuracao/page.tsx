@@ -90,38 +90,38 @@ export default async function ConfiguracaoPage() {
             </div>
 
             {/* Navigation Links */}
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-1.5">
               <Link
                 href="/dashboard"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">dashboard</span>
                 Dashboard
               </Link>
               <Link
                 href="/stocks"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">inventory_2</span>
                 Stocks
               </Link>
               <Link
                 href="/pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
                 Criar Pedido
               </Link>
               <Link
                 href="/historico-pedidos"
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500 transition-colors flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">receipt_long</span>
                 Histórico Pedidos
               </Link>
               <Link
                 href="/configuracao"
-                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-secondary/10 border border-secondary/20 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-secondary bg-lime-100/60 border border-lime-500 flex items-center gap-1.5 shadow-2xs"
               >
                 <span className="material-symbols-outlined text-sm">settings</span>
                 Configuração
@@ -152,7 +152,7 @@ export default async function ConfiguracaoPage() {
             <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
               Configuração & Administração do Sistema
             </h1>
-            <p className="text-xs sm:text-sm text-primary-fixed/90 font-normal truncate hidden sm:block">
+            <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
               Gestão centralizada de contas de utilizadores, parametrização de clientes e cadastro de artigos.
             </p>
           </div>

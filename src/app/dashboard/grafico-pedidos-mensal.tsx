@@ -72,7 +72,7 @@ function extrairAnoMes(dateStr: string | null | undefined): { year: number; mont
 
 export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPedidosMensalProps) {
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
-  const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('area');
+  const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -191,10 +191,10 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
     };
   }, [pedidos, periodo]);
 
-  // Dimensões do SVG do gráfico
+  // Dimensões do SVG do gráfico otimizadas para visualização na janela
   const svgWidth = 800;
-  const svgHeight = 280;
-  const padding = { top: 35, right: 30, bottom: 45, left: 50 };
+  const svgHeight = 240;
+  const padding = { top: 25, right: 25, bottom: 38, left: 45 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
@@ -274,9 +274,9 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 sm:p-7 shadow-sm hover:shadow-md transition-all">
+    <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
       {/* Header do Gráfico */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-outline-variant/20">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
         <div className="flex items-start gap-3.5">
           {/* Ícone com gradiente Verde Pastel e Lima */}
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200/80 border border-lime-300/60 flex items-center justify-center text-lime-900 shadow-sm shrink-0">
@@ -286,7 +286,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                Evolução do Nº de Pedidos por Mês
+                Pedidos / Mês
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -372,101 +372,106 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-6">
+      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) - Altura 75px */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-5">
         {/* Total no Período */}
-        <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-lime-900/80 uppercase tracking-wide">
+        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide">
               Total no Período
             </span>
             <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50"></span>
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold font-headline text-emerald-950">
-              {estatisticas.total.toLocaleString('pt-PT')}
+          <div className="flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                {estatisticas.total.toLocaleString('pt-PT')}
+              </span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+            </div>
+            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+              {dadosMensais.length} {dadosMensais.length === 1 ? 'mês' : 'meses'}
             </span>
-            <span className="text-xs font-medium text-emerald-800">pedidos</span>
           </div>
-          <p className="text-[11px] text-emerald-700/90 mt-1 font-medium flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">calendar_view_month</span>
-            Em {dadosMensais.length} {dadosMensais.length === 1 ? 'mês' : 'meses'}
-          </p>
         </div>
 
         {/* Média Mensal */}
-        <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide">
+        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide">
               Média Mensal
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50"></span>
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold font-headline text-emerald-950">
-              {estatisticas.media.toLocaleString('pt-PT', {
-                minimumFractionDigits: 1,
-                maximumFractionDigits: 1,
-              })}
+          <div className="flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                {estatisticas.media.toLocaleString('pt-PT', {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}
+              </span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos/mês</span>
+            </div>
+            <span className="text-[10px] text-emerald-700/90 font-medium hidden sm:inline leading-none">
+              Média
             </span>
-            <span className="text-xs font-medium text-emerald-800">pedidos / mês</span>
           </div>
-          <p className="text-[11px] text-emerald-700/90 mt-1 font-medium flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">functions</span>
-            Ritmo médio de encomendas
-          </p>
         </div>
 
         {/* Mês de Pico / Recorde */}
-        <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs text-lime-700">military_tech</span>
+        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px] text-lime-700">military_tech</span>
               Mês de Pico
             </span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-lime-300 text-lime-950">
-              Máximo
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none">
+              Máx
             </span>
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold font-headline text-emerald-950">
-              {estatisticas.pico ? estatisticas.pico.count : 0}
+          <div className="flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                {estatisticas.pico ? estatisticas.pico.count : 0}
+              </span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+            </div>
+            <span className="text-[10px] text-emerald-800 font-semibold truncate hidden sm:inline leading-none">
+              {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
             </span>
-            <span className="text-xs font-medium text-emerald-800">pedidos</span>
           </div>
-          <p className="text-[11px] text-emerald-800 font-semibold mt-1 truncate">
-            {estatisticas.pico ? estatisticas.pico.labelCompleto : 'Sem registos'}
-          </p>
         </div>
 
         {/* Mês Mais Recente & Tendência */}
-        <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-teal-900/80 uppercase tracking-wide">
+        <div className="h-[75px] px-3.5 py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between overflow-hidden">
+          <div className="flex items-center justify-between leading-none">
+            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide">
               {estatisticas.ultimoMes ? estatisticas.ultimoMes.label : 'Mês Recente'}
             </span>
             {estatisticas.variacaoUltimoMes >= 0 ? (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-lime-200 text-lime-950 border border-lime-300">
-                <span className="material-symbols-outlined text-[11px]">trending_up</span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none">
+                <span className="material-symbols-outlined text-[10px]">trending_up</span>
                 +{estatisticas.variacaoUltimoMes}%
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                <span className="material-symbols-outlined text-[11px]">trending_down</span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 leading-none">
+                <span className="material-symbols-outlined text-[10px]">trending_down</span>
                 {estatisticas.variacaoUltimoMes}%
               </span>
             )}
           </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-bold font-headline text-emerald-950">
-              {estatisticas.ultimoMes ? estatisticas.ultimoMes.count : 0}
+          <div className="flex items-baseline justify-between gap-1">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                {estatisticas.ultimoMes ? estatisticas.ultimoMes.count : 0}
+              </span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+            </div>
+            <span className="text-[10px] text-teal-800 font-medium hidden sm:inline leading-none">
+              vs. anterior
             </span>
-            <span className="text-xs font-medium text-emerald-800">pedidos</span>
           </div>
-          <p className="text-[11px] text-teal-800 font-medium mt-1 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">compare_arrows</span>
-            vs. mês anterior
-          </p>
         </div>
       </div>
 
@@ -744,85 +749,85 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           </svg>
         </div>
 
-        {/* Tooltip Detalhado Flutuante */}
-        {activeItem && activePoint && (
-          <div
-            className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-xl border border-lime-300/40 text-xs transition-all duration-100"
-            style={{
-              left: `${Math.min(Math.max((activePoint.x / svgWidth) * 100, 12), 88)}%`,
-              top: `${Math.max((activePoint.y / svgHeight) * 100 - 25, 8)}%`,
-              transform: 'translate(-50%, -100%)',
-            }}
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1.5 mb-1.5">
-              <span className="font-bold text-lime-300 flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs text-lime-400">event</span>
-                {activeItem.labelCompleto}
-              </span>
-              {activeItem.count === estatisticas.pico?.count && activeItem.count > 0 && (
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
-                  Pico
+        {/* Tooltip Detalhado Flutuante com Posicionamento Inteligente para Manter 100% Dentro da Janela */}
+        {activeItem && activePoint && (() => {
+          const xPct = (activePoint.x / svgWidth) * 100;
+          const yPct = (activePoint.y / svgHeight) * 100;
+          const isUpperHalf = yPct < 45;
+
+          let transformX = '-50%';
+          if (xPct < 22) {
+            transformX = '0%';
+          } else if (xPct > 78) {
+            transformX = '-100%';
+          }
+
+          const leftPos = Math.min(Math.max(xPct, 3), 97);
+          const topPos = isUpperHalf ? Math.min(yPct + 8, 55) : Math.max(yPct - 6, 15);
+          const transformY = isUpperHalf ? '0%' : '-100%';
+
+          return (
+            <div
+              className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 min-w-[210px]"
+              style={{
+                left: `${leftPos}%`,
+                top: `${topPos}%`,
+                transform: `translate(${transformX}, ${transformY})`,
+              }}
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1 mb-1">
+                <span className="font-bold text-lime-300 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs text-lime-400">event</span>
+                  {activeItem.labelCompleto}
                 </span>
-              )}
-            </div>
+                {activeItem.count === estatisticas.pico?.count && activeItem.count > 0 && (
+                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
+                    Pico
+                  </span>
+                )}
+              </div>
 
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="text-slate-300">Volume de Pedidos:</span>
-              <span className="font-bold text-base text-white">
-                {activeItem.count}{' '}
-                <span className="text-[11px] font-normal text-slate-300">
-                  {activeItem.count === 1 ? 'pedido' : 'pedidos'}
-                </span>
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between gap-4 mt-1 text-[11px]">
-              <span className="text-slate-400">Peso no período:</span>
-              <span className="font-semibold text-emerald-300">
-                {estatisticas.total > 0
-                  ? Math.round((activeItem.count / estatisticas.total) * 100)
-                  : 0}
-                %
-              </span>
-            </div>
-
-            {activeItem.diffAnterior !== null && (
-              <div className="flex items-center justify-between gap-4 mt-1 text-[11px] pt-1 border-t border-white/10">
-                <span className="text-slate-400">vs. Mês Anterior:</span>
-                <span
-                  className={`font-semibold flex items-center gap-0.5 ${
-                    activeItem.diffAnterior > 0
-                      ? 'text-lime-400'
-                      : activeItem.diffAnterior < 0
-                      ? 'text-rose-400'
-                      : 'text-slate-300'
-                  }`}
-                >
-                  {activeItem.diffAnterior > 0 ? `+${activeItem.diffAnterior}%` : `${activeItem.diffAnterior}%`}
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-slate-300">Volume de Pedidos:</span>
+                <span className="font-bold text-sm text-white">
+                  {activeItem.count}{' '}
+                  <span className="text-[10px] font-normal text-slate-300">
+                    {activeItem.count === 1 ? 'pedido' : 'pedidos'}
+                  </span>
                 </span>
               </div>
-            )}
-          </div>
-        )}
-      </div>
 
-      {/* Legenda e Rodapé Informativo */}
-      <div className="flex flex-wrap items-center justify-between gap-3 mt-4 pt-3 border-t border-outline-variant/20 text-xs text-on-surface-variant">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-gradient-to-r from-lime-300 to-emerald-400 border border-emerald-500/50"></span>
-            <span className="font-medium text-slate-700">Volume de Pedidos (Pastel Lima & Verde)</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-lime-400 ring-2 ring-emerald-700"></span>
-            <span className="font-medium text-slate-700">Pico de Encomendas</span>
-          </div>
-        </div>
+              <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px]">
+                <span className="text-slate-400">Peso no período:</span>
+                <span className="font-semibold text-emerald-300">
+                  {estatisticas.total > 0
+                    ? Math.round((activeItem.count / estatisticas.total) * 100)
+                    : 0}
+                  %
+                </span>
+              </div>
 
-        <div className="flex items-center gap-1 text-[11px] text-slate-500">
-          <span className="material-symbols-outlined text-xs text-slate-400">info</span>
-          Passe o cursor sobre os pontos ou barras para ver os detalhes
-        </div>
+              {activeItem.diffAnterior !== null && (
+                <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px] pt-1 border-t border-white/10">
+                  <span className="text-slate-400">vs. Mês Anterior:</span>
+                  <span
+                    className={`font-semibold flex items-center gap-0.5 ${
+                      activeItem.diffAnterior > 0
+                        ? 'text-lime-400'
+                        : activeItem.diffAnterior < 0
+                        ? 'text-rose-400'
+                        : 'text-slate-300'
+                    }`}
+                  >
+                    {activeItem.diffAnterior > 0
+                      ? `+${activeItem.diffAnterior}%`
+                      : `${activeItem.diffAnterior}%`}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
