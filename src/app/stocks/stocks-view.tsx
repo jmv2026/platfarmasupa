@@ -815,18 +815,18 @@ export default function StocksView({
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[650px] rounded-xl border border-outline-variant/30 shadow-2xs relative">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
-                      <th className="py-2.5 px-3">Código</th>
-                      <th className="py-2.5 px-3">Descrição do Artigo</th>
-                      <th className="py-2.5 px-3">Tipo Artigo</th>
-                      <th className="py-2.5 px-3">Conservação</th>
-                      <th className="py-2.5 px-3">Lote</th>
-                      <th className="py-2.5 px-3">Validade</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-lg">Stock Disponível</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Disponível</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -925,18 +925,18 @@ export default function StocksView({
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[650px] rounded-xl border border-outline-variant/30 shadow-2xs relative">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
-                      <th className="py-2.5 px-3">Código</th>
-                      <th className="py-2.5 px-3">Descrição Artigo</th>
-                      <th className="py-2.5 px-3">Lote</th>
-                      <th className="py-2.5 px-3">Validade</th>
-                      <th className="py-2.5 px-3">Armazém Loc</th>
-                      <th className="py-2.5 px-3">Tipo Armazém</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-lg">Stock</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Armazém</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1013,19 +1013,19 @@ export default function StocksView({
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[650px] rounded-xl border border-outline-variant/30 shadow-2xs relative">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-2.5 px-3 rounded-l-lg">Cliente</th>
-                      <th className="py-2.5 px-3">Código</th>
-                      <th className="py-2.5 px-3">Descrição do Artigo</th>
-                      <th className="py-2.5 px-3">Tipo Artigo</th>
-                      <th className="py-2.5 px-3">Conservação</th>
-                      <th className="py-2.5 px-3 text-center">Nº Lotes</th>
-                      <th className="py-2.5 px-3">Próx. Validade</th>
-                      <th className="py-2.5 px-3 text-right">Stock Venda</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-lg">Stock Total</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-center">Nº Lotes</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Próx. Validade</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Venda</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1107,19 +1107,19 @@ export default function StocksView({
                 </p>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-[650px] rounded-xl border border-outline-variant/30 shadow-2xs relative">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-2.5 px-3 rounded-l-lg">Estado</th>
-                      <th className="py-2.5 px-3">Cliente</th>
-                      <th className="py-2.5 px-3">Código</th>
-                      <th className="py-2.5 px-3">Descrição Artigo</th>
-                      <th className="py-2.5 px-3">Lote</th>
-                      <th className="py-2.5 px-3">Data Validade</th>
-                      <th className="py-2.5 px-3">Dias Restantes</th>
-                      <th className="py-2.5 px-3">Armazém Loc</th>
-                      <th className="py-2.5 px-3 text-right rounded-r-lg">Stock</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Estado</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Data Validade</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Dias Restantes</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">

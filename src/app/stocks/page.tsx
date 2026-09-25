@@ -129,7 +129,7 @@ export default async function StocksPage() {
               Stocks
             </h1>
             <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
-              Controlo e consulta de existências em armazém, lotes, validades e artigos reservados.
+              Controlo e consulta de existências em armazém, lotes e validades.
             </p>
           </div>
           <div className="absolute right-0 top-0 bottom-0 w-1/4 bg-secondary/15 pointer-events-none"></div>
