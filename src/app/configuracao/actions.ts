@@ -122,6 +122,7 @@ export async function criarClienteAction(input: {
   name: string;
   sigla: string;
   tipo_cliente?: TipoCliente;
+  cli_primavera?: string;
   nif?: string;
   email?: string;
   telefone?: string;
@@ -169,6 +170,7 @@ export async function criarClienteAction(input: {
         name: input.name.trim(),
         sigla: siglaFormatada,
         tipo_cliente: input.tipo_cliente || 'SF',
+        cli_primavera: input.cli_primavera?.trim() || null,
         nif: input.nif?.trim() || null,
         email: input.email?.trim().toLowerCase() || null,
         telefone: input.telefone?.trim() || null,

@@ -77,6 +77,7 @@ export interface Client {
   morada: string | null;
   cod_postal?: string | null;
   localidade?: string | null;
+  cli_primavera?: string | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;

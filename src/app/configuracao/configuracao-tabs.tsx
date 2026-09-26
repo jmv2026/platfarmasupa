@@ -11,6 +11,8 @@ import {
   UserRole,
   TipoArtigo,
   TipoArmazenamento,
+  TipoCliente,
+  TIPO_CLIENTE_LABELS,
   ImpStk,
   Armazem,
   TIPO_ARTIGO_LABELS,
@@ -85,6 +87,8 @@ export default function ConfiguracaoTabs({
   // Estados Formulário Cliente
   const [clientName, setClientName] = useState('');
   const [clientSigla, setClientSigla] = useState('');
+  const [clientTipoCliente, setClientTipoCliente] = useState<TipoCliente>('SF');
+  const [clientPrimavera, setClientPrimavera] = useState('');
   const [clientNif, setClientNif] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientTelefone, setClientTelefone] = useState('');
@@ -157,6 +161,8 @@ export default function ConfiguracaoTabs({
       const res = await criarClienteAction({
         name: clientName,
         sigla: clientSigla,
+        tipo_cliente: clientTipoCliente,
+        cli_primavera: clientPrimavera || undefined,
         nif: clientNif || undefined,
         email: clientEmail || undefined,
         telefone: clientTelefone || undefined,
@@ -173,6 +179,8 @@ export default function ConfiguracaoTabs({
         });
         setClientName('');
         setClientSigla('');
+        setClientTipoCliente('SF');
+        setClientPrimavera('');
         setClientNif('');
         setClientEmail('');
         setClientTelefone('');
@@ -651,6 +659,33 @@ export default function ConfiguracaoTabs({
 
                   <div>
                     <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {t.configuracao.clientTipoCliente} <span className="text-rose-600">*</span>
+                    </label>
+                    <select
+                      value={clientTipoCliente}
+                      onChange={(e) => setClientTipoCliente(e.target.value as TipoCliente)}
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                    >
+                      <option value="SF">{t.configuracao.tipoClienteSf}</option>
+                      <option value="CF">{t.configuracao.tipoClienteCf}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {t.configuracao.clientPrimaveraCode}
+                    </label>
+                    <input
+                      type="text"
+                      value={clientPrimavera}
+                      onChange={(e) => setClientPrimavera(e.target.value)}
+                      placeholder="Ex: C0001 / BIAL"
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
                       {t.configuracao.clientNif}
                     </label>
                     <input
@@ -763,6 +798,8 @@ export default function ConfiguracaoTabs({
                   <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="py-2.5 px-3 rounded-l-lg">{t.configuracao.clientSigla}</th>
+                      <th className="py-2.5 px-3">{t.configuracao.clientTipoCliente}</th>
+                      <th className="py-2.5 px-3">{t.configuracao.clientPrimaveraCode}</th>
                       <th className="py-2.5 px-3">{t.configuracao.clientName}</th>
                       <th className="py-2.5 px-3">{t.configuracao.clientNif}</th>
                       <th className="py-2.5 px-3">{t.configuracao.clientEmail}</th>
@@ -780,6 +817,21 @@ export default function ConfiguracaoTabs({
                           <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                             {c.sigla}
                           </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
+                              c.tipo_cliente === 'CF'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : 'bg-slate-100 text-slate-700 border border-slate-300'
+                            }`}
+                            title={c.tipo_cliente === 'CF' ? 'Com Faturação (CF)' : 'Sem Faturação (SF)'}
+                          >
+                            {c.tipo_cliente || 'SF'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-semibold text-secondary">
+                          {c.cli_primavera || '-'}
                         </td>
                         <td className="py-3 px-3 font-semibold">{c.name}</td>
                         <td className="py-3 px-3 font-mono text-on-surface-variant">{c.nif || '-'}</td>

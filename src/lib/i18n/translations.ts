@@ -246,6 +246,10 @@ export interface Translations {
     clientAddress: string;
     clientPostalCode: string;
     clientCity: string;
+    clientTipoCliente: string;
+    tipoClienteSf: string;
+    tipoClienteCf: string;
+    clientPrimaveraCode: string;
     clientActive: string;
     articleCode: string;
     articleDesc: string;
@@ -538,6 +542,10 @@ export const translations: Record<Language, Translations> = {
       clientAddress: 'Morada',
       clientPostalCode: 'Código Postal',
       clientCity: 'Localidade',
+      clientTipoCliente: 'Tipo de Cliente',
+      tipoClienteSf: 'SF (Sem Faturação)',
+      tipoClienteCf: 'CF (Com Faturação)',
+      clientPrimaveraCode: 'Cód. Primavera (ERP)',
       clientActive: 'Cliente Ativo',
       articleCode: 'Código do Artigo',
       articleDesc: 'Descrição',
@@ -828,6 +836,10 @@ export const translations: Record<Language, Translations> = {
       clientAddress: 'Dirección',
       clientPostalCode: 'Código Postal',
       clientCity: 'Localidad',
+      clientTipoCliente: 'Tipo de Cliente',
+      tipoClienteSf: 'SF (Sin Facturación)',
+      tipoClienteCf: 'CF (Con Facturación)',
+      clientPrimaveraCode: 'Cód. Primavera (ERP)',
       clientActive: 'Cliente Activo',
       articleCode: 'Código del Artículo',
       articleDesc: 'Descripción',
@@ -1118,6 +1130,10 @@ export const translations: Record<Language, Translations> = {
       clientAddress: 'Address',
       clientPostalCode: 'Postal Code',
       clientCity: 'City',
+      clientTipoCliente: 'Client Type',
+      tipoClienteSf: 'SF (Without Invoicing)',
+      tipoClienteCf: 'CF (With Invoicing)',
+      clientPrimaveraCode: 'Primavera Code (ERP)',
       clientActive: 'Active Client',
       articleCode: 'Article Code',
       articleDesc: 'Description',
