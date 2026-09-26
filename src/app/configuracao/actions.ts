@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { UserRole, TipoArtigo, TipoArmazenamento, ImpStkInput } from '@/lib/supabase/types';
+import { UserRole, TipoArtigo, TipoArmazenamento, TipoCliente, ImpStkInput } from '@/lib/supabase/types';
 import { parseDateStockToISO } from '@/lib/parse-stock-file';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import {
@@ -121,6 +121,7 @@ export async function criarUtilizadorAction(input: {
 export async function criarClienteAction(input: {
   name: string;
   sigla: string;
+  tipo_cliente?: TipoCliente;
   nif?: string;
   email?: string;
   telefone?: string;
@@ -167,6 +168,7 @@ export async function criarClienteAction(input: {
       .insert({
         name: input.name.trim(),
         sigla: siglaFormatada,
+        tipo_cliente: input.tipo_cliente || 'SF',
         nif: input.nif?.trim() || null,
         email: input.email?.trim().toLowerCase() || null,
         telefone: input.telefone?.trim() || null,

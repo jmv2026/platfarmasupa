@@ -59,10 +59,18 @@ export interface UserProfile {
   updated_at?: string;
 }
 
+export type TipoCliente = 'CF' | 'SF';
+
+export const TIPO_CLIENTE_LABELS: Record<TipoCliente, string> = {
+  CF: 'Com Faturação (CF)',
+  SF: 'Sem Faturação (SF)',
+};
+
 export interface Client {
   id: string;
   name: string;
   sigla: string;
+  tipo_cliente: TipoCliente;
   nif: string | null;
   email: string | null;
   telefone: string | null;

@@ -279,7 +279,7 @@ export default function HistoricoPedidosView({
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Banner Topo */}
-      <div className="bg-gradient-to-r from-primary to-primary-container p-6 sm:p-8 rounded-2xl text-on-primary shadow-lg relative overflow-hidden">
+      <div className="bg-primary-container p-6 sm:p-8 rounded-2xl text-on-primary shadow-lg relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold opacity-80 mb-2">
             <span className="material-symbols-outlined text-sm">receipt_long</span>
