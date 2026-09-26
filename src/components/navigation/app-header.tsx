@@ -33,9 +33,9 @@ export default function AppHeader({
       : 'dashboard');
 
   const languagesList = [
-    { code: 'pt' as const, label: 'PT', flag: '🇵🇹', full: t.nav.ptFull },
-    { code: 'es' as const, label: 'ES', flag: '🇪🇸', full: t.nav.esFull },
-    { code: 'en' as const, label: 'EN', flag: '🇬🇧', full: t.nav.enFull },
+    { code: 'pt' as const, label: 'PT', full: t.nav.ptFull },
+    { code: 'es' as const, label: 'ES', full: t.nav.esFull },
+    { code: 'en' as const, label: 'EN', full: t.nav.enFull },
   ];
 
   return (
@@ -154,9 +154,8 @@ export default function AppHeader({
 
           {/* Grupo com os 3 pequenos botões de alteração de língua: PT, ES, EN */}
           <div className="flex items-center gap-1.5" role="group" aria-label="Seleção de Idioma">
-            <span className="text-[11px] font-semibold text-on-surface-variant/90 mr-1 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px] text-secondary">translate</span>
-              <span className="hidden xs:inline">{t.nav.languageLabel}</span>
+            <span className="text-[11px] font-semibold text-on-surface-variant/90 mr-1 hidden xs:inline">
+              {t.nav.languageLabel}
             </span>
 
             {languagesList.map((lang) => {
@@ -167,13 +166,12 @@ export default function AppHeader({
                   type="button"
                   onClick={() => setLanguage(lang.code)}
                   title={`${lang.full} (${lang.label})`}
-                  className={`h-6 px-2 sm:px-2.5 rounded-md text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer select-none ${
+                  className={`h-6 px-2 sm:px-2.5 rounded-md text-[11px] font-bold inline-flex items-center justify-center transition-all cursor-pointer select-none ${
                     isActive
                       ? 'bg-secondary text-white shadow-xs ring-1 ring-secondary/50 scale-105'
                       : 'bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline-variant/40 hover:border-secondary/40'
                   }`}
                 >
-                  <span className="text-xs leading-none">{lang.flag}</span>
                   <span className="tracking-wide">{lang.label}</span>
                 </button>
               );

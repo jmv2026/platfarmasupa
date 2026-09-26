@@ -87,10 +87,10 @@ export default function LoginPage() {
     }
   };
 
-  const languagesList: { code: Language; label: string; flag: string; full: string }[] = [
-    { code: 'pt', label: 'PT', flag: '🇵🇹', full: t.nav.ptFull },
-    { code: 'es', label: 'ES', flag: '🇪🇸', full: t.nav.esFull },
-    { code: 'en', label: 'EN', flag: '🇬🇧', full: t.nav.enFull },
+  const languagesList: { code: Language; label: string; full: string }[] = [
+    { code: 'pt', label: 'PT', full: t.nav.ptFull },
+    { code: 'es', label: 'ES', full: t.nav.esFull },
+    { code: 'en', label: 'EN', full: t.nav.enFull },
   ];
 
   return (
@@ -127,13 +127,12 @@ export default function LoginPage() {
               type="button"
               onClick={() => setLanguage(item.code)}
               title={item.full}
-              className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer select-none ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer select-none ${
                 isActive
                   ? 'bg-secondary text-on-secondary shadow-md scale-105'
                   : 'text-white/80 hover:text-white hover:bg-white/10'
               }`}
             >
-              <span className="text-xs">{item.flag}</span>
               <span>{item.label}</span>
             </button>
           );
