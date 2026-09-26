@@ -69,16 +69,16 @@ async function runTests() {
       printFail('Erro ao aceder à tabela de armazéns', armazensError.message);
       failedCount++;
     } else {
-      const expectedTipos = ['01', '02', '03', '04', '05', '06', '07'];
+      const expectedTipos = ['01', '02', '03', '04', '05', '06', '07', '09', '10'];
       const foundTipos = armazens.map((a) => a.tipo_armazem);
       const allPresent = expectedTipos.every((t) => foundTipos.includes(t));
 
       // Verificar se não tem coluna client_id nos dados
       const hasNoClientId = armazens.length > 0 && armazens[0].client_id === undefined;
 
-      if (allPresent && armazens.length === 7 && hasNoClientId) {
+      if (allPresent && armazens.length === 9 && hasNoClientId) {
         printPass(
-          'Tabela armazens contém os 7 tipos padrão sem ligação à tabela clientes',
+          'Tabela armazens contém os 9 tipos regulamentares sem ligação à tabela clientes',
           armazens.map((a) => `[${a.tipo_armazem}] ${a.descricao}`).join(' | ')
         );
         passedCount++;

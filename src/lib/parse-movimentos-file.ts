@@ -239,7 +239,7 @@ export function normalizeTipoMovimento(val: unknown): 'es' | 'ss' | 'et' | 'st' 
 }
 
 /**
- * Normaliza o código de tipo de armazém ('01' a '07', '10').
+ * Normaliza o código de tipo de armazém ('01' a '07', '09', '10').
  */
 export function normalizeTipoArmazem(val: unknown): string {
   if (!val) return '01';
@@ -252,10 +252,11 @@ export function normalizeTipoArmazem(val: unknown): string {
   if (s === '05' || s === '5' || s.includes('quarent')) return '05';
   if (s === '06' || s === '6' || s.includes('destrui') || s.includes('destruição')) return '06';
   if (s === '07' || s === '7' || s.includes('farmaco') || s.includes('farmacoteca')) return '07';
+  if (s === '09' || s === '9' || s.includes('validade')) return '09';
   if (s === '10' || s.includes('mia')) return '10';
 
-  // Se for algo como 'MDZ01' ou 'PFIZ-10', extrai os dígitos finais
-  const match = s.match(/(0[1-7]|10)$/);
+  // Se for algo como 'MDZ01' ou 'PFIZ-09' ou 'PFIZ-10', extrai os dígitos finais
+  const match = s.match(/(0[1-79]|10)$/);
   if (match) return match[0];
 
   return '01';

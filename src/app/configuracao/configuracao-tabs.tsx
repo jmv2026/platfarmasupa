@@ -15,6 +15,7 @@ import {
   TIPO_CLIENTE_LABELS,
   ImpStk,
   Armazem,
+  Tempo,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
 } from '@/lib/supabase/types';
@@ -22,6 +23,7 @@ import { MovimentoWithDetails } from './importacao-movimentos-tab';
 import {
   criarUtilizadorAction,
   criarClienteAction,
+  atualizarTemposClienteAction,
   criarArtigoAction,
   limparArtigosAction,
   enviarEmailTesteConfigAction,
@@ -45,6 +47,7 @@ interface ConfiguracaoTabsProps {
   initialImpStk?: ImpStk[];
   initialMovimentos?: MovimentoWithDetails[];
   armazens?: Armazem[];
+  tempos?: Tempo[];
   serverEmailConfig?: ServerEmailConfig;
 }
 
@@ -56,6 +59,7 @@ export default function ConfiguracaoTabs({
   initialImpStk = [],
   initialMovimentos = [],
   armazens = [],
+  tempos = [],
   serverEmailConfig,
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
@@ -96,6 +100,99 @@ export default function ConfiguracaoTabs({
   const [clientCodPostal, setClientCodPostal] = useState('');
   const [clientLocalidade, setClientLocalidade] = useState('');
   const [clientAtivo, setClientAtivo] = useState(true);
+
+  // Estados Tempos do Formulário do Cliente (Padrão: VAL = 180, EXP = 60)
+  const [clientValMh, setClientValMh] = useState<number>(180);
+  const [clientExpMh, setClientExpMh] = useState<number>(60);
+  const [clientValMv, setClientValMv] = useState<number>(180);
+  const [clientExpMv, setClientExpMv] = useState<number>(60);
+  const [clientValDm, setClientValDm] = useState<number>(180);
+  const [clientExpDm, setClientExpDm] = useState<number>(60);
+  const [clientValDc, setClientValDc] = useState<number>(180);
+  const [clientExpDc, setClientExpDc] = useState<number>(60);
+  const [clientValSa, setClientValSa] = useState<number>(180);
+  const [clientExpSa, setClientExpSa] = useState<number>(60);
+
+  // Estados Modal Edição de Tempos de Cliente Existente
+  const [temposList, setTemposList] = useState<Tempo[]>(tempos || []);
+  const [editingClient, setEditingClient] = useState<{ client: Client; tempo?: Tempo } | null>(null);
+  const [editValMh, setEditValMh] = useState<number>(180);
+  const [editExpMh, setEditExpMh] = useState<number>(60);
+  const [editValMv, setEditValMv] = useState<number>(180);
+  const [editExpMv, setEditExpMv] = useState<number>(60);
+  const [editValDm, setEditValDm] = useState<number>(180);
+  const [editExpDm, setEditExpDm] = useState<number>(60);
+  const [editValDc, setEditValDc] = useState<number>(180);
+  const [editExpDc, setEditExpDc] = useState<number>(60);
+  const [editValSa, setEditValSa] = useState<number>(180);
+  const [editExpSa, setEditExpSa] = useState<number>(60);
+  const [savingTemposLoading, setSavingTemposLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    setTemposList(tempos || []);
+  }, [tempos]);
+
+  // Handler: Abrir Modal de Edição de Tempos
+  const handleOpenEditTempos = (client: Client, tempo?: Tempo) => {
+    setEditingClient({ client, tempo });
+    setEditValMh(tempo?.VAL_MH ?? 180);
+    setEditExpMh(tempo?.EXP_MH ?? 60);
+    setEditValMv(tempo?.VAL_MV ?? 180);
+    setEditExpMv(tempo?.EXP_MV ?? 60);
+    setEditValDm(tempo?.VAL_DM ?? 180);
+    setEditExpDm(tempo?.EXP_DM ?? 60);
+    setEditValDc(tempo?.VAL_DC ?? 180);
+    setEditExpDc(tempo?.EXP_DC ?? 60);
+    setEditValSa(tempo?.VAL_SA ?? 180);
+    setEditExpSa(tempo?.EXP_SA ?? 60);
+  };
+
+  // Handler: Gravar Tempos Editados no Modal
+  const handleSaveEditingTempos = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingClient) return;
+    setSavingTemposLoading(true);
+    setFeedback(null);
+    try {
+      const res = await atualizarTemposClienteAction({
+        id_cliente: editingClient.client.id,
+        sigla: editingClient.client.sigla,
+        tempos: {
+          VAL_MH: editValMh,
+          EXP_MH: editExpMh,
+          VAL_MV: editValMv,
+          EXP_MV: editExpMv,
+          VAL_DM: editValDm,
+          EXP_DM: editExpDm,
+          VAL_DC: editValDc,
+          EXP_DC: editExpDc,
+          VAL_SA: editValSa,
+          EXP_SA: editExpSa,
+        },
+      });
+
+      if (res.success) {
+        setFeedback({
+          type: 'success',
+          message: `${language === 'pt' ? 'Tempos de armazém para' : language === 'es' ? 'Tiempos de almacén para' : 'Warehouse times for'} [${editingClient.client.sigla}] ${language === 'pt' ? 'atualizados com sucesso!' : language === 'es' ? 'actualizados con éxito!' : 'updated successfully!'}`,
+        });
+        if (res.tempos) {
+          setTemposList((prev) => [
+            res.tempos as Tempo,
+            ...prev.filter((t) => t.id_cliente !== editingClient.client.id),
+          ]);
+        }
+        setEditingClient(null);
+        router.refresh();
+      } else {
+        setFeedback({ type: 'error', message: res.error || t.common.error });
+      }
+    } catch (err: unknown) {
+      setFeedback({ type: 'error', message: err instanceof Error ? err.message : t.common.error });
+    } finally {
+      setSavingTemposLoading(false);
+    }
+  };
 
   // Estados Formulário Artigo
   const [artigosList, setArtigosList] = useState<Artigo[]>(artigos);
@@ -170,6 +267,18 @@ export default function ConfiguracaoTabs({
         cod_postal: clientCodPostal || undefined,
         localidade: clientLocalidade || undefined,
         ativo: clientAtivo,
+        tempos: {
+          VAL_MH: clientValMh,
+          EXP_MH: clientExpMh,
+          VAL_MV: clientValMv,
+          EXP_MV: clientExpMv,
+          VAL_DM: clientValDm,
+          EXP_DM: clientExpDm,
+          VAL_DC: clientValDc,
+          EXP_DC: clientExpDc,
+          VAL_SA: clientValSa,
+          EXP_SA: clientExpSa,
+        },
       });
 
       if (res.success) {
@@ -187,6 +296,16 @@ export default function ConfiguracaoTabs({
         setClientMorada('');
         setClientCodPostal('');
         setClientLocalidade('');
+        setClientValMh(180);
+        setClientExpMh(60);
+        setClientValMv(180);
+        setClientExpMv(60);
+        setClientValDm(180);
+        setClientExpDm(60);
+        setClientValDc(180);
+        setClientExpDc(60);
+        setClientValSa(180);
+        setClientExpSa(60);
         router.refresh();
       } else {
         setFeedback({ type: 'error', message: res.error || t.common.error });
@@ -763,6 +882,187 @@ export default function ConfiguracaoTabs({
                   </div>
                 </div>
 
+                {/* Linha de Preenchimento: Tempos de Validade & Expiração (Dias) por Categoria */}
+                <div className="bg-surface-container/40 border border-outline-variant/30 rounded-xl p-4 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-secondary text-base">schedule</span>
+                      <h4 className="text-xs font-bold font-headline text-on-surface">
+                        {t.configuracao.clientTemposTitle}
+                      </h4>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-secondary-container/60 text-on-secondary-container border border-secondary/20">
+                      <span className="material-symbols-outlined text-xs">tune</span>
+                      {t.configuracao.clientTemposBadge}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant">
+                    {t.configuracao.clientTemposDesc}
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
+                    {/* MH: Medicamentos Humanos */}
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1.5">
+                        <span className="text-xs font-bold text-on-surface font-mono">VAL-MH / EXP-MH</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium truncate max-w-[85px]">Med. Humanos</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientValMh}
+                            onChange={(e) => setClientValMh(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientExpMh}
+                            onChange={(e) => setClientExpMh(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* MV: Medicamentos Veterinários */}
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1.5">
+                        <span className="text-xs font-bold text-on-surface font-mono">VAL-MV / EXP-MV</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium truncate max-w-[85px]">Med. Veterinários</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientValMv}
+                            onChange={(e) => setClientValMv(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientExpMv}
+                            onChange={(e) => setClientExpMv(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DM: Dispositivos Médicos */}
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1.5">
+                        <span className="text-xs font-bold text-on-surface font-mono">VAL-DM / EXP-DM</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium truncate max-w-[85px]">Disp. Médicos</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientValDm}
+                            onChange={(e) => setClientValDm(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientExpDm}
+                            onChange={(e) => setClientExpDm(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* DC: Dermocosméticos */}
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1.5">
+                        <span className="text-xs font-bold text-on-surface font-mono">VAL-DC / EXP-DC</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium truncate max-w-[85px]">Dermocosméticos</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientValDc}
+                            onChange={(e) => setClientValDc(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientExpDc}
+                            onChange={(e) => setClientExpDc(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SA: Suplementos Alimentares */}
+                    <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-3 space-y-2 shadow-2xs">
+                      <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1.5">
+                        <span className="text-xs font-bold text-on-surface font-mono">VAL-SA / EXP-SA</span>
+                        <span className="text-[10px] text-on-surface-variant font-medium truncate max-w-[85px]">Supl. Alimentares</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientValSa}
+                            onChange={(e) => setClientValSa(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={clientExpSa}
+                            onChange={(e) => setClientExpSa(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-full bg-surface-container border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">
                   <label className="flex items-center gap-2 text-xs text-on-surface font-medium cursor-pointer">
                     <input
@@ -807,49 +1107,67 @@ export default function ConfiguracaoTabs({
                       <th className="py-2.5 px-3">{t.configuracao.clientAddress}</th>
                       <th className="py-2.5 px-3">{t.configuracao.clientPostalCode}</th>
                       <th className="py-2.5 px-3">{t.configuracao.clientCity}</th>
+                      <th className="py-2.5 px-3">{t.configuracao.clientTemposTitle}</th>
                       <th className="py-2.5 px-3 text-right rounded-r-lg">{t.common.status}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                    {clients.map((c) => (
-                      <tr key={c.id} className="hover:bg-surface-container/30 transition-colors">
-                        <td className="py-3 px-3">
-                          <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
-                            {c.sigla}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
-                              c.tipo_cliente === 'CF'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                : 'bg-slate-100 text-slate-700 border border-slate-300'
-                            }`}
-                            title={c.tipo_cliente === 'CF' ? 'Com Faturação (CF)' : 'Sem Faturação (SF)'}
-                          >
-                            {c.tipo_cliente || 'SF'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-mono font-semibold text-secondary">
-                          {c.cli_primavera || '-'}
-                        </td>
-                        <td className="py-3 px-3 font-semibold">{c.name}</td>
-                        <td className="py-3 px-3 font-mono text-on-surface-variant">{c.nif || '-'}</td>
-                        <td className="py-3 px-3 text-on-surface-variant">{c.email || '-'}</td>
-                        <td className="py-3 px-3 font-mono text-on-surface-variant">{c.telefone || '-'}</td>
-                        <td className="py-3 px-3 text-on-surface-variant truncate max-w-[180px]" title={c.morada || ''}>
-                          {c.morada || '-'}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-on-surface-variant">{c.cod_postal || '-'}</td>
-                        <td className="py-3 px-3 text-on-surface-variant">{c.localidade || '-'}</td>
-                        <td className="py-3 px-3 text-right">
-                          <span className={`inline-flex items-center gap-1 font-medium ${c.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${c.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                            {c.ativo ? t.common.active : t.common.inactive}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {clients.map((c) => {
+                      const clientTempo = temposList.find((tp) => tp.id_cliente === c.id);
+                      return (
+                        <tr key={c.id} className="hover:bg-surface-container/30 transition-colors">
+                          <td className="py-3 px-3">
+                            <span className="inline-block px-2.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                              {c.sigla}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
+                                c.tipo_cliente === 'CF'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-300'
+                              }`}
+                              title={c.tipo_cliente === 'CF' ? 'Com Faturação (CF)' : 'Sem Faturação (SF)'}
+                            >
+                              {c.tipo_cliente || 'SF'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-mono font-semibold text-secondary">
+                            {c.cli_primavera || '-'}
+                          </td>
+                          <td className="py-3 px-3 font-semibold">{c.name}</td>
+                          <td className="py-3 px-3 font-mono text-on-surface-variant">{c.nif || '-'}</td>
+                          <td className="py-3 px-3 text-on-surface-variant">{c.email || '-'}</td>
+                          <td className="py-3 px-3 font-mono text-on-surface-variant">{c.telefone || '-'}</td>
+                          <td className="py-3 px-3 text-on-surface-variant truncate max-w-[180px]" title={c.morada || ''}>
+                            {c.morada || '-'}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-on-surface-variant">{c.cod_postal || '-'}</td>
+                          <td className="py-3 px-3 text-on-surface-variant">{c.localidade || '-'}</td>
+                          <td className="py-3 px-3">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTempos(c, clientTempo)}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-on-surface transition-colors cursor-pointer group"
+                              title="Configurar limites de dias para transferência de armazém"
+                            >
+                              <span className="material-symbols-outlined text-xs text-secondary group-hover:scale-110 transition-transform">schedule</span>
+                              <span className="font-mono">
+                                {clientTempo ? `VAL: ${clientTempo.VAL_MH}d | EXP: ${clientTempo.EXP_MH}d` : '180d / 60d'}
+                              </span>
+                              <span className="material-symbols-outlined text-[11px] text-on-surface-variant group-hover:text-secondary">tune</span>
+                            </button>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <span className={`inline-flex items-center gap-1 font-medium ${c.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${c.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                              {c.ativo ? t.common.active : t.common.inactive}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1333,6 +1651,222 @@ export default function ConfiguracaoTabs({
           </div>
         )}
       </div>
+
+      {/* Modal: Configurar Tempos do Cliente */}
+      {editingClient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-secondary-container/50 text-secondary rounded-xl">
+                  <span className="material-symbols-outlined text-xl">schedule</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold font-headline text-on-surface">
+                    {t.configuracao.modalConfigTemposTitle}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    Cliente: <span className="font-mono font-bold text-secondary">[{editingClient.client.sigla}]</span> {editingClient.client.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingClient(null)}
+                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-container transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditingTempos} className="space-y-4">
+              <p className="text-xs text-on-surface-variant">
+                {t.configuracao.clientTemposDesc}
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* MH */}
+                <div className="bg-surface-container/50 border border-outline-variant/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="text-xs font-bold text-on-surface font-mono">VAL-MH / EXP-MH</span>
+                    <span className="text-[10px] text-on-surface-variant font-medium truncate">Med. Humanos</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editValMh}
+                        onChange={(e) => setEditValMh(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editExpMh}
+                        onChange={(e) => setEditExpMh(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* MV */}
+                <div className="bg-surface-container/50 border border-outline-variant/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="text-xs font-bold text-on-surface font-mono">VAL-MV / EXP-MV</span>
+                    <span className="text-[10px] text-on-surface-variant font-medium truncate">Med. Veterinários</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editValMv}
+                        onChange={(e) => setEditValMv(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editExpMv}
+                        onChange={(e) => setEditExpMv(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* DM */}
+                <div className="bg-surface-container/50 border border-outline-variant/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="text-xs font-bold text-on-surface font-mono">VAL-DM / EXP-DM</span>
+                    <span className="text-[10px] text-on-surface-variant font-medium truncate">Disp. Médicos</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editValDm}
+                        onChange={(e) => setEditValDm(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editExpDm}
+                        onChange={(e) => setEditExpDm(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* DC */}
+                <div className="bg-surface-container/50 border border-outline-variant/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="text-xs font-bold text-on-surface font-mono">VAL-DC / EXP-DC</span>
+                    <span className="text-[10px] text-on-surface-variant font-medium truncate">Dermocosméticos</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editValDc}
+                        onChange={(e) => setEditValDc(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editExpDc}
+                        onChange={(e) => setEditExpDc(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SA */}
+                <div className="bg-surface-container/50 border border-outline-variant/40 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="text-xs font-bold text-on-surface font-mono">VAL-SA / EXP-SA</span>
+                    <span className="text-[10px] text-on-surface-variant font-medium truncate">Supl. Alimentares</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 uppercase">VAL (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editValSa}
+                        onChange={(e) => setEditValSa(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-amber-200 focus:border-amber-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-amber-500 text-center"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-rose-700 uppercase">EXP (dias)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={editExpSa}
+                        onChange={(e) => setEditExpSa(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-surface-container-lowest border border-rose-200 focus:border-rose-400 rounded-lg px-2 py-1 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-1 focus:ring-rose-500 text-center"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setEditingClient(null)}
+                  className="px-4 py-2 text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-xl transition-colors cursor-pointer"
+                >
+                  {t.configuracao.cancel}
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingTemposLoading}
+                  className="bg-secondary text-on-secondary hover:bg-secondary/90 px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  {savingTemposLoading ? t.common.loading : t.configuracao.save}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

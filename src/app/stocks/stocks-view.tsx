@@ -743,6 +743,7 @@ export default function StocksView({
                 <option value="03">03 - Danificados</option>
                 <option value="06">06 - Destruição</option>
                 <option value="07">07 - Farmacoteca</option>
+                <option value="09">09 - Validade</option>
                 <option value="10">10 - MIA</option>
               </select>
             </div>
@@ -989,6 +990,8 @@ export default function StocksView({
                                   ? 'bg-amber-100 text-amber-800'
                                   : item.tipo_armazem === '02'
                                   ? 'bg-rose-100 text-rose-800'
+                                  : item.tipo_armazem === '09'
+                                  ? 'bg-purple-100 text-purple-800'
                                   : item.tipo_armazem === '10'
                                   ? 'bg-indigo-100 text-indigo-800'
                                   : 'bg-slate-100 text-slate-800'

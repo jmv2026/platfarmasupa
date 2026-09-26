@@ -117,7 +117,20 @@ export async function criarUtilizadorAction(input: {
   }
 }
 
-// 2. AÇÃO: Criar Cliente (Validação de Sigla <= 4 carateres)
+export interface ClienteTemposInput {
+  VAL_MH?: number;
+  EXP_MH?: number;
+  VAL_MV?: number;
+  EXP_MV?: number;
+  VAL_DM?: number;
+  EXP_DM?: number;
+  VAL_DC?: number;
+  EXP_DC?: number;
+  VAL_SA?: number;
+  EXP_SA?: number;
+}
+
+// 2. AÇÃO: Criar Cliente (Validação de Sigla <= 4 carateres e criação de tempos)
 export async function criarClienteAction(input: {
   name: string;
   sigla: string;
@@ -130,6 +143,7 @@ export async function criarClienteAction(input: {
   cod_postal?: string;
   localidade?: string;
   ativo?: boolean;
+  tempos?: ClienteTemposInput;
 }) {
   const supabase = await createClient();
   const {
@@ -189,11 +203,122 @@ export async function criarClienteAction(input: {
       return { success: false, error: `Erro ao criar cliente: ${clientErr.message}` };
     }
 
+    // Registar tempos de validade e expiração para este cliente na tabela public.tempos
+    const valMh = Number.isFinite(input.tempos?.VAL_MH) ? Number(input.tempos?.VAL_MH) : 180;
+    const expMh = Number.isFinite(input.tempos?.EXP_MH) ? Number(input.tempos?.EXP_MH) : 60;
+    const valMv = Number.isFinite(input.tempos?.VAL_MV) ? Number(input.tempos?.VAL_MV) : 180;
+    const expMv = Number.isFinite(input.tempos?.EXP_MV) ? Number(input.tempos?.EXP_MV) : 60;
+    const valDm = Number.isFinite(input.tempos?.VAL_DM) ? Number(input.tempos?.VAL_DM) : 180;
+    const expDm = Number.isFinite(input.tempos?.EXP_DM) ? Number(input.tempos?.EXP_DM) : 60;
+    const valDc = Number.isFinite(input.tempos?.VAL_DC) ? Number(input.tempos?.VAL_DC) : 180;
+    const expDc = Number.isFinite(input.tempos?.EXP_DC) ? Number(input.tempos?.EXP_DC) : 60;
+    const valSa = Number.isFinite(input.tempos?.VAL_SA) ? Number(input.tempos?.VAL_SA) : 180;
+    const expSa = Number.isFinite(input.tempos?.EXP_SA) ? Number(input.tempos?.EXP_SA) : 60;
+
+    const { error: temposErr } = await supabase.from('tempos').insert({
+      id_cliente: client.id,
+      sigla: siglaFormatada,
+      VAL_MH: valMh,
+      EXP_MH: expMh,
+      VAL_MV: valMv,
+      EXP_MV: expMv,
+      VAL_DM: valDm,
+      EXP_DM: expDm,
+      VAL_DC: valDc,
+      EXP_DC: expDc,
+      VAL_SA: valSa,
+      EXP_SA: expSa,
+    });
+
+    if (temposErr) {
+      console.error('Erro ao registar tempos na criação do cliente:', temposErr);
+    }
+
     revalidatePath('/configuracao');
     revalidatePath('/pedidos');
+    revalidatePath('/stocks');
     revalidatePath('/dashboard');
 
     return { success: true, client };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado';
+    return { success: false, error: msg };
+  }
+}
+
+// 2.1 AÇÃO: Atualizar Tempos de Armazém de um Cliente
+export async function atualizarTemposClienteAction(input: {
+  id_cliente: string;
+  sigla?: string;
+  tempos: ClienteTemposInput;
+}) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores ou gestores podem configurar tempos.' };
+  }
+
+  if (!input.id_cliente) {
+    return { success: false, error: 'ID do cliente é obrigatório.' };
+  }
+
+  try {
+    const valMh = Number.isFinite(input.tempos.VAL_MH) ? Number(input.tempos.VAL_MH) : 180;
+    const expMh = Number.isFinite(input.tempos.EXP_MH) ? Number(input.tempos.EXP_MH) : 60;
+    const valMv = Number.isFinite(input.tempos.VAL_MV) ? Number(input.tempos.VAL_MV) : 180;
+    const expMv = Number.isFinite(input.tempos.EXP_MV) ? Number(input.tempos.EXP_MV) : 60;
+    const valDm = Number.isFinite(input.tempos.VAL_DM) ? Number(input.tempos.VAL_DM) : 180;
+    const expDm = Number.isFinite(input.tempos.EXP_DM) ? Number(input.tempos.EXP_DM) : 60;
+    const valDc = Number.isFinite(input.tempos.VAL_DC) ? Number(input.tempos.VAL_DC) : 180;
+    const expDc = Number.isFinite(input.tempos.EXP_DC) ? Number(input.tempos.EXP_DC) : 60;
+    const valSa = Number.isFinite(input.tempos.VAL_SA) ? Number(input.tempos.VAL_SA) : 180;
+    const expSa = Number.isFinite(input.tempos.EXP_SA) ? Number(input.tempos.EXP_SA) : 60;
+
+    const { data: updated, error } = await supabase
+      .from('tempos')
+      .upsert(
+        {
+          id_cliente: input.id_cliente,
+          sigla: input.sigla || null,
+          VAL_MH: valMh,
+          EXP_MH: expMh,
+          VAL_MV: valMv,
+          EXP_MV: expMv,
+          VAL_DM: valDm,
+          EXP_DM: expDm,
+          VAL_DC: valDc,
+          EXP_DC: expDc,
+          VAL_SA: valSa,
+          EXP_SA: expSa,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'id_cliente' }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      return { success: false, error: `Erro ao atualizar tempos: ${error.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    revalidatePath('/dashboard');
+
+    return { success: true, tempos: updated };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado';
     return { success: false, error: msg };

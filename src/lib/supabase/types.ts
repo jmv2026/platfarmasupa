@@ -115,7 +115,7 @@ export interface Artigo {
   updated_at?: string;
 }
 
-export type TipoArmazem = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '10';
+export type TipoArmazem = '01' | '02' | '03' | '04' | '05' | '06' | '07' | '09' | '10';
 
 export const TIPO_ARMAZEM_LABELS: Record<TipoArmazem, string> = {
   '01': 'Venda',
@@ -125,6 +125,7 @@ export const TIPO_ARMAZEM_LABELS: Record<TipoArmazem, string> = {
   '05': 'Quarentena',
   '06': 'Destruição',
   '07': 'Farmacoteca',
+  '09': 'Validade',
   '10': 'MIA',
 };
 
@@ -353,4 +354,22 @@ export interface ImpStkInput {
   familia?: string;
   tipo_artigo?: string;
   sub_familia?: string;
+}
+
+export interface Tempo {
+  id: string;
+  id_cliente: string;
+  sigla: string;
+  VAL_MH: number;
+  EXP_MH: number;
+  VAL_MV: number;
+  EXP_MV: number;
+  VAL_DM: number;
+  EXP_DM: number;
+  VAL_DC: number;
+  EXP_DC: number;
+  VAL_SA: number;
+  EXP_SA: number;
+  created_at?: string;
+  updated_at?: string;
 }

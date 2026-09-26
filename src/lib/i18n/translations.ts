@@ -260,6 +260,11 @@ export interface Translations {
     testEmail: string;
     testEmailSend: string;
     testEmailSending: string;
+    clientTemposTitle: string;
+    clientTemposDesc: string;
+    clientTemposBadge: string;
+    btnConfigTempos: string;
+    modalConfigTemposTitle: string;
   };
   login: {
     title: string;
@@ -556,6 +561,11 @@ export const translations: Record<Language, Translations> = {
       testEmail: 'Email de Teste',
       testEmailSend: 'Enviar Email de Teste',
       testEmailSending: 'A enviar email de teste...',
+      clientTemposTitle: 'Tempos de Validade & Expiração (Dias)',
+      clientTemposDesc: 'Limiares em dias para desvio automático de artigos para os armazéns 09 (Validade) e 02 (Expirados) por categoria.',
+      clientTemposBadge: 'Padrão: VAL = 180 dias | EXP = 60 dias',
+      btnConfigTempos: 'Configurar Tempos',
+      modalConfigTemposTitle: 'Configurar Tempos de Armazém do Cliente',
     },
     login: {
       title: 'Plataforma Farma',
@@ -850,6 +860,11 @@ export const translations: Record<Language, Translations> = {
       testEmail: 'Email de Prueba',
       testEmailSend: 'Enviar Email de Prueba',
       testEmailSending: 'Enviando email de prueba...',
+      clientTemposTitle: 'Tiempos de Validez y Caducidad (Días)',
+      clientTemposDesc: 'Umbrales en días para desvío automático de artículos a los almacenes 09 (Validez) y 02 (Caducados) por categoría.',
+      clientTemposBadge: 'Estándar: VAL = 180 días | EXP = 60 días',
+      btnConfigTempos: 'Configurar Tiempos',
+      modalConfigTemposTitle: 'Configurar Tiempos de Almacén del Cliente',
     },
     login: {
       title: 'Plataforma Farma',
@@ -1144,6 +1159,11 @@ export const translations: Record<Language, Translations> = {
       testEmail: 'Test Email',
       testEmailSend: 'Send Test Email',
       testEmailSending: 'Sending test email...',
+      clientTemposTitle: 'Validity & Expiry Thresholds (Days)',
+      clientTemposDesc: 'Day thresholds for automatic transfer of items to warehouses 09 (Validity) and 02 (Expired) per category.',
+      clientTemposBadge: 'Default: VAL = 180 days | EXP = 60 days',
+      btnConfigTempos: 'Configure Times',
+      modalConfigTemposTitle: 'Configure Client Warehouse Times',
     },
     login: {
       title: 'Plataforma Farma',

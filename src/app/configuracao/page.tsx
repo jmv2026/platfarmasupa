@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem, Tempo } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export default async function ConfiguracaoPage() {
@@ -27,7 +27,7 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns e Importações de Stock
+  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações e Tempos
   const [
     { data: usersList },
     { data: clientsList },
@@ -36,6 +36,7 @@ export default async function ConfiguracaoPage() {
     { data: impStkList },
     { data: movimentosList },
     { data: armazensList },
+    { data: temposList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
@@ -48,6 +49,7 @@ export default async function ConfiguracaoPage() {
       .order('data_movimento', { ascending: false })
       .limit(300),
     supabase.from('armazens').select('*').order('tipo_armazem'),
+    supabase.from('tempos').select('*').order('sigla'),
   ]);
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
@@ -88,6 +90,7 @@ export default async function ConfiguracaoPage() {
         initialImpStk={(impStkList as ImpStk[]) || []}
         initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
+        tempos={(temposList as Tempo[]) || []}
         serverEmailConfig={serverEmailConfig}
       />
     </div>
