@@ -467,7 +467,7 @@ export default function StocksView({
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <main className="w-full px-4 sm:px-6 py-6 space-y-6">
       {/* Banner */}
       <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
         <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">

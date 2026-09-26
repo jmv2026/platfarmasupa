@@ -277,18 +277,14 @@ export default function HistoricoPedidosView({
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <main className="w-full px-4 sm:px-6 py-6 space-y-6">
       {/* Banner Topo */}
-      <div className="bg-primary-container p-6 sm:p-8 rounded-2xl text-on-primary shadow-lg relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-widest font-bold opacity-80 mb-2">
-            <span className="material-symbols-outlined text-sm">receipt_long</span>
-            <span>{t.historico.bannerSubtitle}</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold font-headline tracking-tight">
+      <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
+        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
             {t.historico.bannerTitle}
           </h1>
-          <p className="text-sm opacity-90 max-w-2xl mt-1">
+          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
             {t.historico.bannerSubtitle}
           </p>
         </div>

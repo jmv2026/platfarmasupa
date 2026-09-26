@@ -41,7 +41,7 @@ export default function AppHeader({
   return (
     <header className="bg-surface-container-lowest border-b border-outline-variant/30 shadow-sm sticky top-0 z-30">
       {/* Top Menu Row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="w-full px-4 sm:px-6 h-16 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
             <img
@@ -136,8 +136,8 @@ export default function AppHeader({
       </div>
 
       {/* Sub-bar abaixo do menu de topo com os 3 botões de idioma */}
-      <div className="bg-surface-container-low/70 border-t border-outline-variant/20 px-4 sm:px-6 lg:px-8 py-1.5 transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="bg-surface-container-low/70 border-t border-outline-variant/20 px-4 sm:px-6 py-1.5 transition-colors">
+        <div className="w-full flex items-center justify-between gap-3">
           {/* Indicador de navegação contextual */}
           <div className="flex items-center gap-2 text-xs text-on-surface-variant/80">
             <span className="material-symbols-outlined text-xs text-secondary/80">domain</span>
