@@ -54,14 +54,31 @@ export default function DashboardView({
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top5' | 'previsao'>('pedidos');
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'previsao'>('pedidos');
+  const [selectedArticleCodeForForecast, setSelectedArticleCodeForForecast] = useState<string | null>(null);
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top5' | 'previsao') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'previsao') => {
     setGraficoAtivo(tipo);
+    setTimeout(() => {
+      if (graficoContainerRef.current) {
+        graficoContainerRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+        });
+      }
+    }, 60);
+  };
+
+  // Seleciona um produto específico e navega para o Gráfico de Previsão de Stock
+  const handleSelecionarProdutoPrevisao = (codigo: string) => {
+    setSelectedArticleCodeForForecast(codigo);
+    setGraficoAtivo('previsao');
     setTimeout(() => {
       if (graficoContainerRef.current) {
         graficoContainerRef.current.scrollIntoView({
@@ -359,7 +376,7 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Botões Separados de Seleção do Gráfico Ativo (Gráfico Pedidos / Gráfico Top 5 / Gráfico Previsão Stock) */}
+      {/* Botões Separados de Seleção do Gráfico Ativo (Gráfico Pedidos / Gráfico Top 10 / Gráfico Previsão Stock) */}
       <div className="flex items-center gap-3 pt-1 flex-wrap">
         <button
           type="button"
@@ -376,15 +393,15 @@ export default function DashboardView({
 
         <button
           type="button"
-          onClick={() => handleSelecionarGrafico('top5')}
+          onClick={() => handleSelecionarGrafico('top10')}
           className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
-            graficoAtivo === 'top5'
+            graficoAtivo === 'top10'
               ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
               : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
           }`}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">leaderboard</span>
-          <span>{t.dashboard.chartTop5Title}</span>
+          <span>{t.dashboard.chartTop10Title}</span>
         </button>
 
         <button
@@ -408,10 +425,11 @@ export default function DashboardView({
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
           />
-        ) : graficoAtivo === 'top5' ? (
+        ) : graficoAtivo === 'top10' ? (
           <GraficoTopProdutos
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+            onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
           />
         ) : (
           <GraficoPrevisaoStock
@@ -419,6 +437,8 @@ export default function DashboardView({
             stockPedidos={filteredStockPedidos}
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+            selectedArticleCode={selectedArticleCodeForForecast}
+            onSelectArticleCode={setSelectedArticleCodeForForecast}
           />
         )}
       </div>

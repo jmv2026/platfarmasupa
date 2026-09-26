@@ -74,14 +74,92 @@ export interface Translations {
     kpiUnitsAvailable: string;
     chartMonthlyTitle: string;
     chartMonthlyDesc: string;
-    chartTop5Title: string;
-    chartTop5Desc: string;
+    chartTop10Title: string;
+    chartTop10Desc: string;
     chartForecastTitle: string;
     chartForecastDesc: string;
     ordersLabel: string;
     quantityLabel: string;
     noOrdersData: string;
     months: string[];
+    monthsShort: string[];
+    period12m: string;
+    period6m: string;
+    period3m: string;
+    periodCurrentYear: string;
+    periodAll: string;
+    viewMixed: string;
+    viewArea: string;
+    viewTrend: string;
+    viewBars: string;
+    monthlyTotalOrders: string;
+    monthlyAverage: string;
+    monthlyPeakMonth: string;
+    monthlyRecentTrend: string;
+    monthlyVsPrevious: string;
+    monthlyOrdersProcessed: string;
+    top10TotalUnits: string;
+    top10ProductLeader: string;
+    top10AveragePerItem: string;
+    top10ShareOfTotal: string;
+    top10TableTitle: string;
+    top10TableSubtitle: string;
+    top10ColRank: string;
+    top10ColCode: string;
+    top10ColDesc: string;
+    top10ColQty: string;
+    top10ColOrders: string;
+    top10ColShare: string;
+    top10ColAction: string;
+    top10ActionForecast: string;
+    top10TooltipClick: string;
+    top10ItemsCount: string;
+    top10LeaderBadge: string;
+    top10UnitsLabel: string;
+    top10OrdersSingle: string;
+    top10OrdersPlural: string;
+    forecastSubtitle: string;
+    forecastRunRateLabel: string;
+    forecastRunRate3m: string;
+    forecastRunRate6m: string;
+    forecastRunRate12m: string;
+    forecastProjectionLabel: string;
+    forecastBannerLeader: string;
+    forecastBannerSelected: string;
+    forecastResetLeader: string;
+    forecastCurrentStock: string;
+    forecastTotalOrdered: string;
+    forecastNextExpiry: string;
+    forecastAvgConsumption: string;
+    forecastAvgConsumptionSub: string;
+    forecastRunway: string;
+    forecastRunwayDays: string;
+    forecastExpiringBatches: string;
+    forecastStockoutExpected: string;
+    forecastSufficientStock: string;
+    forecastStatusStable: string;
+    forecastStatusWarning: string;
+    forecastStatusCritical: string;
+    forecastStatusNoOutflow: string;
+    forecastLegendProjected: string;
+    forecastLegendConsumption: string;
+    forecastLegendBuffer: string;
+    forecastMonthCurrent: string;
+    forecastTooltipBufferLow: string;
+    forecastTableTitle: string;
+    forecastTableSubtitle: string;
+    forecastTableColRank: string;
+    forecastTableColCode: string;
+    forecastTableColDesc: string;
+    forecastTableColStock: string;
+    forecastTableColTotalOrdered: string;
+    forecastTableColAvgCons: string;
+    forecastTableColRunway: string;
+    forecastTableColStatus: string;
+    forecastTableColExpiry: string;
+    forecastTableColAction: string;
+    forecastActionAnalyzing: string;
+    forecastActionAnalyze: string;
   };
   stocks: {
     bannerTitle: string;
@@ -362,8 +440,8 @@ export const translations: Record<Language, Translations> = {
       kpiUnitsAvailable: 'unidades disponíveis',
       chartMonthlyTitle: 'Evolução Mensal de Pedidos',
       chartMonthlyDesc: 'Volume de encomendas processadas por mês',
-      chartTop5Title: 'Top 5 Produtos Mais Pedidos',
-      chartTop5Desc: 'Artigos com maior quantidade expedida',
+      chartTop10Title: 'Top 10 Produtos Mais Pedidos',
+      chartTop10Desc: 'Artigos com maior quantidade expedida',
       chartForecastTitle: 'Previsão de Stock',
       chartForecastDesc: 'Projeção futura de existências, taxa de consumo e estimativa de autonomia',
       ordersLabel: 'Pedidos',
@@ -383,6 +461,84 @@ export const translations: Record<Language, Translations> = {
         'Novembro',
         'Dezembro',
       ],
+      monthsShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+      period12m: '12 Meses',
+      period6m: '6 Meses',
+      period3m: '3 Meses',
+      periodCurrentYear: 'Ano Atual',
+      periodAll: 'Todos',
+      viewMixed: 'Misto',
+      viewArea: 'Área',
+      viewTrend: 'Tendência',
+      viewBars: 'Barras',
+      monthlyTotalOrders: 'Total de Pedidos',
+      monthlyAverage: 'Média Mensal',
+      monthlyPeakMonth: 'Mês de Maior Volume',
+      monthlyRecentTrend: 'Variação Recente',
+      monthlyVsPrevious: 'vs mês anterior',
+      monthlyOrdersProcessed: 'pedidos processados',
+      top10TotalUnits: 'Total Unidades Top 10',
+      top10ProductLeader: 'Produto Nº 1',
+      top10AveragePerItem: 'Média / Artigo',
+      top10ShareOfTotal: 'Peso no Total Expedido',
+      top10TableTitle: 'Lista Top 10 Produtos Mais Pedidos',
+      top10TableSubtitle: 'Clique no código do produto para analisar a sua Previsão de Stock',
+      top10ColRank: 'Posição',
+      top10ColCode: 'Código',
+      top10ColDesc: 'Descrição',
+      top10ColQty: 'Qtd Expedida',
+      top10ColOrders: 'Nº Pedidos',
+      top10ColShare: '% Top 10',
+      top10ColAction: 'Ação',
+      top10ActionForecast: 'Previsão',
+      top10TooltipClick: 'Clique para ver previsão de stock',
+      top10ItemsCount: 'artigos',
+      top10LeaderBadge: '#1 Líder',
+      top10UnitsLabel: 'un',
+      top10OrdersSingle: 'pedido',
+      top10OrdersPlural: 'pedidos',
+      forecastSubtitle: 'Projeção de consumo, curva de autonomia e estimativa de esgotamento para o artigo selecionado',
+      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRate3m: '3 Meses',
+      forecastRunRate6m: '6 Meses',
+      forecastRunRate12m: '12 Meses',
+      forecastProjectionLabel: 'Projeção',
+      forecastBannerLeader: 'Produto Mais Pedido (#1 Líder • {percent}% do volume)',
+      forecastBannerSelected: 'Produto em Análise (Posição #{rank})',
+      forecastResetLeader: 'Repor #1 Líder',
+      forecastCurrentStock: 'Stock Atual',
+      forecastTotalOrdered: 'Total Pedido',
+      forecastNextExpiry: 'Próx. Validade',
+      forecastAvgConsumption: 'Consumo Médio',
+      forecastAvgConsumptionSub: 'Média últimos {months}',
+      forecastRunway: 'Autonomia Estimada',
+      forecastRunwayDays: '≈ {days} dias de stock',
+      forecastExpiringBatches: 'Lotes a Expirar',
+      forecastStockoutExpected: 'Ruptura: {month}',
+      forecastSufficientStock: 'Stock suficiente no período',
+      forecastStatusStable: 'Estável (> 3m)',
+      forecastStatusWarning: 'Atenção (< 3m)',
+      forecastStatusCritical: 'Crítico (< 1m)',
+      forecastStatusNoOutflow: 'Sem Saídas Recentes',
+      forecastLegendProjected: 'Stock Projetado',
+      forecastLegendConsumption: 'Consumo Acumulado',
+      forecastLegendBuffer: 'Buffer Segurança',
+      forecastMonthCurrent: 'Mês Atual',
+      forecastTooltipBufferLow: 'Buffer Baixo',
+      forecastTableTitle: 'Top Produtos Mais Pedidos - Comparativo de Stock & Autonomia',
+      forecastTableSubtitle: 'Clique no código de qualquer produto para projetar a sua previsão no gráfico',
+      forecastTableColRank: 'Posição',
+      forecastTableColCode: 'Código',
+      forecastTableColDesc: 'Descrição',
+      forecastTableColStock: 'Stock Atual',
+      forecastTableColTotalOrdered: 'Total Pedido',
+      forecastTableColAvgCons: 'Consumo Médio',
+      forecastTableColRunway: 'Autonomia Prevista',
+      forecastTableColStatus: 'Estado',
+      forecastTableColExpiry: 'Próxima Validade',
+      forecastTableColAction: 'Ação',
+      forecastActionAnalyzing: 'Em Análise',
+      forecastActionAnalyze: 'Analisar',
     },
     stocks: {
       bannerTitle: 'Stocks',
@@ -661,8 +817,8 @@ export const translations: Record<Language, Translations> = {
       kpiUnitsAvailable: 'unidades disponibles',
       chartMonthlyTitle: 'Evolución Mensual de Pedidos',
       chartMonthlyDesc: 'Volumen de pedidos procesados por mes',
-      chartTop5Title: 'Top 5 Productos Más Pedidos',
-      chartTop5Desc: 'Artículos con mayor cantidad expedida',
+      chartTop10Title: 'Top 10 Productos Más Pedidos',
+      chartTop10Desc: 'Artículos con mayor cantidad expedida',
       chartForecastTitle: 'Previsión de Stock',
       chartForecastDesc: 'Proyección futura de existencias, tasa de consumo y estimación de autonomía',
       ordersLabel: 'Pedidos',
@@ -682,6 +838,84 @@ export const translations: Record<Language, Translations> = {
         'Noviembre',
         'Diciembre',
       ],
+      monthsShort: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+      period12m: '12 Meses',
+      period6m: '6 Meses',
+      period3m: '3 Meses',
+      periodCurrentYear: 'Año Actual',
+      periodAll: 'Todos',
+      viewMixed: 'Mixto',
+      viewArea: 'Área',
+      viewTrend: 'Tendencia',
+      viewBars: 'Barras',
+      monthlyTotalOrders: 'Total de Pedidos',
+      monthlyAverage: 'Media Mensual',
+      monthlyPeakMonth: 'Mes de Mayor Volumen',
+      monthlyRecentTrend: 'Variación Reciente',
+      monthlyVsPrevious: 'vs mes anterior',
+      monthlyOrdersProcessed: 'pedidos procesados',
+      top10TotalUnits: 'Total Unidades Top 10',
+      top10ProductLeader: 'Producto Nº 1',
+      top10AveragePerItem: 'Media / Artículo',
+      top10ShareOfTotal: 'Peso en el Total Expedido',
+      top10TableTitle: 'Lista Top 10 Productos Más Pedidos',
+      top10TableSubtitle: 'Haga clic en el código del producto para analizar su Previsión de Stock',
+      top10ColRank: 'Posición',
+      top10ColCode: 'Código',
+      top10ColDesc: 'Descripción',
+      top10ColQty: 'Cant. Expedida',
+      top10ColOrders: 'Nº Pedidos',
+      top10ColShare: '% Top 10',
+      top10ColAction: 'Acción',
+      top10ActionForecast: 'Previsión',
+      top10TooltipClick: 'Haga clic para ver previsión de stock',
+      top10ItemsCount: 'artículos',
+      top10LeaderBadge: '#1 Líder',
+      top10UnitsLabel: 'ud',
+      top10OrdersSingle: 'pedido',
+      top10OrdersPlural: 'pedidos',
+      forecastSubtitle: 'Proyección de consumo, curva de autonomía y estimación de agotamiento para el artículo seleccionado',
+      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRate3m: '3 Meses',
+      forecastRunRate6m: '6 Meses',
+      forecastRunRate12m: '12 Meses',
+      forecastProjectionLabel: 'Proyección',
+      forecastBannerLeader: 'Producto Más Pedido (#1 Líder • {percent}% del volumen)',
+      forecastBannerSelected: 'Producto en Análisis (Posición #{rank})',
+      forecastResetLeader: 'Restablecer #1 Líder',
+      forecastCurrentStock: 'Stock Actual',
+      forecastTotalOrdered: 'Total Pedido',
+      forecastNextExpiry: 'Próx. Caducidad',
+      forecastAvgConsumption: 'Consumo Medio',
+      forecastAvgConsumptionSub: 'Media últimos {months}',
+      forecastRunway: 'Autonomía Estimada',
+      forecastRunwayDays: '≈ {days} días de stock',
+      forecastExpiringBatches: 'Lotes a Caducar',
+      forecastStockoutExpected: 'Agotamiento: {month}',
+      forecastSufficientStock: 'Stock suficiente en el período',
+      forecastStatusStable: 'Estable (> 3m)',
+      forecastStatusWarning: 'Atención (< 3m)',
+      forecastStatusCritical: 'Crítico (< 1m)',
+      forecastStatusNoOutflow: 'Sin Salidas Recientes',
+      forecastLegendProjected: 'Stock Proyectado',
+      forecastLegendConsumption: 'Consumo Acumulado',
+      forecastLegendBuffer: 'Buffer Seguridad',
+      forecastMonthCurrent: 'Mes Actual',
+      forecastTooltipBufferLow: 'Buffer Bajo',
+      forecastTableTitle: 'Top Productos Más Pedidos - Comparativo de Stock & Autonomía',
+      forecastTableSubtitle: 'Haga clic en el código de cualquier producto para proyectar su previsión en el gráfico',
+      forecastTableColRank: 'Posición',
+      forecastTableColCode: 'Código',
+      forecastTableColDesc: 'Descripción',
+      forecastTableColStock: 'Stock Actual',
+      forecastTableColTotalOrdered: 'Total Pedido',
+      forecastTableColAvgCons: 'Consumo Medio',
+      forecastTableColRunway: 'Autonomía Prevista',
+      forecastTableColStatus: 'Estado',
+      forecastTableColExpiry: 'Próxima Caducidad',
+      forecastTableColAction: 'Acción',
+      forecastActionAnalyzing: 'En Análisis',
+      forecastActionAnalyze: 'Analizar',
     },
     stocks: {
       bannerTitle: 'Stocks',
@@ -960,8 +1194,8 @@ export const translations: Record<Language, Translations> = {
       kpiUnitsAvailable: 'available units',
       chartMonthlyTitle: 'Monthly Order Trends',
       chartMonthlyDesc: 'Volume of orders processed per month',
-      chartTop5Title: 'Top 5 Most Ordered Products',
-      chartTop5Desc: 'Articles with highest dispatched quantity',
+      chartTop10Title: 'Top 10 Most Ordered Products',
+      chartTop10Desc: 'Articles with highest dispatched quantity',
       chartForecastTitle: 'Stock Forecast',
       chartForecastDesc: 'Future stock projection, depletion rate and runway estimates',
       ordersLabel: 'Orders',
@@ -981,6 +1215,84 @@ export const translations: Record<Language, Translations> = {
         'November',
         'December',
       ],
+      monthsShort: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      period12m: '12 Months',
+      period6m: '6 Months',
+      period3m: '3 Months',
+      periodCurrentYear: 'Current Year',
+      periodAll: 'All',
+      viewMixed: 'Mixed',
+      viewArea: 'Area',
+      viewTrend: 'Trend',
+      viewBars: 'Bars',
+      monthlyTotalOrders: 'Total Orders',
+      monthlyAverage: 'Monthly Average',
+      monthlyPeakMonth: 'Peak Volume Month',
+      monthlyRecentTrend: 'Recent Trend',
+      monthlyVsPrevious: 'vs previous month',
+      monthlyOrdersProcessed: 'orders processed',
+      top10TotalUnits: 'Top 10 Total Units',
+      top10ProductLeader: 'Top #1 Product',
+      top10AveragePerItem: 'Average / Item',
+      top10ShareOfTotal: 'Share of Total Dispatched',
+      top10TableTitle: 'Top 10 Most Ordered Products List',
+      top10TableSubtitle: 'Click on the product code to view its Stock Forecast',
+      top10ColRank: 'Rank',
+      top10ColCode: 'Code',
+      top10ColDesc: 'Description',
+      top10ColQty: 'Dispatched Qty',
+      top10ColOrders: 'Orders Count',
+      top10ColShare: '% Top 10',
+      top10ColAction: 'Action',
+      top10ActionForecast: 'Forecast',
+      top10TooltipClick: 'Click to view stock forecast',
+      top10ItemsCount: 'items',
+      top10LeaderBadge: '#1 Leader',
+      top10UnitsLabel: 'un',
+      top10OrdersSingle: 'order',
+      top10OrdersPlural: 'orders',
+      forecastSubtitle: 'Consumption projection, runway curve and stockout estimate for the selected article',
+      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRate3m: '3 Months',
+      forecastRunRate6m: '6 Months',
+      forecastRunRate12m: '12 Months',
+      forecastProjectionLabel: 'Projection',
+      forecastBannerLeader: 'Most Ordered Product (#1 Leader • {percent}% of volume)',
+      forecastBannerSelected: 'Analyzed Product (Rank #{rank})',
+      forecastResetLeader: 'Reset #1 Leader',
+      forecastCurrentStock: 'Current Stock',
+      forecastTotalOrdered: 'Total Ordered',
+      forecastNextExpiry: 'Next Expiry',
+      forecastAvgConsumption: 'Average Consumption',
+      forecastAvgConsumptionSub: 'Average last {months}',
+      forecastRunway: 'Estimated Runway',
+      forecastRunwayDays: '≈ {days} days of stock',
+      forecastExpiringBatches: 'Expiring Batches',
+      forecastStockoutExpected: 'Stockout: {month}',
+      forecastSufficientStock: 'Sufficient stock in period',
+      forecastStatusStable: 'Stable (> 3m)',
+      forecastStatusWarning: 'Warning (< 3m)',
+      forecastStatusCritical: 'Critical (< 1m)',
+      forecastStatusNoOutflow: 'No Recent Outflows',
+      forecastLegendProjected: 'Projected Stock',
+      forecastLegendConsumption: 'Cumulative Consumption',
+      forecastLegendBuffer: 'Safety Buffer',
+      forecastMonthCurrent: 'Current Month',
+      forecastTooltipBufferLow: 'Low Buffer',
+      forecastTableTitle: 'Top Most Ordered Products - Stock & Runway Comparison',
+      forecastTableSubtitle: 'Click on any product code to project its forecast on the chart',
+      forecastTableColRank: 'Rank',
+      forecastTableColCode: 'Code',
+      forecastTableColDesc: 'Description',
+      forecastTableColStock: 'Current Stock',
+      forecastTableColTotalOrdered: 'Total Ordered',
+      forecastTableColAvgCons: 'Average Consumption',
+      forecastTableColRunway: 'Projected Runway',
+      forecastTableColStatus: 'Status',
+      forecastTableColExpiry: 'Next Expiry',
+      forecastTableColAction: 'Action',
+      forecastActionAnalyzing: 'Analyzing',
+      forecastActionAnalyze: 'Analyze',
     },
     stocks: {
       bannerTitle: 'Inventory & Stocks',

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { DashboardPedidoItem } from './dashboard-view';
+import { useLanguage } from '@/lib/i18n/context';
 
 interface GraficoPedidosMensalProps {
   pedidos: DashboardPedidoItem[];
@@ -10,36 +11,6 @@ interface GraficoPedidosMensalProps {
 
 type PeriodoFiltro = '12m' | '6m' | 'ano-atual' | 'todos';
 type TipoVisualizacao = 'area' | 'barras' | 'combinado';
-
-const MESES_NOMES = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
-];
-
-const MESES_ABREV = [
-  'Jan',
-  'Fev',
-  'Mar',
-  'Abr',
-  'Mai',
-  'Jun',
-  'Jul',
-  'Ago',
-  'Set',
-  'Out',
-  'Nov',
-  'Dez',
-];
 
 interface MesData {
   key: string; // "2026-03"
@@ -51,7 +22,7 @@ interface MesData {
   diffAnterior: number | null; // % vs mes anterior
 }
 
-// Extrai ano e mês com segurança (evitando problemas de fuso horário UTC em strings YYYY-MM-DD)
+// Extrai ano e mês com segurança
 function extrairAnoMes(dateStr: string | null | undefined): { year: number; month: number } | null {
   if (!dateStr) return null;
   const str = String(dateStr).trim();
@@ -71,6 +42,9 @@ function extrairAnoMes(dateStr: string | null | undefined): { year: number; mont
 }
 
 export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPedidosMensalProps) {
+  const { t, language } = useLanguage();
+  const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
+
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -129,13 +103,18 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
       }
     }
 
+    const monthsNames = t.dashboard.months;
+    const monthsShort = t.dashboard.monthsShort;
+
     // Cria os objetos MesData com cálculo de variação
     let prevCount: number | null = null;
     const resultado: MesData[] = mesesParaGerar.map(({ year, month }) => {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
       const count = contagemPorMes[key] || 0;
-      const label = `${MESES_ABREV[month]} '${String(year).slice(-2)}`;
-      const labelCompleto = `${MESES_NOMES[month]} de ${year}`;
+      const mShort = monthsShort[month] || String(month + 1);
+      const mFull = monthsNames[month] || String(month + 1);
+      const label = `${mShort} '${String(year).slice(-2)}`;
+      const labelCompleto = language === 'pt' ? `${mFull} de ${year}` : `${mFull} ${year}`;
 
       let diffAnterior: number | null = null;
       if (prevCount !== null) {
@@ -161,7 +140,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
     // Estatísticas resumidas do período
     const totalPedidosPeriodo = resultado.reduce((acc, curr) => acc + curr.count, 0);
     const mediaMensal = resultado.length > 0 ? totalPedidosPeriodo / resultado.length : 0;
-    
+
     const mesPico = resultado.reduce<MesData | null>((pico, curr) => {
       if (!pico || curr.count > pico.count) {
         return curr;
@@ -189,7 +168,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         variacaoUltimoMes,
       },
     };
-  }, [pedidos, periodo]);
+  }, [pedidos, periodo, t.dashboard.months, t.dashboard.monthsShort, language]);
 
   // Dimensões do SVG do gráfico otimizadas para visualização na janela
   const svgWidth = 800;
@@ -199,7 +178,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
-  // Escala Y máxima (com margem de folga agradável)
+  // Escala Y máxima
   const maxCountRaw = useMemo(() => {
     return Math.max(...dadosMensais.map((d) => d.count), 0);
   }, [dadosMensais]);
@@ -222,15 +201,16 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
     if (numPoints === 0) return [];
 
     return dadosMensais.map((d, index) => {
-      const x = numPoints === 1
-        ? padding.left + chartWidth / 2
-        : padding.left + (index / (numPoints - 1)) * chartWidth;
+      const x =
+        numPoints === 1
+          ? padding.left + chartWidth / 2
+          : padding.left + (index / (numPoints - 1)) * chartWidth;
       const y = padding.top + chartHeight - (d.count / yMax) * chartHeight;
       return { x, y, data: d, index };
     });
   }, [dadosMensais, chartWidth, chartHeight, padding, yMax]);
 
-  // Geração do caminho Spline Bézier Suave (Smooth Curve)
+  // Geração do caminho Spline Bézier Suave
   const { linePath, areaPath } = useMemo(() => {
     if (points.length === 0) return { linePath: '', areaPath: '' };
     if (points.length === 1) {
@@ -241,7 +221,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
       };
     }
 
-    // Spline com controle Bézier
     let d = `M ${points[0].x} ${points[0].y}`;
     for (let i = 0; i < points.length - 1; i++) {
       const p0 = points[i];
@@ -262,14 +241,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
     return { linePath: d, areaPath: area };
   }, [points, chartHeight, padding]);
 
-  // Largura de cada coluna para gráfico de barras
-  const barWidth = useMemo(() => {
-    const n = dadosMensais.length;
-    if (n === 0) return 24;
-    const available = chartWidth / n;
-    return Math.min(Math.max(available * 0.55, 12), 40);
-  }, [dadosMensais.length, chartWidth]);
-
   const activeItem = hoveredIndex !== null ? dadosMensais[hoveredIndex] : null;
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
@@ -286,7 +257,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                Pedidos / Mês
+                {t.dashboard.chartMonthlyTitle}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -295,7 +266,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
               )}
             </div>
             <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              Análise temporal do volume de encomendas expedidas e registadas
+              {t.dashboard.chartMonthlyDesc}
             </p>
           </div>
         </div>
@@ -303,63 +274,63 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         {/* Controlos e Filtros */}
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Seletor de Tipo de Gráfico */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30">
+          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             <button
               type="button"
               onClick={() => setTipoGrafico('area')}
-              title="Área e Curva Suave"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all ${
+              title={t.dashboard.viewArea}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 tipoGrafico === 'area'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               <span className="material-symbols-outlined text-sm">area_chart</span>
-              <span className="hidden sm:inline">Curva</span>
+              <span className="hidden sm:inline">{t.dashboard.viewArea}</span>
             </button>
             <button
               type="button"
               onClick={() => setTipoGrafico('barras')}
-              title="Colunas / Barras"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all ${
+              title={t.dashboard.viewBars}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 tipoGrafico === 'barras'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               <span className="material-symbols-outlined text-sm">bar_chart</span>
-              <span className="hidden sm:inline">Barras</span>
+              <span className="hidden sm:inline">{t.dashboard.viewBars}</span>
             </button>
             <button
               type="button"
               onClick={() => setTipoGrafico('combinado')}
-              title="Visão Combinada"
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all ${
+              title={t.dashboard.viewMixed}
+              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 tipoGrafico === 'combinado'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface'
               }`}
             >
               <span className="material-symbols-outlined text-sm">stacked_line_chart</span>
-              <span className="hidden sm:inline">Misto</span>
+              <span className="hidden sm:inline">{t.dashboard.viewMixed}</span>
             </button>
           </div>
 
           {/* Seletor de Período */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30">
+          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             {(
               [
-                { id: '6m', label: '6 Meses' },
-                { id: '12m', label: '12 Meses' },
-                { id: 'ano-atual', label: 'Ano Atual' },
-                { id: 'todos', label: 'Todos' },
+                { id: '6m', label: t.dashboard.period6m },
+                { id: '12m', label: t.dashboard.period12m },
+                { id: 'ano-atual', label: t.dashboard.periodCurrentYear },
+                { id: 'todos', label: t.dashboard.periodAll },
               ] as const
             ).map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => setPeriodo(opt.id)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   periodo === opt.id
                     ? 'bg-white text-emerald-900 shadow-xs border border-emerald-200/60 font-bold'
                     : 'text-on-surface-variant hover:text-on-surface'
@@ -372,59 +343,63 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
+      {/* Cartões de Métricas e Destaques */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* Total no Período */}
+        {/* 1. Total no Período */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              Total no Período
+              {t.dashboard.monthlyTotalOrders}
             </span>
             <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.total.toLocaleString('pt-PT')}
+                {estatisticas.total.toLocaleString(locale)}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                {estatisticas.total === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural}
+              </span>
             </div>
             <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {dadosMensais.length} {dadosMensais.length === 1 ? 'mês' : 'meses'}
+              {dadosMensais.length} {t.dashboard.months[0] ? '' : ''}
             </span>
           </div>
         </div>
 
-        {/* Média Mensal */}
+        {/* 2. Média Mensal */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              Média Mensal
+              {t.dashboard.monthlyAverage}
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.media.toLocaleString('pt-PT', {
+                {estatisticas.media.toLocaleString(locale, {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
                 })}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos/mês</span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                {t.dashboard.top10OrdersPlural}/{language === 'en' ? 'mo' : 'mês'}
+              </span>
             </div>
             <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              Média
+              {t.dashboard.monthlyAverage}
             </span>
           </div>
         </div>
 
-        {/* Mês de Pico / Recorde */}
+        {/* 3. Mês de Pico / Recorde */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
               <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">military_tech</span>
-              <span>Mês de Pico</span>
+              <span>{t.dashboard.monthlyPeakMonth}</span>
             </span>
             <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
               Máx
@@ -433,9 +408,11 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.pico ? estatisticas.pico.count : 0}
+                {estatisticas.pico ? estatisticas.pico.count.toLocaleString(locale) : 0}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                {t.dashboard.top10OrdersPlural}
+              </span>
             </div>
             <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
               {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
@@ -443,33 +420,37 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           </div>
         </div>
 
-        {/* Mês Mais Recente & Tendência */}
+        {/* 4. Mês Mais Recente & Tendência */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {estatisticas.ultimoMes ? estatisticas.ultimoMes.label : 'Mês Recente'}
+              {t.dashboard.monthlyRecentTrend}
             </span>
-            {estatisticas.variacaoUltimoMes >= 0 ? (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
-                <span className="material-symbols-outlined text-[10px]">trending_up</span>
-                +{estatisticas.variacaoUltimoMes}%
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 leading-none shrink-0">
-                <span className="material-symbols-outlined text-[10px]">trending_down</span>
-                {estatisticas.variacaoUltimoMes}%
-              </span>
-            )}
+            <span
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
+                estatisticas.variacaoUltimoMes > 0
+                  ? 'bg-lime-300 text-emerald-950'
+                  : estatisticas.variacaoUltimoMes < 0
+                  ? 'bg-rose-200 text-rose-900'
+                  : 'bg-slate-200 text-slate-800'
+              }`}
+            >
+              {estatisticas.variacaoUltimoMes > 0
+                ? `+${estatisticas.variacaoUltimoMes}%`
+                : `${estatisticas.variacaoUltimoMes}%`}
+            </span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.ultimoMes ? estatisticas.ultimoMes.count : 0}
+                {estatisticas.ultimoMes ? estatisticas.ultimoMes.count.toLocaleString(locale) : 0}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">pedidos</span>
+              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                {t.dashboard.top10OrdersPlural}
+              </span>
             </div>
             <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-              vs. anterior
+              {t.dashboard.monthlyVsPrevious}
             </span>
           </div>
         </div>
@@ -478,16 +459,14 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
       {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
       <div
         ref={containerRef}
-        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-3 sm:p-4 border border-emerald-100/80 shadow-inner overflow-hidden"
+        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden"
       >
-        {/* Visualização SVG Responsiva */}
         <div className="w-full overflow-x-auto">
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[550px] max-h-[340px] select-none"
+            className="w-full h-auto min-w-[550px] max-h-[250px] select-none"
           >
             <defs>
-              {/* Gradiente de Área Pastel Verde para Lima */}
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#84cc16" stopOpacity="0.4" />
                 <stop offset="35%" stopColor="#a3e635" stopOpacity="0.25" />
@@ -495,90 +474,73 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                 <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.01" />
               </linearGradient>
 
-              {/* Gradiente da Linha de Contorno */}
               <linearGradient id="strokeGradientLima" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#65a30d" />
-                <stop offset="45%" stopColor="#84cc16" />
+                <stop offset="40%" stopColor="#84cc16" />
                 <stop offset="80%" stopColor="#10b981" />
                 <stop offset="100%" stopColor="#059669" />
               </linearGradient>
 
-              {/* Gradiente das Barras Normais (Tons Verde Pastel & Lima) */}
-              <linearGradient id="barGradientLimaVerde" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="barGradientLima" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#bef264" />
                 <stop offset="40%" stopColor="#86efac" />
-                <stop offset="100%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#6ee7b7" />
               </linearGradient>
 
-              {/* Gradiente das Barras em Destaque / Hover */}
-              <linearGradient id="barGradientHover" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#a3e635" />
-                <stop offset="100%" stopColor="#059669" />
+              <linearGradient id="barGradientLimaHover" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#d9f99d" />
+                <stop offset="100%" stopColor="#a3e635" />
               </linearGradient>
 
-              {/* Sombra Suave */}
               <filter id="glowLima" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#84cc16" floodOpacity="0.3" />
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
               </filter>
             </defs>
 
-            {/* Linhas de Grelha Horizontais Y */}
-            {yTicks.map((tick, i) => {
-              const y = padding.top + chartHeight - (tick / yMax) * chartHeight;
+            {/* Linhas de grelha horizontal e rótulos Y */}
+            {yTicks.map((val, idx) => {
+              const y = padding.top + chartHeight - (val / yMax) * chartHeight;
               return (
-                <g key={`ytick-${i}`}>
+                <g key={`ytick-${idx}`}>
                   <line
                     x1={padding.left}
                     y1={y}
                     x2={svgWidth - padding.right}
                     y2={y}
-                    stroke="#d1fae5"
-                    strokeWidth="1"
-                    strokeDasharray={tick === 0 ? 'none' : '4 4'}
+                    stroke={idx === 0 ? '#cbd5e1' : '#e2e8f0'}
+                    strokeWidth={idx === 0 ? '1.5' : '1'}
+                    strokeDasharray={idx === 0 ? 'none' : '3 3'}
                   />
                   <text
-                    x={padding.left - 12}
-                    y={y + 4}
+                    x={padding.left - 8}
+                    y={y + 3.5}
                     textAnchor="end"
-                    fontSize="11"
+                    fontSize="10"
                     fontWeight="600"
                     fill="#64748b"
                   >
-                    {Math.round(tick)}
+                    {val}
                   </text>
                 </g>
               );
             })}
 
-            {/* Linhas de Grelha Verticais / Separadores de Mês */}
-            {points.map((p, i) => (
-              <line
-                key={`xgrid-${i}`}
-                x1={p.x}
-                y1={padding.top}
-                x2={p.x}
-                y2={padding.top + chartHeight}
-                stroke="#ecfdf5"
-                strokeWidth="1"
-                strokeDasharray="2 4"
-              />
-            ))}
-
-            {/* Gráfico de Barras (se modo 'barras' ou 'combinado') */}
+            {/* Barras do Gráfico (se modo 'barras' ou 'combinado') */}
             {(tipoGrafico === 'barras' || tipoGrafico === 'combinado') &&
               points.map((p, i) => {
-                const bHeight = (p.data.count / yMax) * chartHeight;
-                const bY = padding.top + chartHeight - bHeight;
                 const isHovered = hoveredIndex === i;
                 const isPeak = estatisticas.pico?.key === p.data.key && p.data.count > 0;
+                const barW = Math.min(chartWidth / (points.length * 2.8), 26);
+                const bHeight = ((p.data.count / yMax) * chartHeight) || 0;
+                const bY = padding.top + chartHeight - bHeight;
 
                 return (
-                  <g key={`bar-${i}`} className="transition-all duration-200">
-                    {/* Barra de fundo clicável para captura suave de hover */}
+                  <g key={`bar-group-${i}`}>
                     <rect
-                      x={p.x - barWidth}
+                      x={p.x - barW / 2}
                       y={padding.top}
-                      width={barWidth * 2}
+                      width={barW}
                       height={chartHeight}
                       fill="transparent"
                       className="cursor-pointer"
@@ -586,16 +548,15 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                       onMouseLeave={() => setHoveredIndex(null)}
                     />
 
-                    {/* Barra Visível */}
                     {bHeight > 0 && (
                       <rect
-                        x={p.x - barWidth / 2}
+                        x={p.x - barW / 2}
                         y={bY}
-                        width={barWidth}
+                        width={barW}
                         height={bHeight}
-                        rx={Math.min(barWidth / 2, 6)}
-                        ry={Math.min(barWidth / 2, 6)}
-                        fill={isHovered ? 'url(#barGradientHover)' : 'url(#barGradientLimaVerde)'}
+                        rx={Math.min(barW / 2, 6)}
+                        ry={Math.min(barW / 2, 6)}
+                        fill={isHovered ? 'url(#barGradientLimaHover)' : 'url(#barGradientLima)'}
                         stroke={isHovered ? '#15803d' : '#86efac'}
                         strokeWidth={isHovered ? '2' : '1'}
                         opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
@@ -605,7 +566,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                       />
                     )}
 
-                    {/* Indicador de Valor no Topo da Barra quando relevante */}
                     {(isHovered || (tipoGrafico === 'barras' && p.data.count > 0)) && (
                       <text
                         x={p.x}
@@ -615,11 +575,10 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                         fontWeight="700"
                         fill={isHovered ? '#14532d' : '#334155'}
                       >
-                        {p.data.count}
+                        {p.data.count.toLocaleString(locale)}
                       </text>
                     )}
 
-                    {/* Badge de Pico sobre a barra */}
                     {isPeak && !isHovered && tipoGrafico === 'barras' && (
                       <circle cx={p.x} cy={bY - 14} r="3" fill="#65a30d" />
                     )}
@@ -630,14 +589,12 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
             {/* Gráfico de Área & Curva Suave (se modo 'area' ou 'combinado') */}
             {(tipoGrafico === 'area' || tipoGrafico === 'combinado') && (
               <>
-                {/* Preenchimento de Área Pastel */}
                 <path
                   d={areaPath}
                   fill="url(#areaGradientVerdeLima)"
                   className="transition-all duration-300 pointer-events-none"
                 />
 
-                {/* Linha Spline com Gradiente Lima/Verde */}
                 <path
                   d={linePath}
                   fill="none"
@@ -656,7 +613,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
 
                   return (
                     <g key={`point-${i}`}>
-                      {/* Ponto / Nó Visual */}
                       <circle
                         cx={p.x}
                         cy={p.y}
@@ -669,7 +625,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                         onMouseLeave={() => setHoveredIndex(null)}
                       />
 
-                      {/* Halo pulsante no ponto sob hover */}
                       {isHovered && (
                         <circle
                           cx={p.x}
@@ -681,30 +636,6 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                           strokeOpacity="0.5"
                           className="animate-ping pointer-events-none"
                         />
-                      )}
-
-                      {/* Rótulo de contagem no ponto quando hover */}
-                      {isHovered && (
-                        <g className="pointer-events-none">
-                          <rect
-                            x={p.x - 16}
-                            y={p.y - 28}
-                            width="32"
-                            height="18"
-                            rx="4"
-                            fill="#064e3b"
-                          />
-                          <text
-                            x={p.x}
-                            y={p.y - 16}
-                            textAnchor="middle"
-                            fontSize="10"
-                            fontWeight="bold"
-                            fill="#ecfccb"
-                          >
-                            {p.data.count}
-                          </text>
-                        </g>
                       )}
                     </g>
                   );
@@ -749,7 +680,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           </svg>
         </div>
 
-        {/* Tooltip Detalhado Flutuante com Posicionamento Inteligente para Manter 100% Dentro da Janela */}
+        {/* Tooltip Detalhado Flutuante */}
         {activeItem && activePoint && (() => {
           const xPct = (activePoint.x / svgWidth) * 100;
           const yPct = (activePoint.y / svgHeight) * 100;
@@ -782,23 +713,23 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
                 </span>
                 {activeItem.count === estatisticas.pico?.count && activeItem.count > 0 && (
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
-                    Pico
+                    Máx
                   </span>
                 )}
               </div>
 
               <div className="flex items-baseline justify-between gap-4">
-                <span className="text-slate-300">Volume de Pedidos:</span>
+                <span className="text-slate-300">{t.dashboard.monthlyOrdersProcessed}:</span>
                 <span className="font-bold text-sm text-white">
-                  {activeItem.count}{' '}
+                  {activeItem.count.toLocaleString(locale)}{' '}
                   <span className="text-[10px] font-normal text-slate-300">
-                    {activeItem.count === 1 ? 'pedido' : 'pedidos'}
+                    {activeItem.count === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural}
                   </span>
                 </span>
               </div>
 
               <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px]">
-                <span className="text-slate-400">Peso no período:</span>
+                <span className="text-slate-400">{t.dashboard.top10ShareOfTotal}:</span>
                 <span className="font-semibold text-emerald-300">
                   {estatisticas.total > 0
                     ? Math.round((activeItem.count / estatisticas.total) * 100)
@@ -809,7 +740,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
 
               {activeItem.diffAnterior !== null && (
                 <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px] pt-1 border-t border-white/10">
-                  <span className="text-slate-400">vs. Mês Anterior:</span>
+                  <span className="text-slate-400">{t.dashboard.monthlyVsPrevious}:</span>
                   <span
                     className={`font-semibold flex items-center gap-0.5 ${
                       activeItem.diffAnterior > 0
