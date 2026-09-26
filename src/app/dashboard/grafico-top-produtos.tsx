@@ -755,7 +755,6 @@ export default function GraficoTopProdutos({
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColQty}</th>
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColOrders}</th>
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColShare}</th>
-                  <th className="py-2 px-3 text-center w-36">{t.dashboard.top10ColAction}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20 bg-white">
@@ -794,7 +793,7 @@ export default function GraficoTopProdutos({
                           <span>{p.codigo}</span>
                         </button>
                       </td>
-                      <td className="py-2 px-3 text-on-surface font-medium max-w-[240px] truncate">
+                      <td className="py-2 px-3 text-on-surface font-medium max-w-[280px] truncate">
                         {p.descricao}
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-emerald-950">
@@ -806,19 +805,6 @@ export default function GraficoTopProdutos({
                       </td>
                       <td className="py-2 px-3 text-right font-semibold text-emerald-800">
                         {p.percentagemTop}%
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectProdutoPrevisao?.(p.codigo);
-                          }}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300/80 flex items-center justify-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs"
-                        >
-                          <span>{t.dashboard.top10ActionForecast}</span>
-                          <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                        </button>
                       </td>
                     </tr>
                   );

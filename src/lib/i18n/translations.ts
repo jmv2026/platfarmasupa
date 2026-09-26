@@ -78,6 +78,9 @@ export interface Translations {
     chartTop10Desc: string;
     chartForecastTitle: string;
     chartForecastDesc: string;
+    backToDashboard: string;
+    stockForecastPageTitle: string;
+    stockForecastPageSubtitle: string;
     ordersLabel: string;
     quantityLabel: string;
     noOrdersData: string;
@@ -444,6 +447,9 @@ export const translations: Record<Language, Translations> = {
       chartTop10Desc: 'Artigos com maior quantidade expedida',
       chartForecastTitle: 'Previsão de Stock',
       chartForecastDesc: 'Projeção futura de existências, taxa de consumo e estimativa de autonomia',
+      backToDashboard: 'Voltar ao Dashboard',
+      stockForecastPageTitle: 'Previsão de Stock',
+      stockForecastPageSubtitle: 'Análise Preditiva e Projeção de Autonomia',
       ordersLabel: 'Pedidos',
       quantityLabel: 'Quantidade',
       noOrdersData: 'Sem registos de pedidos para apresentar.',
@@ -821,6 +827,9 @@ export const translations: Record<Language, Translations> = {
       chartTop10Desc: 'Artículos con mayor cantidad expedida',
       chartForecastTitle: 'Previsión de Stock',
       chartForecastDesc: 'Proyección futura de existencias, tasa de consumo y estimación de autonomía',
+      backToDashboard: 'Volver al Dashboard',
+      stockForecastPageTitle: 'Previsión de Stock',
+      stockForecastPageSubtitle: 'Análisis Predictivo y Proyección de Autonomía',
       ordersLabel: 'Pedidos',
       quantityLabel: 'Cantidad',
       noOrdersData: 'Sin registros de pedidos para mostrar.',
@@ -1198,6 +1207,9 @@ export const translations: Record<Language, Translations> = {
       chartTop10Desc: 'Articles with highest dispatched quantity',
       chartForecastTitle: 'Stock Forecast',
       chartForecastDesc: 'Future stock projection, depletion rate and runway estimates',
+      backToDashboard: 'Back to Dashboard',
+      stockForecastPageTitle: 'Stock Forecast',
+      stockForecastPageSubtitle: 'Predictive Analysis and Runway Projection',
       ordersLabel: 'Orders',
       quantityLabel: 'Quantity',
       noOrdersData: 'No order records to display.',

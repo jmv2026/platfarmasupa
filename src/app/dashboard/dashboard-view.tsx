@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
 import GraficoTopProdutos from './grafico-top-produtos';
-import GraficoPrevisaoStock from './grafico-previsao-stock';
 
 
 export interface DashboardStockItem {
@@ -56,13 +57,13 @@ export default function DashboardView({
 }: DashboardViewProps) {
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
+  const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'previsao'>('pedidos');
-  const [selectedArticleCodeForForecast, setSelectedArticleCodeForForecast] = useState<string | null>(null);
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10'>('pedidos');
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'previsao') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10') => {
     setGraficoAtivo(tipo);
     setTimeout(() => {
       if (graficoContainerRef.current) {
@@ -75,19 +76,10 @@ export default function DashboardView({
     }, 60);
   };
 
-  // Seleciona um produto específico e navega para o Gráfico de Previsão de Stock
+  // Redireciona para a nova página dedicada de Previsão de Stock com o produto selecionado
   const handleSelecionarProdutoPrevisao = (codigo: string) => {
-    setSelectedArticleCodeForForecast(codigo);
-    setGraficoAtivo('previsao');
-    setTimeout(() => {
-      if (graficoContainerRef.current) {
-        graficoContainerRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'nearest',
-        });
-      }
-    }, 60);
+    const clientQuery = selectedClientId !== 'todos' ? `&cliente=${encodeURIComponent(selectedClientId)}` : '';
+    router.push(`/dashboard/previsao-stock?codigo=${encodeURIComponent(codigo)}${clientQuery}`);
   };
 
   // Helper para calcular dias até à validade
@@ -376,7 +368,7 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Botões Separados de Seleção do Gráfico Ativo (Gráfico Pedidos / Gráfico Top 10 / Gráfico Previsão Stock) */}
+      {/* Botões de Seleção do Gráfico Ativo no Dashboard e Acesso à Nova Página de Previsão de Stock */}
       <div className="flex items-center gap-3 pt-1 flex-wrap">
         <button
           type="button"
@@ -404,18 +396,17 @@ export default function DashboardView({
           <span>{t.dashboard.chartTop10Title}</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => handleSelecionarGrafico('previsao')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
-            graficoAtivo === 'previsao'
-              ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
-              : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
-          }`}
+        <Link
+          href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
+          className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer bg-surface-container-lowest text-on-surface-variant hover:text-emerald-900 hover:bg-lime-100/80 border border-lime-400/60 hover:border-lime-500 group"
+          title={t.dashboard.chartForecastDesc}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">trending_up</span>
           <span>{t.dashboard.chartForecastTitle}</span>
-        </button>
+          <span className="material-symbols-outlined text-xs sm:text-sm text-emerald-700/80 group-hover:translate-x-0.5 transition-transform">
+            open_in_new
+          </span>
+        </Link>
       </div>
 
       {/* Container do Gráfico com Ref para Centralização Automática no Ecrã */}
@@ -425,20 +416,11 @@ export default function DashboardView({
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
           />
-        ) : graficoAtivo === 'top10' ? (
+        ) : (
           <GraficoTopProdutos
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
             onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
-          />
-        ) : (
-          <GraficoPrevisaoStock
-            stockAtual={filteredStockAtual}
-            stockPedidos={filteredStockPedidos}
-            pedidos={filteredPedidos}
-            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-            selectedArticleCode={selectedArticleCodeForForecast}
-            onSelectArticleCode={setSelectedArticleCodeForForecast}
           />
         )}
       </div>

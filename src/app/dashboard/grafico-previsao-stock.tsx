@@ -1259,7 +1259,6 @@ export default function GraficoPrevisaoStock({
                   <th className="py-2 px-3 text-right">{t.dashboard.forecastTableColRunway}</th>
                   <th className="py-2 px-3 text-center">{t.dashboard.forecastTableColStatus}</th>
                   <th className="py-2 px-3 text-center">{t.dashboard.forecastTableColExpiry}</th>
-                  <th className="py-2 px-3 text-center">{t.dashboard.forecastTableColAction}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20 bg-white">
@@ -1313,7 +1312,7 @@ export default function GraficoPrevisaoStock({
                         <span>{art.codigo}</span>
                       </button>
                     </td>
-                    <td className="py-2 px-3 text-on-surface font-medium max-w-[200px] truncate">
+                    <td className="py-2 px-3 text-on-surface font-medium max-w-[240px] truncate">
                       {art.descricao}
                     </td>
                     <td className="py-2 px-3 text-right font-semibold text-slate-800">
@@ -1357,25 +1356,6 @@ export default function GraficoPrevisaoStock({
                       {art.validadeMaisProxima
                         ? new Date(art.validadeMaisProxima).toLocaleDateString(locale)
                         : '-'}
-                    </td>
-                    <td className="py-2 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectProduct(art.codigo);
-                        }}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer mx-auto shadow-2xs ${
-                          art.isSelecionado
-                            ? 'bg-emerald-700 text-white border border-emerald-800'
-                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300/80'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-xs">
-                          {art.isSelecionado ? 'done' : 'insights'}
-                        </span>
-                        <span>{art.isSelecionado ? t.dashboard.forecastActionAnalyzing : t.dashboard.forecastActionAnalyze}</span>
-                      </button>
                     </td>
                   </tr>
                 ))}
