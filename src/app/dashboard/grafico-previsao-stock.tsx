@@ -84,6 +84,7 @@ export default function GraficoPrevisaoStock({
   const [horizonte, setHorizonte] = useState<HorizontePrevisao>('6m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [diasReposicao, setDiasReposicao] = useState<number>(90);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeCodigoAlvo =
@@ -405,12 +406,12 @@ export default function GraficoPrevisaoStock({
         autonomiaDiasGlobal,
         totalExpirandoNoHorizonte,
         mesEsgotamentoPrevisto,
-        nivelSeguranca: Math.round(consumoMedioMensal * 1.5),
+        nivelSeguranca: Math.round(consumoMedioMensal * (diasReposicao / 30)),
       },
       artigosTopComparativo,
       produtoAlvo: produtoAlvoObj,
     };
-  }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language]);
+  }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language, diasReposicao]);
 
   // Dimensões do SVG do gráfico dinâmicas para crescer até à margem direita
   const svgWidth = useMemo(() => {
@@ -512,6 +513,23 @@ export default function GraficoPrevisaoStock({
       (Math.min(estatisticas.nivelSeguranca, maxYValue) / maxYValue) * chartHeight
     );
   }, [estatisticas.nivelSeguranca, maxYValue, chartHeight, padding]);
+
+  // Ponto de Encomenda (Interseção)
+  const pontoEncomenda = useMemo(() => {
+    if (points.length < 2) return null;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i];
+      const p1 = points[i + 1];
+      if (p0.yStock <= yNivelSeguranca && p1.yStock > yNivelSeguranca) {
+        const diffY = p1.yStock - p0.yStock;
+        if (diffY === 0) continue;
+        const t = (yNivelSeguranca - p0.yStock) / diffY;
+        const intersectX = p0.x + t * (p1.x - p0.x);
+        return { x: intersectX, y: yNivelSeguranca };
+      }
+    }
+    return null;
+  }, [points, yNivelSeguranca]);
 
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
   const activeItem = hoveredIndex !== null ? dadosPrevisao[hoveredIndex] : null;
@@ -840,10 +858,23 @@ export default function GraficoPrevisaoStock({
             <span>{t.dashboard.forecastLegendConsumption}</span>
           </span>
           <span className="text-slate-300">•</span>
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 mr-1">
             <span className="w-2 h-0.5 bg-rose-500 inline-block border-t border-dashed border-rose-500"></span>
             <span>{t.dashboard.forecastLegendBuffer}</span>
           </span>
+          
+          <div className="flex items-center gap-1 border-l border-lime-300/50 pl-2 ml-1" title={language === 'en' ? 'Replenishment time (days) for safety buffer' : language === 'es' ? 'Tiempo de reposición (días) para el buffer de seguridad' : 'Tempo de reposição (dias) para cálculo do buffer de segurança'}>
+            <span className="material-symbols-outlined text-[13px] text-rose-600">timer</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={diasReposicao}
+              onChange={(e) => setDiasReposicao(Number(e.target.value) || 0)}
+              className="w-12 px-1 py-0.5 text-[10px] font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400 shadow-xs text-center"
+            />
+            <span className="text-[9px] text-rose-700/80 font-semibold">{language === 'en' ? 'days' : 'dias'}</span>
+          </div>
         </div>
 
         {dadosPrevisao.length > 0 ? (
@@ -1078,6 +1109,41 @@ export default function GraficoPrevisaoStock({
                     );
                   })}
                 </>
+              )}
+
+              {/* Ponto de Encomenda */}
+              {pontoEncomenda && (tipoGrafico === 'combinado' || tipoGrafico === 'tendencia') && (
+                <g>
+                  <circle
+                    cx={pontoEncomenda.x}
+                    cy={pontoEncomenda.y}
+                    r="4.5"
+                    fill="#f43f5e"
+                    stroke="#fff"
+                    strokeWidth="1.5"
+                  />
+                  <circle
+                    cx={pontoEncomenda.x}
+                    cy={pontoEncomenda.y}
+                    r="10"
+                    fill="none"
+                    stroke="#f43f5e"
+                    strokeWidth="1.5"
+                    strokeOpacity="0.5"
+                    className="animate-ping pointer-events-none"
+                  />
+                  <text
+                    x={pontoEncomenda.x}
+                    y={pontoEncomenda.y - 12}
+                    textAnchor="middle"
+                    fontSize="9.5"
+                    fontWeight="700"
+                    fill="#e11d48"
+                    className="select-none pointer-events-none drop-shadow-sm"
+                  >
+                    {language === 'en' ? 'Reorder Point' : language === 'es' ? 'Punto de Pedido' : 'Ponto Encomenda'}
+                  </text>
+                </g>
               )}
 
               {/* Linha de Referência Vertical no Hover */}
