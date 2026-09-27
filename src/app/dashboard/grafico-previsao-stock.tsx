@@ -467,7 +467,7 @@ export default function GraficoPrevisaoStock({
     });
   }, [dadosPrevisao, chartWidth, chartHeight, padding, maxYValue]);
 
-  // Caminhos Bézier Spline para o Gráfico de Previsão
+  // Caminhos em Linha Reta para o Gráfico de Previsão
   const { lineStockPath, areaStockPath, lineConsumoPath } = useMemo(() => {
     if (points.length === 0) {
       return { lineStockPath: '', areaStockPath: '', lineConsumoPath: '' };
@@ -485,12 +485,10 @@ export default function GraficoPrevisaoStock({
     let dConsumo = `M ${points[0].x} ${points[0].yConsumo}`;
 
     for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
       const p1 = points[i + 1];
-      const cpx = p0.x + (p1.x - p0.x) / 2;
 
-      dStock += ` C ${cpx} ${p0.yStock} ${cpx} ${p1.yStock} ${p1.x} ${p1.yStock}`;
-      dConsumo += ` C ${cpx} ${p0.yConsumo} ${cpx} ${p1.yConsumo} ${p1.x} ${p1.yConsumo}`;
+      dStock += ` L ${p1.x} ${p1.yStock}`;
+      dConsumo += ` L ${p1.x} ${p1.yConsumo}`;
     }
 
     const firstPoint = points[0];
