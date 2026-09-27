@@ -277,8 +277,8 @@ export default function GraficoPrevisaoStock({
         offset === 0
           ? `${mFull} ${y} (${t.dashboard.forecastMonthCurrent})`
           : language === 'pt'
-          ? `${mFull} de ${y} (+${offset} ${offset === 1 ? 'mês' : 'meses'})`
-          : `${mFull} ${y} (+${offset} ${language === 'en' ? (offset === 1 ? 'month' : 'months') : (offset === 1 ? 'mes' : 'meses')})`;
+            ? `${mFull} de ${y} (+${offset} ${offset === 1 ? 'mês' : 'meses'})`
+            : `${mFull} ${y} (+${offset} ${language === 'en' ? (offset === 1 ? 'month' : 'months') : (offset === 1 ? 'mes' : 'meses')})`;
 
       const expMes = stockExpirandoPorMesOffset[offset] || 0;
       const consMes = offset === 0 ? 0 : consumoMedioMensal;
@@ -380,21 +380,21 @@ export default function GraficoPrevisaoStock({
 
     const produtoAlvoObj: ArtigoAlvoInfo | null = codigoAlvo
       ? {
-          codigo: codigoAlvo,
-          descricao: descricaoAlvo,
-          stockAtual: stockInicialProduto,
-          totalQtdPedidos: totalQtdPedidosAlvo,
-          nrPedidos: nrPedidosAlvo,
-          validadeMaisProxima: validadeMaisProximaAlvo,
-          consumoMedioMensal,
-          autonomiaMeses: autonomiaMesesGlobal,
-          percentagemDoTotal:
-            totalGeralPedidosUnidades > 0
-              ? Math.round((totalQtdPedidosAlvo / totalGeralPedidosUnidades) * 100)
-              : 0,
-          rank: rankAlvo,
-          isLider,
-        }
+        codigo: codigoAlvo,
+        descricao: descricaoAlvo,
+        stockAtual: stockInicialProduto,
+        totalQtdPedidos: totalQtdPedidosAlvo,
+        nrPedidos: nrPedidosAlvo,
+        validadeMaisProxima: validadeMaisProximaAlvo,
+        consumoMedioMensal,
+        autonomiaMeses: autonomiaMesesGlobal,
+        percentagemDoTotal:
+          totalGeralPedidosUnidades > 0
+            ? Math.round((totalQtdPedidosAlvo / totalGeralPedidosUnidades) * 100)
+            : 0,
+        rank: rankAlvo,
+        isLider,
+      }
       : null;
 
     return {
@@ -578,11 +578,10 @@ export default function GraficoPrevisaoStock({
                 key={`rr-${opt.id}`}
                 type="button"
                 onClick={() => setRunRatePeriodo(opt.id)}
-                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  runRatePeriodo === opt.id
+                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${runRatePeriodo === opt.id
                     ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs border border-lime-400 font-bold'
                     : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -606,11 +605,10 @@ export default function GraficoPrevisaoStock({
                 key={opt.id}
                 type="button"
                 onClick={() => setHorizonte(opt.id)}
-                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  horizonte === opt.id
+                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${horizonte === opt.id
                     ? 'bg-white text-emerald-900 shadow-xs border border-emerald-200/60 font-bold'
                     : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -623,11 +621,10 @@ export default function GraficoPrevisaoStock({
               type="button"
               onClick={() => setTipoGrafico('combinado')}
               title={t.dashboard.viewMixed}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'combinado'
+              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'combinado'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">area_chart</span>
               <span className="hidden md:inline">{t.dashboard.viewMixed}</span>
@@ -636,11 +633,10 @@ export default function GraficoPrevisaoStock({
               type="button"
               onClick={() => setTipoGrafico('tendencia')}
               title={t.dashboard.viewTrend}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'tendencia'
+              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'tendencia'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">show_chart</span>
               <span className="hidden md:inline">{t.dashboard.viewTrend}</span>
@@ -649,11 +645,10 @@ export default function GraficoPrevisaoStock({
               type="button"
               onClick={() => setTipoGrafico('barras')}
               title={t.dashboard.viewBars}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'barras'
+              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'barras'
                   ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">bar_chart</span>
               <span className="hidden md:inline">{t.dashboard.viewBars}</span>
@@ -665,19 +660,17 @@ export default function GraficoPrevisaoStock({
       {/* Cartão de Destaque do Produto em Análise */}
       {produtoAlvo && (
         <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-xl border shadow-2xs my-4 transition-all ${
-            produtoAlvo.isLider
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-xl border shadow-2xs my-4 transition-all ${produtoAlvo.isLider
               ? 'bg-gradient-to-r from-lime-100/90 via-emerald-50/80 to-teal-50/90 border-lime-300/80'
               : 'bg-gradient-to-r from-emerald-100/80 via-teal-50/70 to-lime-50/80 border-emerald-300/80'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-3 min-w-0">
             <div
-              className={`w-9 h-9 rounded-lg font-black flex items-center justify-center text-sm shadow-xs shrink-0 ${
-                produtoAlvo.isLider
+              className={`w-9 h-9 rounded-lg font-black flex items-center justify-center text-sm shadow-xs shrink-0 ${produtoAlvo.isLider
                   ? 'bg-lime-400 text-slate-950 ring-2 ring-lime-500/50'
                   : 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
-              }`}
+                }`}
             >
               {produtoAlvo.rank ? `#${produtoAlvo.rank}` : '•'}
             </div>
@@ -765,12 +758,12 @@ export default function GraficoPrevisaoStock({
                     ? '3 months'
                     : '3 meses'
                   : runRatePeriodo === '6m'
-                  ? language === 'en'
-                    ? '6 months'
-                    : '6 meses'
-                  : language === 'en'
-                  ? '12 months'
-                  : '12 meses'
+                    ? language === 'en'
+                      ? '6 months'
+                      : '6 meses'
+                    : language === 'en'
+                      ? '12 months'
+                      : '12 meses'
               )}
             </span>
           </div>
@@ -783,19 +776,18 @@ export default function GraficoPrevisaoStock({
               {t.dashboard.forecastRunway}
             </span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
-                estatisticas.autonomiaMesesGlobal >= 6
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.autonomiaMesesGlobal >= 6
                   ? 'bg-emerald-200 text-emerald-950'
                   : estatisticas.autonomiaMesesGlobal >= 3
-                  ? 'bg-amber-200 text-amber-950'
-                  : 'bg-rose-200 text-rose-950'
-              }`}
+                    ? 'bg-amber-200 text-amber-950'
+                    : 'bg-rose-200 text-rose-950'
+                }`}
             >
               {estatisticas.autonomiaMesesGlobal >= 6
                 ? (language === 'en' ? 'Stable' : language === 'es' ? 'Estable' : 'Estável')
                 : estatisticas.autonomiaMesesGlobal >= 3
-                ? (language === 'en' ? 'Warning' : language === 'es' ? 'Atención' : 'Atenção')
-                : (language === 'en' ? 'Critical' : language === 'es' ? 'Crítico' : 'Crítico')}
+                  ? (language === 'en' ? 'Warning' : language === 'es' ? 'Atención' : 'Atenção')
+                  : (language === 'en' ? 'Critical' : language === 'es' ? 'Crítico' : 'Crítico')}
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
@@ -860,7 +852,7 @@ export default function GraficoPrevisaoStock({
             <span className="w-2 h-0.5 bg-rose-500 inline-block border-t border-dashed border-rose-500"></span>
             <span>{t.dashboard.forecastLegendBuffer}</span>
           </span>
-          
+
           <div className="flex items-center gap-1 border-l border-lime-300/50 pl-2 ml-1" title={language === 'en' ? 'Replenishment time (days) for safety buffer' : language === 'es' ? 'Tiempo de reposición (días) para el buffer de seguridad' : 'Tempo de reposição (dias) para cálculo do buffer de segurança'}>
             <span className="material-symbols-outlined text-[13px] text-rose-600">timer</span>
             <input
@@ -1071,19 +1063,19 @@ export default function GraficoPrevisaoStock({
                             isHovered
                               ? '#bef264'
                               : isCritical
-                              ? '#f43f5e'
-                              : isFirst
-                              ? '#a3e635'
-                              : '#d9f99d'
+                                ? '#f43f5e'
+                                : isFirst
+                                  ? '#a3e635'
+                                  : '#d9f99d'
                           }
                           stroke={
                             isHovered
                               ? '#14532d'
                               : isCritical
-                              ? '#9f1239'
-                              : isFirst
-                              ? '#4d7c0f'
-                              : '#059669'
+                                ? '#9f1239'
+                                : isFirst
+                                  ? '#4d7c0f'
+                                  : '#059669'
                           }
                           strokeWidth={isHovered ? '3' : '2'}
                           className="transition-all duration-150 cursor-pointer"
@@ -1242,19 +1234,18 @@ export default function GraficoPrevisaoStock({
                   <span>{activeItem.labelCompleto}</span>
                 </span>
                 <span
-                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
-                    activeItem.status === 'critico'
+                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${activeItem.status === 'critico'
                       ? 'bg-rose-500 text-white'
                       : activeItem.status === 'alerta'
-                      ? 'bg-amber-400 text-slate-950'
-                      : 'bg-lime-400 text-slate-950'
-                  }`}
+                        ? 'bg-amber-400 text-slate-950'
+                        : 'bg-lime-400 text-slate-950'
+                    }`}
                 >
                   {activeItem.status === 'critico'
                     ? (language === 'en' ? 'Stockout' : language === 'es' ? 'Agotamiento' : 'Ruptura')
                     : activeItem.status === 'alerta'
-                    ? t.dashboard.forecastTooltipBufferLow
-                    : (language === 'en' ? 'Stable' : language === 'es' ? 'Estable' : 'Estável')}
+                      ? t.dashboard.forecastTooltipBufferLow
+                      : (language === 'en' ? 'Stable' : language === 'es' ? 'Estable' : 'Estável')}
                 </span>
               </div>
 
@@ -1329,13 +1320,12 @@ export default function GraficoPrevisaoStock({
                 {artigosTopComparativo.map((art) => (
                   <tr
                     key={art.codigo}
-                    className={`transition-colors cursor-pointer ${
-                      art.isSelecionado
+                    className={`transition-colors cursor-pointer ${art.isSelecionado
                         ? 'bg-lime-100/90 hover:bg-lime-200/80 font-semibold ring-1 ring-lime-400'
                         : art.isLider
-                        ? 'bg-lime-50/60 hover:bg-lime-100/50'
-                        : 'hover:bg-lime-50/30'
-                    }`}
+                          ? 'bg-lime-50/60 hover:bg-lime-100/50'
+                          : 'hover:bg-lime-50/30'
+                      }`}
                     onClick={() => handleSelectProduct(art.codigo)}
                   >
                     <td className="py-2 px-3">
@@ -1363,11 +1353,10 @@ export default function GraficoPrevisaoStock({
                           e.stopPropagation();
                           handleSelectProduct(art.codigo);
                         }}
-                        className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 transition-all text-left cursor-pointer shadow-2xs ${
-                          art.isSelecionado
+                        className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1.5 transition-all text-left cursor-pointer shadow-2xs ${art.isSelecionado
                             ? 'bg-lime-400 text-slate-950 border border-lime-600 font-black'
                             : 'bg-lime-100/80 hover:bg-lime-300 text-emerald-950 hover:text-slate-950 border border-lime-300/80'
-                        }`}
+                          }`}
                         title={`${t.dashboard.top10TooltipClick} - ${art.codigo}`}
                       >
                         <span className="material-symbols-outlined text-xs text-lime-800">
@@ -1397,23 +1386,22 @@ export default function GraficoPrevisaoStock({
                     </td>
                     <td className="py-2 px-3 text-center">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          art.statusRuptura === 'critico'
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${art.statusRuptura === 'critico'
                             ? 'bg-rose-100 text-rose-800 border border-rose-200'
                             : art.statusRuptura === 'atencao'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : art.statusRuptura === 'sem_consumo'
-                            ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        }`}
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : art.statusRuptura === 'sem_consumo'
+                                ? 'bg-slate-100 text-slate-700 border border-slate-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}
                       >
                         {art.statusRuptura === 'critico'
                           ? t.dashboard.forecastStatusCritical
                           : art.statusRuptura === 'atencao'
-                          ? t.dashboard.forecastStatusWarning
-                          : art.statusRuptura === 'sem_consumo'
-                          ? t.dashboard.forecastStatusNoOutflow
-                          : t.dashboard.forecastStatusStable}
+                            ? t.dashboard.forecastStatusWarning
+                            : art.statusRuptura === 'sem_consumo'
+                              ? t.dashboard.forecastStatusNoOutflow
+                              : t.dashboard.forecastStatusStable}
                       </span>
                     </td>
                     <td className="py-2 px-3 text-center text-slate-600 text-[11px]">
