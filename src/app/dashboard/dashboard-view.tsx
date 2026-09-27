@@ -13,6 +13,8 @@ export interface DashboardFaturacaoItem {
   sigla_cliente: string | null;
   data: string | null;
   total_merc: number | null;
+  total_iva: number | null;
+  total_desc: number | null;
 }
 
 

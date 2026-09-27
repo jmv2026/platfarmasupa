@@ -19,6 +19,9 @@ interface MesData {
   label: string; // "Mar 26"
   labelCompleto: string; // "Março 2026"
   total_merc: number;
+  total_iva: number;
+  total_desc: number;
+  total_liquido: number;
   diffAnterior: number | null; // % vs mes anterior
 }
 
@@ -46,7 +49,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
-  const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
+  const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('barras');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,7 +60,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     const currentMonth = now.getMonth();
 
     // Mapeia todas as contagens por "YYYY-MM"
-    const contagemPorMes: Record<string, number> = {};
+    const contagemPorMes: Record<string, {merc: number, iva: number, desc: number}> = {};
     const todosAnosDisponiveis = new Set<number>();
 
     faturacao.forEach((p) => {
@@ -65,7 +68,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       const parsed = extrairAnoMes(dataRaw);
       if (parsed) {
         const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
-        contagemPorMes[key] = (contagemPorMes[key] || 0) + (Number(p.total_merc) || 0);
+        if (!contagemPorMes[key]) contagemPorMes[key] = {merc: 0, iva: 0, desc: 0};
+        contagemPorMes[key].merc += (Number(p.total_merc) || 0);
+        contagemPorMes[key].iva += (Number(p.total_iva) || 0);
+        contagemPorMes[key].desc += (Number(p.total_desc) || 0);
         todosAnosDisponiveis.add(parsed.year);
       }
     });
@@ -110,7 +116,11 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     let prevtotal_merc: number | null = null;
     const resultado: MesData[] = mesesParaGerar.map(({ year, month }) => {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const total_merc = contagemPorMes[key] || 0;
+      const mesData = contagemPorMes[key] || {merc: 0, iva: 0, desc: 0};
+      const total_merc = mesData.merc;
+      const total_iva = mesData.iva;
+      const total_desc = mesData.desc;
+      const total_liquido = total_merc - total_desc + total_iva;
       const mShort = monthsShort[month] || String(month + 1);
       const mFull = monthsNames[month] || String(month + 1);
       const label = `${mShort} '${String(year).slice(-2)}`;
@@ -133,6 +143,9 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         label,
         labelCompleto,
         total_merc,
+        total_iva,
+        total_desc,
+        total_liquido,
         diffAnterior,
       };
     });
@@ -180,7 +193,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
 
   // Escala Y máxima
   const maxTotalRaw = useMemo(() => {
-    return Math.max(...dadosMensais.map((d) => d.total_merc), 0);
+    return Math.max(...dadosMensais.map((d) => Math.max(d.total_merc, d.total_liquido)), 0);
   }, [dadosMensais]);
 
   const yMax = useMemo(() => {
@@ -526,21 +539,32 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               );
             })}
 
-            {/* Barras do Gráfico (se modo 'barras' ou 'combinado') */}
+            {/* Barras do Gráfico Agrupado (se modo 'barras' ou 'combinado') */}
             {(tipoGrafico === 'barras' || tipoGrafico === 'combinado') &&
               points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
                 const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_merc > 0;
-                const barW = Math.min(chartWidth / (points.length * 2.8), 26);
-                const bHeight = ((p.data.total_merc / yMax) * chartHeight) || 0;
-                const bY = padding.top + chartHeight - bHeight;
+                
+                const totalBarW = Math.min(chartWidth / points.length, 75);
+                const barW = Math.min(totalBarW / 4.5, 12);
+                const spacing = 1.5;
+                
+                const bHeightMerc = ((p.data.total_merc / yMax) * chartHeight) || 0;
+                const bYMerc = padding.top + chartHeight - bHeightMerc;
+                const bHeightIva = ((p.data.total_iva / yMax) * chartHeight) || 0;
+                const bYIva = padding.top + chartHeight - bHeightIva;
+                const bHeightDesc = ((p.data.total_desc / yMax) * chartHeight) || 0;
+                const bYDesc = padding.top + chartHeight - bHeightDesc;
+                const bHeightLiq = ((p.data.total_liquido / yMax) * chartHeight) || 0;
+                const bYLiq = padding.top + chartHeight - bHeightLiq;
 
                 return (
                   <g key={`bar-group-${i}`}>
+                    {/* Hitbox transparente para hover mais fácil */}
                     <rect
-                      x={p.x - barW / 2}
+                      x={p.x - totalBarW / 2}
                       y={padding.top}
-                      width={barW}
+                      width={totalBarW}
                       height={chartHeight}
                       fill="transparent"
                       className="cursor-pointer"
@@ -548,17 +572,18 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       onMouseLeave={() => setHoveredIndex(null)}
                     />
 
-                    {bHeight > 0 && (
+                    {/* Mercadorias */}
+                    {bHeightMerc > 0 && (
                       <rect
-                        x={p.x - barW / 2}
-                        y={bY}
+                        x={p.x - barW * 1.5 - spacing * 1.5}
+                        y={bYMerc}
                         width={barW}
-                        height={bHeight}
-                        rx={Math.min(barW / 2, 6)}
-                        ry={Math.min(barW / 2, 6)}
+                        height={bHeightMerc}
+                        rx={Math.min(barW / 2, 4)}
+                        ry={Math.min(barW / 2, 4)}
                         fill={isHovered ? 'url(#barGradientLimaHover)' : 'url(#barGradientLima)'}
                         stroke={isHovered ? '#15803d' : '#86efac'}
-                        strokeWidth={isHovered ? '2' : '1'}
+                        strokeWidth={isHovered ? '1.5' : '1'}
                         opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
                         className="transition-all duration-200 cursor-pointer hover:opacity-100"
                         onMouseEnter={() => setHoveredIndex(i)}
@@ -566,21 +591,79 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       />
                     )}
 
-                    {(isHovered || (tipoGrafico === 'barras' && p.data.total_merc > 0)) && (
+                    {/* IVA */}
+                    {bHeightIva > 0 && (
+                      <rect
+                        x={p.x - barW * 0.5 - spacing * 0.5}
+                        y={bYIva}
+                        width={barW}
+                        height={bHeightIva}
+                        rx={Math.min(barW / 2, 4)}
+                        ry={Math.min(barW / 2, 4)}
+                        fill={isHovered ? '#fde047' : '#fef08a'}
+                        stroke={isHovered ? '#ca8a04' : '#fde047'}
+                        strokeWidth={isHovered ? '1.5' : '1'}
+                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
+                        className="transition-all duration-200 cursor-pointer hover:opacity-100"
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                      />
+                    )}
+
+                    {/* Descontos */}
+                    {bHeightDesc > 0 && (
+                      <rect
+                        x={p.x + barW * 0.5 + spacing * 0.5}
+                        y={bYDesc}
+                        width={barW}
+                        height={bHeightDesc}
+                        rx={Math.min(barW / 2, 4)}
+                        ry={Math.min(barW / 2, 4)}
+                        fill={isHovered ? '#fca5a5' : '#fecaca'}
+                        stroke={isHovered ? '#dc2626' : '#fca5a5'}
+                        strokeWidth={isHovered ? '1.5' : '1'}
+                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
+                        className="transition-all duration-200 cursor-pointer hover:opacity-100"
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                      />
+                    )}
+
+                    {/* Líquido */}
+                    {bHeightLiq > 0 && (
+                      <rect
+                        x={p.x + barW * 1.5 + spacing * 1.5}
+                        y={bYLiq}
+                        width={barW}
+                        height={bHeightLiq}
+                        rx={Math.min(barW / 2, 4)}
+                        ry={Math.min(barW / 2, 4)}
+                        fill={isHovered ? '#60a5fa' : '#93c5fd'}
+                        stroke={isHovered ? '#2563eb' : '#60a5fa'}
+                        strokeWidth={isHovered ? '1.5' : '1'}
+                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
+                        className="transition-all duration-200 cursor-pointer hover:opacity-100"
+                        onMouseEnter={() => setHoveredIndex(i)}
+                        onMouseLeave={() => setHoveredIndex(null)}
+                      />
+                    )}
+
+                    {/* Rótulo de Líquido no topo quando Hover */}
+                    {(isHovered || (tipoGrafico === 'barras' && p.data.total_liquido > 0)) && (
                       <text
                         x={p.x}
-                        y={bY - 6}
+                        y={Math.min(bYMerc, bYIva, bYDesc, bYLiq) - 6}
                         textAnchor="middle"
-                        fontSize="11"
+                        fontSize="10"
                         fontWeight="700"
                         fill={isHovered ? '#14532d' : '#334155'}
                       >
-                        {p.data.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
+                        {p.data.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
                       </text>
                     )}
 
                     {isPeak && !isHovered && tipoGrafico === 'barras' && (
-                      <circle cx={p.x} cy={bY - 14} r="3" fill="#65a30d" />
+                      <circle cx={p.x} cy={Math.min(bYMerc, bYIva, bYDesc, bYLiq) - 16} r="3" fill="#65a30d" />
                     )}
                   </g>
                 );
@@ -718,13 +801,28 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 )}
               </div>
 
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="text-slate-300">{t.dashboard.monthlyOrdersProcessed}:</span>
-                <span className="font-bold text-sm text-white">
-                  {activeItem.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}{' '}
-                  <span className="text-[10px] font-normal text-slate-300">
-                    {activeItem.total_merc === 1 ? '' : ''}
-                  </span>
+              <div className="flex items-baseline justify-between gap-4 mt-2">
+                <span className="text-slate-300 font-semibold">Mercadorias:</span>
+                <span className="font-bold text-sm text-lime-400">
+                  {activeItem.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 mt-1">
+                <span className="text-slate-300 font-semibold">IVA:</span>
+                <span className="font-bold text-sm text-yellow-400">
+                  {activeItem.total_iva.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 mt-1">
+                <span className="text-slate-300 font-semibold">Descontos:</span>
+                <span className="font-bold text-sm text-red-400">
+                  {activeItem.total_desc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-4 mt-1.5 pt-1.5 border-t border-white/20">
+                <span className="text-white font-bold">Líquido:</span>
+                <span className="font-extrabold text-sm text-blue-300">
+                  {activeItem.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
                 </span>
               </div>
 
