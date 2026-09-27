@@ -30,6 +30,7 @@ export default async function DashboardPage() {
   let pedidosQuery = supabase
     .from('pedidos')
     .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
+  let faturacaoQuery = supabase.from('vw_fact_mes').select('sigla_cliente, data, total_merc');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
@@ -44,11 +45,13 @@ export default async function DashboardPage() {
     { data: stockAtual },
     { data: stockPedidos },
     { data: pedidos },
+    { data: faturacao },
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
     pedidosQuery,
+    faturacaoQuery,
   ]);
 
   return (
@@ -66,6 +69,7 @@ export default async function DashboardPage() {
         stockAtual={stockAtual || []}
         stockPedidos={stockPedidos || []}
         pedidos={pedidos || []}
+        faturacao={faturacao || []}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}
       />

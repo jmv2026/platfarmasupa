@@ -7,6 +7,13 @@ import { Client, UserProfile } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
 import GraficoTopProdutos from './grafico-top-produtos';
+import GraficoFaturacaoMensal from './grafico-faturacao-mensal';
+
+export interface DashboardFaturacaoItem {
+  sigla_cliente: string | null;
+  data: string | null;
+  total_merc: number | null;
+}
 
 
 export interface DashboardStockItem {
@@ -43,6 +50,7 @@ interface DashboardViewProps {
   stockAtual: DashboardStockItem[];
   stockPedidos: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
+  faturacao: DashboardFaturacaoItem[];
   currentUserProfile: UserProfile | null;
   isManagerOrAdmin: boolean;
 }
@@ -52,6 +60,7 @@ export default function DashboardView({
   stockAtual,
   stockPedidos,
   pedidos,
+  faturacao,
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
@@ -59,11 +68,11 @@ export default function DashboardView({
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10'>('pedidos');
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao'>('pedidos');
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao') => {
     setGraficoAtivo(tipo);
     setTimeout(() => {
       if (graficoContainerRef.current) {
@@ -113,6 +122,17 @@ export default function DashboardView({
     }
     return pedidos.filter((p) => p.client_id === selectedClientId);
   }, [pedidos, selectedClientId, isManagerOrAdmin]);
+
+  const filteredFaturacao = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      const clientObj = clients.find(c => c.id === (isManagerOrAdmin ? selectedClientId : currentUserProfile?.client_id));
+      if (!clientObj || !clientObj.sigla) return faturacao;
+      return faturacao.filter(f => f.sigla_cliente === clientObj.sigla);
+    }
+    const selectedClient = clients.find(c => c.id === selectedClientId);
+    if (!selectedClient) return faturacao;
+    return faturacao.filter((f) => f.sigla_cliente === selectedClient.sigla);
+  }, [faturacao, selectedClientId, isManagerOrAdmin, clients, currentUserProfile]);
 
   // 1. Stock Venda
   const totalStockVenda = useMemo(() => {
@@ -191,6 +211,12 @@ export default function DashboardView({
     if (selectedClientId === 'todos') return null;
     return clients.find((c) => c.id === selectedClientId);
   }, [clients, selectedClientId]);
+
+  const effectiveClientObj = isManagerOrAdmin 
+    ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))
+    : clients.find(c => c.id === currentUserProfile?.client_id);
+    
+  const showFaturacao = effectiveClientObj?.tipo_cliente === 'CF';
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
@@ -396,6 +422,21 @@ export default function DashboardView({
           <span>{t.dashboard.chartTop10Title}</span>
         </button>
 
+        {showFaturacao && (
+          <button
+            type="button"
+            onClick={() => handleSelecionarGrafico('faturacao')}
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
+              graficoAtivo === 'faturacao'
+                ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
+                : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">euro_symbol</span>
+            <span>Faturação Mensal</span>
+          </button>
+        )}
+
         <Link
           href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
           className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer bg-surface-container-lowest text-on-surface-variant hover:text-emerald-900 hover:bg-lime-100/80 border border-lime-400/60 hover:border-lime-500 group"
@@ -411,7 +452,12 @@ export default function DashboardView({
 
       {/* Container do Gráfico com Ref para Centralização Automática no Ecrã */}
       <div ref={graficoContainerRef} className="scroll-mt-8 transition-all">
-        {graficoAtivo === 'pedidos' ? (
+        {graficoAtivo === 'faturacao' && showFaturacao ? (
+          <GraficoFaturacaoMensal
+            faturacao={filteredFaturacao}
+            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+          />
+        ) : graficoAtivo === 'pedidos' ? (
           <GraficoPedidosMensal
             pedidos={filteredPedidos}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
