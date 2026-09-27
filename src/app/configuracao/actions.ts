@@ -10,6 +10,7 @@ import {
   normalizeMovimentoPosicao,
   parseMovimentoDate,
 } from '@/lib/parse-movimentos-file';
+import { DocVendaImportInput } from '@/lib/parse-doc-venda-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -862,4 +863,99 @@ export async function limparMovimentosAction() {
   }
 }
 
+// 9. AÇÃO: Importar Documentos de Venda (doc_venda)
+export async function importarDocVendaAction(
+  rows: DocVendaImportInput[],
+  defaultClientId?: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, client_id')
+    .eq('id', user.id)
+    .single();
+
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
+    return {
+      success: false,
+      error: 'Acesso negado: Apenas administradores e gestores podem importar documentos.',
+    };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'O ficheiro não contém documentos válidos para importar.' };
+  }
+
+  try {
+    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    const clientMapBySigla = new Map<string, string>();
+    const clientMapById = new Map<string, string>();
+
+    (clientsData || []).forEach((c) => {
+      if (c.sigla) clientMapBySigla.set(c.sigla.toUpperCase(), c.id);
+      if (c.id) clientMapById.set(c.id, c.sigla);
+    });
+
+    const fallbackClientId = defaultClientId || profile?.client_id;
+
+    if (!fallbackClientId && clientMapBySigla.size === 0) {
+      return {
+        success: false,
+        error: 'Nenhum cliente cadastrado no sistema para associar aos documentos.',
+      };
+    }
+
+    const BATCH_SIZE = 250;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
+        let resolvedClientId = fallbackClientId;
+        if (r.cliente_id && clientMapById.has(r.cliente_id)) {
+          resolvedClientId = r.cliente_id;
+        } else if (r.sigla_cliente && clientMapBySigla.has(r.sigla_cliente.toUpperCase())) {
+          resolvedClientId = clientMapBySigla.get(r.sigla_cliente.toUpperCase())!;
+        }
+
+        const resolvedSigla = r.sigla_cliente
+          ? r.sigla_cliente.toUpperCase()
+          : resolvedClientId
+          ? clientMapById.get(resolvedClientId) || null
+          : null;
+
+        return {
+          ...r,
+          cliente_id: resolvedClientId,
+          sigla_cliente: resolvedSigla,
+        };
+      });
+
+      const { error: insertErr } = await supabase.from('doc_venda').insert(batch);
+      if (insertErr) {
+        console.error('Erro ao inserir lote em doc_venda:', insertErr);
+        return {
+          success: false,
+          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
+        };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de doc_venda';
+    return { success: false, error: msg };
+  }
+}
 
