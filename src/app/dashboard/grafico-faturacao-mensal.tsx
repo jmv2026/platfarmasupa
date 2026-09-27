@@ -359,7 +359,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 {estatisticas.total.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {estatisticas.total === 1 ? ''}
+                {estatisticas.total === 1 ? '' : ''}
               </span>
             </div>
             <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
@@ -723,7 +723,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 <span className="font-bold text-sm text-white">
                   {activeItem.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}{' '}
                   <span className="text-[10px] font-normal text-slate-300">
-                    {activeItem.total_merc === 1 ? ''}
+                    {activeItem.total_merc === 1 ? '' : ''}
                   </span>
                 </span>
               </div>
