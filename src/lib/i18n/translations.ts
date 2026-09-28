@@ -304,6 +304,7 @@ export interface Translations {
     tabUsers: string;
     tabClients: string;
     tabArticles: string;
+    tabValidades: string;
     tabMovements: string;
     tabEmail: string;
     addUser: string;
@@ -688,6 +689,7 @@ export const translations: Record<Language, Translations> = {
       tabUsers: 'Utilizadores',
       tabClients: 'Clientes',
       tabArticles: 'Artigos',
+      tabValidades: 'Validades',
       tabMovements: 'Movimentos',
       tabEmail: 'Servidor de Email',
       addUser: 'Novo Utilizador',
@@ -1070,6 +1072,7 @@ export const translations: Record<Language, Translations> = {
       tabUsers: 'Usuarios',
       tabClients: 'Clientes',
       tabArticles: 'Artículos',
+      tabValidades: 'Validades',
       tabMovements: 'Movimientos',
       tabEmail: 'Servidor de Email',
       addUser: 'Nuevo Usuario',

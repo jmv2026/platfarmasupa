@@ -449,11 +449,10 @@ export default function ConfiguracaoTabs({
               setActiveTab('utilizadores');
               setFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'utilizadores'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'utilizadores'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">group</span>
             {t.configuracao.tabUsers} ({users.length})
@@ -465,11 +464,10 @@ export default function ConfiguracaoTabs({
               setActiveTab('clientes');
               setFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'clientes'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'clientes'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">corporate_fare</span>
             {t.configuracao.tabClients} ({clients.length})
@@ -481,11 +479,10 @@ export default function ConfiguracaoTabs({
               setActiveTab('artigos');
               setFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'artigos'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'artigos'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">medication</span>
             {t.configuracao.tabArticles} ({artigos.length})
@@ -497,11 +494,10 @@ export default function ConfiguracaoTabs({
               setActiveTab('movimentos');
               setFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'movimentos'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'movimentos'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">sync_alt</span>
             {t.configuracao.tabMovements} ({initialMovimentos.length})
@@ -513,11 +509,10 @@ export default function ConfiguracaoTabs({
               setActiveTab('doc_venda');
               setFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'doc_venda'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'doc_venda'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
             Doc. Venda
@@ -530,11 +525,10 @@ export default function ConfiguracaoTabs({
               setFeedback(null);
               setTestEmailFeedback(null);
             }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-              activeTab === 'email'
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'email'
                 ? 'bg-secondary text-on-secondary shadow-md'
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">mail</span>
             {t.configuracao.tabEmail}
@@ -544,11 +538,10 @@ export default function ConfiguracaoTabs({
         {/* Feedback Toast */}
         {feedback && (
           <div
-            className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all ${
-              feedback.type === 'success'
+            className={`p-4 rounded-xl text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all ${feedback.type === 'success'
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                 : 'bg-rose-50 text-rose-800 border border-rose-200'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base">
               {feedback.type === 'success' ? 'check_circle' : 'error'}
@@ -717,13 +710,12 @@ export default function ConfiguracaoTabs({
                         <td className="py-3 px-3 font-mono text-on-surface-variant">{u.email}</td>
                         <td className="py-3 px-3">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              u.role === 'admin'
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${u.role === 'admin'
                                 ? 'bg-rose-100 text-rose-800'
                                 : u.role === 'gestor'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-indigo-100 text-indigo-800'
-                            }`}
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-indigo-100 text-indigo-800'
+                              }`}
                           >
                             {u.role}
                           </span>
@@ -1140,11 +1132,10 @@ export default function ConfiguracaoTabs({
                           </td>
                           <td className="py-3 px-3">
                             <span
-                              className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
-                                c.tipo_cliente === 'CF'
+                              className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${c.tipo_cliente === 'CF'
                                   ? 'bg-amber-100 text-amber-800 border border-amber-300'
                                   : 'bg-slate-100 text-slate-700 border border-slate-300'
-                              }`}
+                                }`}
                               title={c.tipo_cliente === 'CF' ? 'Com Faturação (CF)' : 'Sem Faturação (SF)'}
                             >
                               {c.tipo_cliente || 'SF'}
@@ -1395,13 +1386,12 @@ export default function ConfiguracaoTabs({
                           </td>
                           <td className="py-3 px-3">
                             <span
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                a.tipo_armazenamento === 'TF'
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.tipo_armazenamento === 'TF'
                                   ? 'bg-cyan-100 text-cyan-800'
                                   : a.tipo_armazenamento === 'TC'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-slate-100 text-slate-800'
-                              }`}
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-slate-100 text-slate-800'
+                                }`}
                             >
                               <span className="material-symbols-outlined text-[12px]">
                                 {a.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
@@ -1598,21 +1588,20 @@ export default function ConfiguracaoTabs({
                 {/* Feedback do Teste */}
                 {testEmailFeedback && (
                   <div
-                    className={`p-4 rounded-xl text-xs font-medium space-y-1.5 transition-all ${
-                      testEmailFeedback.type === 'success'
+                    className={`p-4 rounded-xl text-xs font-medium space-y-1.5 transition-all ${testEmailFeedback.type === 'success'
                         ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                         : testEmailFeedback.type === 'warning'
-                        ? 'bg-amber-50 text-amber-900 border border-amber-200'
-                        : 'bg-rose-50 text-rose-800 border border-rose-200'
-                    }`}
+                          ? 'bg-amber-50 text-amber-900 border border-amber-200'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200'
+                      }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-base">
                         {testEmailFeedback.type === 'success'
                           ? 'verified'
                           : testEmailFeedback.type === 'warning'
-                          ? 'warning'
-                          : 'error'}
+                            ? 'warning'
+                            : 'error'}
                       </span>
                       <strong className="text-xs">{testEmailFeedback.message}</strong>
                     </div>
