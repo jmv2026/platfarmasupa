@@ -493,7 +493,7 @@ export default function GraficoPrevisaoStock({
     return 760;
   }, [horizonte]);
 
-  const svgHeight = 240;
+  const svgHeight = 320;
   const padding = { top: 25, right: 20, bottom: 42, left: 52 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
@@ -607,33 +607,33 @@ export default function GraficoPrevisaoStock({
 
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
-      {/* Header do Gráfico */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
-        <div className="flex items-start gap-3.5">
-          {/* Ícone com gradiente Lima & Verde Esmeralda */}
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200/80 border border-lime-300/60 flex items-center justify-center text-lime-900 shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-2xl text-emerald-800">trending_up</span>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                {t.dashboard.chartForecastTitle}
-              </h2>
-              {clientName && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
-                  {clientName}
-                </span>
-              )}
+      {/* Header do Gráfico (ocultado quando os controlos e títulos estão integrados na barra superior da página) */}
+      {!hideHeaderControls && (
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
+          <div className="flex items-start gap-3.5">
+            {/* Ícone com gradiente Lima & Verde Esmeralda */}
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200/80 border border-lime-300/60 flex items-center justify-center text-lime-900 shadow-sm shrink-0">
+              <span className="material-symbols-outlined text-2xl text-emerald-800">trending_up</span>
             </div>
-            <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              {t.dashboard.forecastSubtitle}
-            </p>
-          </div>
-        </div>
 
-        {/* Controlos e Filtros */}
-        {!hideHeaderControls && (
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
+                  {t.dashboard.chartForecastTitle}
+                </h2>
+                {clientName && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
+                    {clientName}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-on-surface-variant/80 mt-0.5">
+                {t.dashboard.forecastSubtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Controlos e Filtros */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             {/* Seletor de Run-Rate (Base de Cálculo de Consumos: 3, 6 ou 12 meses) */}
             <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
@@ -729,13 +729,13 @@ export default function GraficoPrevisaoStock({
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Cartão de Destaque do Produto em Análise */}
       {produtoAlvo && (
         <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5 rounded-xl border shadow-2xs my-4 transition-all ${produtoAlvo.isLider
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5 rounded-xl border shadow-2xs ${hideHeaderControls ? 'mb-4' : 'my-4'} transition-all ${produtoAlvo.isLider
               ? 'bg-gradient-to-r from-lime-100/90 via-emerald-50/80 to-teal-50/90 border-lime-300/80'
               : 'bg-gradient-to-r from-emerald-100/80 via-teal-50/70 to-lime-50/80 border-emerald-300/80'
             }`}
@@ -955,7 +955,7 @@ export default function GraficoPrevisaoStock({
           <div className="w-full overflow-x-auto">
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[550px] max-h-[250px] select-none"
+              className="w-full h-auto min-w-[550px] max-h-[330px] select-none"
             >
               <defs>
                 <linearGradient id="areaStockPrevisao" x1="0" y1="0" x2="0" y2="1">
