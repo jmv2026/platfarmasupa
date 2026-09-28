@@ -1455,6 +1455,7 @@ export const translations: Record<Language, Translations> = {
       tabUsers: 'Users',
       tabClients: 'Clients',
       tabArticles: 'Articles',
+      tabValidades: 'Expirations',
       tabMovements: 'Movements',
       tabEmail: 'Email Server',
       addUser: 'New User',

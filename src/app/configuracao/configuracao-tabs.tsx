@@ -65,7 +65,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'movimentos' | 'doc_venda' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -207,6 +207,9 @@ export default function ConfiguracaoTabs({
   const [artigoAtivo, setArtigoAtivo] = useState(true);
   const [confirmClearArtigosModal, setConfirmClearArtigosModal] = useState(false);
   const [clearingArtigosLoading, setClearingArtigosLoading] = useState(false);
+
+  // Estados Aba Validades
+  const [validadesSearch, setValidadesSearch] = useState('');
 
   useEffect(() => {
     setArtigosList(artigos);
@@ -486,6 +489,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">medication</span>
             {t.configuracao.tabArticles} ({artigos.length})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('validades');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'validades'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">event_available</span>
+            {t.configuracao.tabValidades}
           </button>
 
           <button
@@ -1476,6 +1494,179 @@ export default function ConfiguracaoTabs({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: VALIDADES (GESTÃO E CONFIGURAÇÃO) */}
+        {/* ========================================================================= */}
+        {activeTab === 'validades' && (
+          <div className="space-y-6">
+            {/* Header da Aba Validades */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-200 via-emerald-100 to-teal-200/80 border border-amber-300/60 flex items-center justify-center text-amber-900 shadow-sm shrink-0">
+                    <span className="material-symbols-outlined text-2xl text-amber-800">event_available</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold font-headline text-on-surface flex items-center gap-2">
+                      {t.configuracao.tabValidades}
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold">
+                        Prazos & Alertas
+                      </span>
+                    </h3>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {language === 'pt'
+                        ? 'Parametrização centralizada de prazos de validade (VAL) e expiração (EXP) por cliente e tipo de produto farmacêutico.'
+                        : language === 'es'
+                        ? 'Parametrización centralizada de plazos de caducidad (VAL) y expiración (EXP) por cliente y tipo de producto farmacéutico.'
+                        : 'Centralized configuration of expiry notice (VAL) and expiration (EXP) times per client and product type.'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Filtro / Pesquisa rápida de clientes */}
+                <div className="w-full sm:w-72">
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-base">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={validadesSearch}
+                      onChange={(e) => setValidadesSearch(e.target.value)}
+                      placeholder={t.common.search}
+                      className="w-full pl-9 pr-3 py-2 text-xs bg-surface-container border border-outline-variant/40 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary shadow-2xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Painel Informativo sobre Regras Padrão */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-xs flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 shrink-0">
+                  <span className="material-symbols-outlined text-xl">warning</span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface uppercase tracking-wide">
+                    Alerta de Validade (VAL)
+                  </h4>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Dias prévios para acionar alerta preventivo de aproximação do termo de validade (padrão: <strong>180 dias</strong> para Medicamentos Humanos).
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-xs flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-rose-100 text-rose-800 shrink-0">
+                  <span className="material-symbols-outlined text-xl">hourglass_bottom</span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface uppercase tracking-wide">
+                    Limite de Expiração (EXP)
+                  </h4>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Dias mínimos de tolerância para expedição ou bloqueio por expiração iminente (padrão: <strong>60 dias</strong>).
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-xs flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-800 shrink-0">
+                  <span className="material-symbols-outlined text-xl">verified</span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-on-surface uppercase tracking-wide">
+                    Critério FEFO Ativo
+                  </h4>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    First Expired, First Out aplicado automaticamente nas sugestões de preparação e saídas de stock.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela de Tempos de Validade por Cliente */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary text-lg">tune</span>
+                    {t.configuracao.clientTemposTitle}
+                  </h4>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    {t.configuracao.clientTemposDesc}
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border border-outline-variant/20 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[11px] border-b border-outline-variant/20">
+                    <tr>
+                      <th className="py-3 px-4">Sigla</th>
+                      <th className="py-3 px-4">Cliente</th>
+                      <th className="py-3 px-4 text-center">MH (VAL/EXP)</th>
+                      <th className="py-3 px-4 text-center">MV (VAL/EXP)</th>
+                      <th className="py-3 px-4 text-center">DM (VAL/EXP)</th>
+                      <th className="py-3 px-4 text-center">DC (VAL/EXP)</th>
+                      <th className="py-3 px-4 text-center">SA (VAL/EXP)</th>
+                      <th className="py-3 px-4 text-right">{t.common.actions}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                    {clients
+                      .filter((c) => {
+                        if (!validadesSearch) return true;
+                        const s = validadesSearch.toLowerCase();
+                        return (
+                          c.sigla.toLowerCase().includes(s) ||
+                          c.name.toLowerCase().includes(s)
+                        );
+                      })
+                      .map((c) => {
+                        const tempo = temposList.find((t) => t.id_cliente === c.id || t.sigla === c.sigla);
+                        return (
+                          <tr key={`val-cli-${c.id}`} className="hover:bg-surface-container/30 transition-colors">
+                            <td className="py-3 px-4 font-mono font-bold text-secondary">
+                              [{c.sigla}]
+                            </td>
+                            <td className="py-3 px-4 font-semibold">{c.name}</td>
+                            <td className="py-3 px-4 text-center font-mono">
+                              <span className="text-amber-800 font-bold">{tempo?.VAL_MH ?? 180}d</span> / <span className="text-rose-700 font-bold">{tempo?.EXP_MH ?? 60}d</span>
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono">
+                              <span className="text-amber-800 font-bold">{tempo?.VAL_MV ?? 180}d</span> / <span className="text-rose-700 font-bold">{tempo?.EXP_MV ?? 60}d</span>
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono">
+                              <span className="text-amber-800 font-bold">{tempo?.VAL_DM ?? 180}d</span> / <span className="text-rose-700 font-bold">{tempo?.EXP_DM ?? 60}d</span>
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono">
+                              <span className="text-amber-800 font-bold">{tempo?.VAL_DC ?? 180}d</span> / <span className="text-rose-700 font-bold">{tempo?.EXP_DC ?? 60}d</span>
+                            </td>
+                            <td className="py-3 px-4 text-center font-mono">
+                              <span className="text-amber-800 font-bold">{tempo?.VAL_SA ?? 180}d</span> / <span className="text-rose-700 font-bold">{tempo?.EXP_SA ?? 60}d</span>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditTempos(c, tempo)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container hover:bg-secondary hover:text-on-secondary text-secondary font-bold text-xs transition-all shadow-2xs cursor-pointer border border-outline-variant/30"
+                              >
+                                <span className="material-symbols-outlined text-sm">tune</span>
+                                {t.configuracao.btnConfigTempos}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 
