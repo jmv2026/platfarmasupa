@@ -50,6 +50,7 @@ export async function criarDestinoAction(input: NovoDestinoInput) {
       client_id: targetClientId,
       codigo: '', // O trigger preenche com a sigla do cliente e o número sequencial de 4 dígitos
       nome: input.nome.trim(),
+      cli_primavera: input.cli_primavera?.trim() || null,
       classifica_destino: input.classifica_destino?.trim() || null,
       morada: input.morada.trim(),
       codigo_postal: input.codigo_postal.trim(),
@@ -165,6 +166,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
         client_id: targetClientId,
         codigo: '', // O trigger preenche com a sigla do cliente e o número sequencial
         nome: input.nome_destinatario.trim(),
+        cli_primavera: input.cli_primavera?.trim() || null,
         classifica_destino: input.classifica_destino?.trim() || null,
         morada: input.morada.trim(),
         codigo_postal: input.codigo_postal.trim(),

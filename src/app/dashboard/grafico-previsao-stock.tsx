@@ -4,18 +4,25 @@ import React, { useState, useMemo, useRef } from 'react';
 import { DashboardStockItem, DashboardStockPedidoItem, DashboardPedidoItem } from './dashboard-view';
 import { useLanguage } from '@/lib/i18n/context';
 
-interface GraficoPrevisaoStockProps {
+export type PeriodoRunRate = '3m' | '6m' | '12m';
+export type HorizontePrevisao = '3m' | '6m' | '12m';
+export type TipoVisualizacao = 'combinado' | 'barras' | 'tendencia';
+
+export interface GraficoPrevisaoStockProps {
   stockAtual: DashboardStockItem[];
   stockPedidos?: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
   clientName?: string | null;
   selectedArticleCode?: string | null;
   onSelectArticleCode?: (codigo: string | null) => void;
+  runRatePeriodo?: PeriodoRunRate;
+  onRunRatePeriodoChange?: (p: PeriodoRunRate) => void;
+  horizonte?: HorizontePrevisao;
+  onHorizonteChange?: (h: HorizontePrevisao) => void;
+  tipoGrafico?: TipoVisualizacao;
+  onTipoGraficoChange?: (t: TipoVisualizacao) => void;
+  hideHeaderControls?: boolean;
 }
-
-type PeriodoRunRate = '3m' | '6m' | '12m';
-type HorizontePrevisao = '3m' | '6m' | '12m';
-type TipoVisualizacao = 'combinado' | 'barras' | 'tendencia';
 
 interface PontoPrevisao {
   index: number;
@@ -75,17 +82,42 @@ export default function GraficoPrevisaoStock({
   clientName,
   selectedArticleCode,
   onSelectArticleCode,
+  runRatePeriodo: propRunRatePeriodo,
+  onRunRatePeriodoChange,
+  horizonte: propHorizonte,
+  onHorizonteChange,
+  tipoGrafico: propTipoGrafico,
+  onTipoGraficoChange,
+  hideHeaderControls = false,
 }: GraficoPrevisaoStockProps) {
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
   const [internalSelectedCode, setInternalSelectedCode] = useState<string | null>(null);
-  const [runRatePeriodo, setRunRatePeriodo] = useState<PeriodoRunRate>('6m');
-  const [horizonte, setHorizonte] = useState<HorizontePrevisao>('6m');
-  const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
+  const [internalRunRate, setInternalRunRate] = useState<PeriodoRunRate>('6m');
+  const [internalHorizonte, setInternalHorizonte] = useState<HorizontePrevisao>('6m');
+  const [internalTipoGrafico, setInternalTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [diasReposicao, setDiasReposicao] = useState<number>(90);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const runRatePeriodo = propRunRatePeriodo ?? internalRunRate;
+  const setRunRatePeriodo = (p: PeriodoRunRate) => {
+    setInternalRunRate(p);
+    onRunRatePeriodoChange?.(p);
+  };
+
+  const horizonte = propHorizonte ?? internalHorizonte;
+  const setHorizonte = (h: HorizontePrevisao) => {
+    setInternalHorizonte(h);
+    onHorizonteChange?.(h);
+  };
+
+  const tipoGrafico = propTipoGrafico ?? internalTipoGrafico;
+  const setTipoGrafico = (t: TipoVisualizacao) => {
+    setInternalTipoGrafico(t);
+    onTipoGraficoChange?.(t);
+  };
 
   const activeCodigoAlvo =
     selectedArticleCode !== undefined && selectedArticleCode !== null
@@ -586,7 +618,7 @@ export default function GraficoPrevisaoStock({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                {t.dashboard.chartForecastTitle} {produtoAlvo ? `• ${produtoAlvo.codigo}` : ''}
+                {t.dashboard.chartForecastTitle}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -601,101 +633,103 @@ export default function GraficoPrevisaoStock({
         </div>
 
         {/* Controlos e Filtros */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-          {/* Seletor de Run-Rate (Base de Cálculo de Consumos: 3, 6 ou 12 meses) */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
-            <div className="px-2 py-0.5 text-[11px] font-bold text-emerald-950 flex items-center gap-1 border-r border-outline-variant/30 mr-1 shrink-0">
-              <span className="material-symbols-outlined text-sm text-lime-700">speed</span>
-              <span className="hidden sm:inline">{t.dashboard.forecastRunRateLabel}</span>
+        {!hideHeaderControls && (
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Seletor de Run-Rate (Base de Cálculo de Consumos: 3, 6 ou 12 meses) */}
+            <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+              <div className="px-2 py-0.5 text-[11px] font-bold text-emerald-950 flex items-center gap-1 border-r border-outline-variant/30 mr-1 shrink-0">
+                <span className="material-symbols-outlined text-sm text-lime-700">speed</span>
+                <span className="hidden sm:inline">{t.dashboard.forecastRunRateLabel}</span>
+              </div>
+              {(
+                [
+                  { id: '3m', label: t.dashboard.forecastRunRate3m },
+                  { id: '6m', label: t.dashboard.forecastRunRate6m },
+                  { id: '12m', label: t.dashboard.forecastRunRate12m },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={`rr-${opt.id}`}
+                  type="button"
+                  onClick={() => setRunRatePeriodo(opt.id)}
+                  className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${runRatePeriodo === opt.id
+                      ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs border border-lime-400 font-bold'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
+                    }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            {(
-              [
-                { id: '3m', label: t.dashboard.forecastRunRate3m },
-                { id: '6m', label: t.dashboard.forecastRunRate6m },
-                { id: '12m', label: t.dashboard.forecastRunRate12m },
-              ] as const
-            ).map((opt) => (
+
+            {/* Seletor de Horizonte de Previsão */}
+            <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+              <div className="px-2 py-0.5 text-[11px] font-bold text-emerald-950 flex items-center gap-1 border-r border-outline-variant/30 mr-1 shrink-0">
+                <span className="material-symbols-outlined text-sm text-teal-700">timeline</span>
+                <span className="hidden sm:inline">{t.dashboard.forecastProjectionLabel}</span>
+              </div>
+              {(
+                [
+                  { id: '3m', label: '3M' },
+                  { id: '6m', label: '6M' },
+                  { id: '12m', label: '12M' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setHorizonte(opt.id)}
+                  className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${horizonte === opt.id
+                      ? 'bg-white text-emerald-900 shadow-xs border border-emerald-200/60 font-bold'
+                      : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
+                    }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Seletor de Tipo de Gráfico */}
+            <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
               <button
-                key={`rr-${opt.id}`}
                 type="button"
-                onClick={() => setRunRatePeriodo(opt.id)}
-                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${runRatePeriodo === opt.id
-                    ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs border border-lime-400 font-bold'
+                onClick={() => setTipoGrafico('combinado')}
+                title={t.dashboard.viewMixed}
+                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'combinado'
+                    ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                     : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
                   }`}
               >
-                {opt.label}
+                <span className="material-symbols-outlined text-sm">area_chart</span>
+                <span className="hidden md:inline">{t.dashboard.viewMixed}</span>
               </button>
-            ))}
-          </div>
-
-          {/* Seletor de Horizonte de Previsão */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
-            <div className="px-2 py-0.5 text-[11px] font-bold text-emerald-950 flex items-center gap-1 border-r border-outline-variant/30 mr-1 shrink-0">
-              <span className="material-symbols-outlined text-sm text-teal-700">timeline</span>
-              <span className="hidden sm:inline">{t.dashboard.forecastProjectionLabel}</span>
-            </div>
-            {(
-              [
-                { id: '3m', label: '3M' },
-                { id: '6m', label: '6M' },
-                { id: '12m', label: '12M' },
-              ] as const
-            ).map((opt) => (
               <button
-                key={opt.id}
                 type="button"
-                onClick={() => setHorizonte(opt.id)}
-                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${horizonte === opt.id
-                    ? 'bg-white text-emerald-900 shadow-xs border border-emerald-200/60 font-bold'
+                onClick={() => setTipoGrafico('tendencia')}
+                title={t.dashboard.viewTrend}
+                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'tendencia'
+                    ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
                     : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
                   }`}
               >
-                {opt.label}
+                <span className="material-symbols-outlined text-sm">show_chart</span>
+                <span className="hidden md:inline">{t.dashboard.viewTrend}</span>
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setTipoGrafico('barras')}
+                title={t.dashboard.viewBars}
+                className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'barras'
+                    ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
+                  }`}
+              >
+                <span className="material-symbols-outlined text-sm">bar_chart</span>
+                <span className="hidden md:inline">{t.dashboard.viewBars}</span>
+              </button>
+            </div>
           </div>
-
-          {/* Seletor de Tipo de Gráfico */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setTipoGrafico('combinado')}
-              title={t.dashboard.viewMixed}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'combinado'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-sm">area_chart</span>
-              <span className="hidden md:inline">{t.dashboard.viewMixed}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipoGrafico('tendencia')}
-              title={t.dashboard.viewTrend}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'tendencia'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-sm">show_chart</span>
-              <span className="hidden md:inline">{t.dashboard.viewTrend}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipoGrafico('barras')}
-              title={t.dashboard.viewBars}
-              className={`px-2 sm:px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'barras'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-white/50'
-                }`}
-            >
-              <span className="material-symbols-outlined text-sm">bar_chart</span>
-              <span className="hidden md:inline">{t.dashboard.viewBars}</span>
-            </button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Cartão de Destaque do Produto em Análise */}

@@ -231,6 +231,7 @@ export interface Destino {
   client_id: string;
   codigo: string;
   nome: string;
+  cli_primavera?: string | null;
   classifica_destino?: string | null;
   morada: string;
   codigo_postal: string;
@@ -249,6 +250,7 @@ export interface Destino {
 export interface NovoDestinoInput {
   client_id: string;
   nome: string;
+  cli_primavera?: string;
   classifica_destino?: string;
   morada: string;
   codigo_postal: string;
@@ -314,6 +316,7 @@ export interface NovoPedidoInput {
   client_id: string;
   destino_id?: string | null;
   guardar_novo_destino?: boolean;
+  cli_primavera?: string;
   classifica_destino?: string;
   ref_documento?: string;
   nome_destinatario: string;
