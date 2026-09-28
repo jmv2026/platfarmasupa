@@ -147,6 +147,8 @@ export interface Translations {
     forecastLegendProjected: string;
     forecastLegendConsumption: string;
     forecastLegendBuffer: string;
+    forecastOrderLeadTime: string;
+    forecastOrderLeadTimeTitle: string;
     forecastMonthCurrent: string;
     forecastTooltipBufferLow: string;
     forecastTableTitle: string;
@@ -504,7 +506,7 @@ export const translations: Record<Language, Translations> = {
       top10OrdersSingle: 'pedido',
       top10OrdersPlural: 'pedidos',
       forecastSubtitle: 'Projeção de consumo, curva de autonomia e estimativa de esgotamento para o artigo selecionado',
-      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRateLabel: 'Média Consumo',
       forecastRunRate3m: '3 Meses',
       forecastRunRate6m: '6 Meses',
       forecastRunRate12m: '12 Meses',
@@ -528,9 +530,11 @@ export const translations: Record<Language, Translations> = {
       forecastStatusNoOutflow: 'Sem Saídas Recentes',
       forecastLegendProjected: 'Stock Projetado',
       forecastLegendConsumption: 'Consumo Acumulado',
-      forecastLegendBuffer: 'Buffer Segurança',
+      forecastLegendBuffer: 'Stock Segurança',
+      forecastOrderLeadTime: 'Lead Time',
+      forecastOrderLeadTimeTitle: 'Lead Time',
       forecastMonthCurrent: 'Mês Atual',
-      forecastTooltipBufferLow: 'Buffer Baixo',
+      forecastTooltipBufferLow: 'Stock Baixo',
       forecastTableTitle: 'Top Produtos Mais Pedidos - Comparativo de Stock & Autonomia',
       forecastTableSubtitle: 'Clique no código de qualquer produto para projetar a sua previsão no gráfico',
       forecastTableColRank: 'Posição',
@@ -884,7 +888,7 @@ export const translations: Record<Language, Translations> = {
       top10OrdersSingle: 'pedido',
       top10OrdersPlural: 'pedidos',
       forecastSubtitle: 'Proyección de consumo, curva de autonomía y estimación de agotamiento para el artículo seleccionado',
-      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRateLabel: 'Media Consumo',
       forecastRunRate3m: '3 Meses',
       forecastRunRate6m: '6 Meses',
       forecastRunRate12m: '12 Meses',
@@ -908,9 +912,11 @@ export const translations: Record<Language, Translations> = {
       forecastStatusNoOutflow: 'Sin Salidas Recientes',
       forecastLegendProjected: 'Stock Proyectado',
       forecastLegendConsumption: 'Consumo Acumulado',
-      forecastLegendBuffer: 'Buffer Seguridad',
+      forecastLegendBuffer: 'Stock Seguridad',
+      forecastOrderLeadTime: 'Lead Time',
+      forecastOrderLeadTimeTitle: 'Lead Time',
       forecastMonthCurrent: 'Mes Actual',
-      forecastTooltipBufferLow: 'Buffer Bajo',
+      forecastTooltipBufferLow: 'Stock Bajo',
       forecastTableTitle: 'Top Productos Más Pedidos - Comparativo de Stock & Autonomía',
       forecastTableSubtitle: 'Haga clic en el código de cualquier producto para proyectar su previsión en el gráfico',
       forecastTableColRank: 'Posición',
@@ -1264,7 +1270,7 @@ export const translations: Record<Language, Translations> = {
       top10OrdersSingle: 'order',
       top10OrdersPlural: 'orders',
       forecastSubtitle: 'Consumption projection, runway curve and stockout estimate for the selected article',
-      forecastRunRateLabel: 'Run-Rate',
+      forecastRunRateLabel: 'Avg. Consumption',
       forecastRunRate3m: '3 Months',
       forecastRunRate6m: '6 Months',
       forecastRunRate12m: '12 Months',
@@ -1288,9 +1294,11 @@ export const translations: Record<Language, Translations> = {
       forecastStatusNoOutflow: 'No Recent Outflows',
       forecastLegendProjected: 'Projected Stock',
       forecastLegendConsumption: 'Cumulative Consumption',
-      forecastLegendBuffer: 'Safety Buffer',
+      forecastLegendBuffer: 'Safety Stock',
+      forecastOrderLeadTime: 'Order Lead Time',
+      forecastOrderLeadTimeTitle: 'Order Lead Time',
       forecastMonthCurrent: 'Current Month',
-      forecastTooltipBufferLow: 'Low Buffer',
+      forecastTooltipBufferLow: 'Low Stock',
       forecastTableTitle: 'Top Most Ordered Products - Stock & Runway Comparison',
       forecastTableSubtitle: 'Click on any product code to project its forecast on the chart',
       forecastTableColRank: 'Rank',

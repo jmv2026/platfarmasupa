@@ -896,12 +896,19 @@ export default function GraficoPrevisaoStock({
             <span>{t.dashboard.forecastLegendBuffer}</span>
           </span>
 
-          <div className="flex items-center gap-1 border-l border-lime-300/50 pl-2 ml-1" title={language === 'en' ? 'Replenishment time (days) for safety buffer' : language === 'es' ? 'Tiempo de reposición (días) para el buffer de seguridad' : 'Tempo de reposição (dias) para cálculo do buffer de segurança'}>
+          <div
+            className="flex items-center gap-1 border-l border-lime-300/50 pl-2 ml-1"
+            title={t.dashboard.forecastOrderLeadTimeTitle}
+          >
             <span className="material-symbols-outlined text-[13px] text-rose-600">timer</span>
+            <span className="text-[10px] text-rose-900 font-bold hidden sm:inline">
+              {t.dashboard.forecastOrderLeadTime}:
+            </span>
             <input
               type="number"
               min="0"
               step="1"
+              title={t.dashboard.forecastOrderLeadTimeTitle}
               value={diasReposicao}
               onChange={(e) => setDiasReposicao(Number(e.target.value) || 0)}
               className="w-12 px-1 py-0.5 text-[10px] font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400 shadow-xs text-center"
