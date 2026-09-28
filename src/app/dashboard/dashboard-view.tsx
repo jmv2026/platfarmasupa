@@ -20,6 +20,8 @@ export interface DashboardFaturacaoItem {
 
 export interface DashboardStockItem {
   artigo_id: string;
+  artigo_codigo?: string | null;
+  artigo_descricao?: string | null;
   validade: string | null;
   stock: number;
   client_id: string;
@@ -214,10 +216,10 @@ export default function DashboardView({
     return clients.find((c) => c.id === selectedClientId);
   }, [clients, selectedClientId]);
 
-  const effectiveClientObj = isManagerOrAdmin 
+  const effectiveClientObj = isManagerOrAdmin
     ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))
     : clients.find(c => c.id === currentUserProfile?.client_id);
-    
+
   const showFaturacao = effectiveClientObj?.tipo_cliente === 'CF';
 
   return (
@@ -401,11 +403,10 @@ export default function DashboardView({
         <button
           type="button"
           onClick={() => handleSelecionarGrafico('pedidos')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
-            graficoAtivo === 'pedidos'
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${graficoAtivo === 'pedidos'
               ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
               : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">insights</span>
           <span>{t.dashboard.chartMonthlyTitle}</span>
@@ -414,11 +415,10 @@ export default function DashboardView({
         <button
           type="button"
           onClick={() => handleSelecionarGrafico('top10')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
-            graficoAtivo === 'top10'
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${graficoAtivo === 'top10'
               ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
               : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">leaderboard</span>
           <span>{t.dashboard.chartTop10Title}</span>
@@ -428,11 +428,10 @@ export default function DashboardView({
           <button
             type="button"
             onClick={() => handleSelecionarGrafico('faturacao')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
-              graficoAtivo === 'faturacao'
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all shadow-xs cursor-pointer ${graficoAtivo === 'faturacao'
                 ? 'bg-gradient-to-r from-lime-300 via-lime-200 to-emerald-300 text-emerald-950 border border-lime-500 font-extrabold shadow-sm'
                 : 'bg-surface-container-lowest text-on-surface-variant hover:text-on-surface hover:bg-lime-50/50 border border-lime-400/60 hover:border-lime-500'
-            }`}
+              }`}
           >
             <span className="material-symbols-outlined text-base sm:text-lg text-emerald-800">euro_symbol</span>
             <span>Faturação Mensal</span>

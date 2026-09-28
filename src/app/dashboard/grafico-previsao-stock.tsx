@@ -133,16 +133,19 @@ export default function GraficoPrevisaoStock({
         p.pedido_linhas.forEach((linha) => {
           const cod = (linha.artigo_codigo || linha.artigo_id || 'N/A').trim();
           const qtd = Number(linha.quantidade) || 0;
+          const desc = linha.descricao?.trim();
           totalGeralPedidosUnidades += qtd;
 
           if (!pedidosPorArtigo[cod]) {
             pedidosPorArtigo[cod] = {
               codigo: cod,
-              descricao: linha.descricao || cod,
+              descricao: desc || cod,
               totalQtd: 0,
               totalQtdRunRate: 0,
               pedidosSet: new Set(),
             };
+          } else if (desc && (pedidosPorArtigo[cod].descricao === cod || desc.length > pedidosPorArtigo[cod].descricao.length)) {
+            pedidosPorArtigo[cod].descricao = desc;
           }
           pedidosPorArtigo[cod].totalQtd += qtd;
           if (isInRunRate) {
@@ -156,14 +159,32 @@ export default function GraficoPrevisaoStock({
     // 3. Mapeamento de stock por artigo
     const stockPorArtigo: Record<
       string,
-      { stock: number; validadeMaisProxima: string | null; itens: DashboardStockItem[] }
+      { stock: number; validadeMaisProxima: string | null; descricao?: string; itens: DashboardStockItem[] }
     > = {};
 
     stockAtual.forEach((item) => {
-      const artId = (item.artigo_id || 'N/A').trim();
+      const artId = (item.artigo_codigo || item.artigo_id || 'N/A').trim();
+      const desc = item.artigo_descricao?.trim();
+
       if (!stockPorArtigo[artId]) {
-        stockPorArtigo[artId] = { stock: 0, validadeMaisProxima: item.validade || null, itens: [] };
+        stockPorArtigo[artId] = {
+          stock: 0,
+          validadeMaisProxima: item.validade || null,
+          descricao: desc || undefined,
+          itens: [],
+        };
+      } else if (desc && (!stockPorArtigo[artId].descricao || desc.length > (stockPorArtigo[artId].descricao?.length || 0))) {
+        stockPorArtigo[artId].descricao = desc;
       }
+
+      // Se item.artigo_id for diferente de artigo_codigo, mapear também como alias
+      if (item.artigo_id && item.artigo_id.trim() !== artId) {
+        const idAlt = item.artigo_id.trim();
+        if (!stockPorArtigo[idAlt]) {
+          stockPorArtigo[idAlt] = stockPorArtigo[artId];
+        }
+      }
+
       stockPorArtigo[artId].stock += Number(item.stock || 0);
       stockPorArtigo[artId].itens.push(item);
       if (item.validade) {
@@ -173,6 +194,22 @@ export default function GraficoPrevisaoStock({
         ) {
           stockPorArtigo[artId].validadeMaisProxima = item.validade;
         }
+      }
+    });
+
+    // Sincronizar descrições completas entre pedidos e stock
+    Object.keys(pedidosPorArtigo).forEach((cod) => {
+      const ped = pedidosPorArtigo[cod];
+      const stk = stockPorArtigo[cod];
+      if (stk?.descricao && (!ped.descricao || ped.descricao === cod || stk.descricao.length > ped.descricao.length)) {
+        ped.descricao = stk.descricao;
+      }
+    });
+    Object.keys(stockPorArtigo).forEach((cod) => {
+      const stk = stockPorArtigo[cod];
+      const ped = pedidosPorArtigo[cod];
+      if (ped?.descricao && ped.descricao !== cod && (!stk.descricao || ped.descricao.length > stk.descricao.length)) {
+        stk.descricao = ped.descricao;
       }
     });
 
@@ -219,7 +256,11 @@ export default function GraficoPrevisaoStock({
     const totalQtdPedidosAlvo = infoPedidoAlvo ? infoPedidoAlvo.totalQtd : 0;
     const nrPedidosAlvo = infoPedidoAlvo ? infoPedidoAlvo.pedidosSet.size : 0;
     const validadeMaisProximaAlvo = infoStockAlvo ? infoStockAlvo.validadeMaisProxima : null;
-    const descricaoAlvo = infoPedidoAlvo?.descricao || codigoAlvo || '';
+    const descFromPed = infoPedidoAlvo?.descricao && infoPedidoAlvo.descricao !== codigoAlvo ? infoPedidoAlvo.descricao : null;
+    const descFromStk = infoStockAlvo?.descricao && infoStockAlvo.descricao !== codigoAlvo ? infoStockAlvo.descricao : null;
+    const descricaoAlvo = descFromPed && descFromStk
+      ? (descFromPed.length >= descFromStk.length ? descFromPed : descFromStk)
+      : descFromPed || descFromStk || infoPedidoAlvo?.descricao || codigoAlvo || '';
 
     // 6. Consumo Médio Mensal (Run-Rate) do Produto em Análise
     const totalQtdRunRateAlvo = infoPedidoAlvo ? infoPedidoAlvo.totalQtdRunRate : 0;
@@ -364,7 +405,7 @@ export default function GraficoPrevisaoStock({
       return {
         rank: rankOrig > 0 ? rankOrig : idx + 1,
         codigo: art.codigo,
-        descricao: art.descricao,
+        descricao: (art.descricao && art.descricao !== art.codigo ? art.descricao : stkInfo.descricao) || art.descricao || art.codigo,
         stockAtual: stkInfo.stock,
         totalQtd: art.totalQtd,
         consumoMedioMensal: consMedio,
@@ -660,28 +701,30 @@ export default function GraficoPrevisaoStock({
       {/* Cartão de Destaque do Produto em Análise */}
       {produtoAlvo && (
         <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 sm:py-3 rounded-xl border shadow-2xs my-4 transition-all ${produtoAlvo.isLider
+          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5 rounded-xl border shadow-2xs my-4 transition-all ${produtoAlvo.isLider
               ? 'bg-gradient-to-r from-lime-100/90 via-emerald-50/80 to-teal-50/90 border-lime-300/80'
               : 'bg-gradient-to-r from-emerald-100/80 via-teal-50/70 to-lime-50/80 border-emerald-300/80'
             }`}
         >
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
             <div
-              className={`w-9 h-9 rounded-lg font-black flex items-center justify-center text-sm shadow-xs shrink-0 ${produtoAlvo.isLider
+              className={`w-9 h-9 rounded-lg font-black flex items-center justify-center text-sm shadow-xs shrink-0 mt-0.5 sm:mt-0 ${produtoAlvo.isLider
                   ? 'bg-lime-400 text-slate-950 ring-2 ring-lime-500/50'
                   : 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
                 }`}
             >
               {produtoAlvo.rank ? `#${produtoAlvo.rank}` : '•'}
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono font-bold text-sm text-emerald-950">{produtoAlvo.codigo}</span>
-                <span className="text-xs text-on-surface font-medium truncate max-w-[260px] sm:max-w-md">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-mono font-bold text-xs sm:text-sm text-emerald-950 bg-white/75 px-2 py-0.5 rounded border border-emerald-200/60 shadow-2xs shrink-0">
+                  {produtoAlvo.codigo}
+                </span>
+                <span className="text-sm sm:text-base text-slate-900 font-bold break-words leading-snug">
                   {produtoAlvo.descricao}
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-emerald-900 mt-0.5 flex-wrap">
+              <div className="flex items-center gap-3 text-[11px] text-emerald-900 mt-1 flex-wrap">
                 <span>
                   {t.dashboard.forecastCurrentStock}: <strong className="text-emerald-950">{produtoAlvo.stockAtual.toLocaleString(locale)} {t.dashboard.top10UnitsLabel}</strong>
                 </span>
@@ -1365,7 +1408,7 @@ export default function GraficoPrevisaoStock({
                         <span>{art.codigo}</span>
                       </button>
                     </td>
-                    <td className="py-2 px-3 text-on-surface font-medium max-w-[240px] truncate">
+                    <td className="py-2 px-3 text-on-surface font-medium max-w-[280px] truncate" title={art.descricao}>
                       {art.descricao}
                     </td>
                     <td className="py-2 px-3 text-right font-semibold text-slate-800">
