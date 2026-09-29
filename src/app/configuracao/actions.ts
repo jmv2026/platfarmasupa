@@ -959,3 +959,132 @@ export async function importarDocVendaAction(
   }
 }
 
+// ============================================================================
+// 10. AÇÕES: Gestão ERP (plat_entradas & plat_saidas)
+// ============================================================================
+
+export async function obterResumoErpAction() {
+  const supabase = await createClient();
+
+  try {
+    const [entradasCountRes, saidasCountRes, entradasDataRes, saidasDataRes] = await Promise.all([
+      supabase.from('plat_entradas').select('*', { count: 'exact', head: true }),
+      supabase.from('plat_saidas').select('*', { count: 'exact', head: true }),
+      supabase.from('plat_entradas').select('*').order('data', { ascending: false }).limit(50),
+      supabase.from('plat_saidas').select('*').order('data', { ascending: false }).limit(50),
+    ]);
+
+    return {
+      success: true,
+      entradasCount: entradasCountRes.count || 0,
+      saidasCount: saidasCountRes.count || 0,
+      entradasRecentes: entradasDataRes.data || [],
+      saidasRecentes: saidasDataRes.data || [],
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao obter dados ERP';
+    return { success: false, error: msg, entradasCount: 0, saidasCount: 0, entradasRecentes: [], saidasRecentes: [] };
+  }
+}
+
+export async function importarErpEntradasAction(rows: any[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user && process.env.NODE_ENV === 'production') {
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'Nenhum registo de entrada válido fornecido.' };
+  }
+
+  try {
+    // Sanitizar cada linha removendo 'id' para deixar a sequence identity de Postgres atuar
+    const sanitizedRows = rows.map((r) => {
+      const { id, ...rest } = r;
+      const clean: Record<string, any> = {};
+      for (const [k, v] of Object.entries(rest)) {
+        clean[k] = v === undefined ? null : v;
+      }
+      return clean;
+    });
+
+    const { error: insertErr } = await supabase.from('plat_entradas').insert(sanitizedRows);
+    if (insertErr) {
+      console.error('Erro ao inserir plat_entradas:', insertErr);
+      return { success: false, error: `Erro na gravação: ${insertErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: sanitizedRows.length };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro na importação de entradas';
+    return { success: false, error: msg };
+  }
+}
+
+export async function importarErpSaidasAction(rows: any[]) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user && process.env.NODE_ENV === 'production') {
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'Nenhum registo de saída válido fornecido.' };
+  }
+
+  try {
+    const sanitizedRows = rows.map((r) => {
+      const { id, ...rest } = r;
+      const clean: Record<string, any> = {};
+      for (const [k, v] of Object.entries(rest)) {
+        clean[k] = v === undefined ? null : v;
+      }
+      return clean;
+    });
+
+    const { error: insertErr } = await supabase.from('plat_saidas').insert(sanitizedRows);
+    if (insertErr) {
+      console.error('Erro ao inserir plat_saidas:', insertErr);
+      return { success: false, error: `Erro na gravação: ${insertErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: sanitizedRows.length };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro na importação de saídas';
+    return { success: false, error: msg };
+  }
+}
+
+export async function limparTabelaErpAction(tabela: 'plat_entradas' | 'plat_saidas') {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    const userRole = profile?.role || (user.user_metadata?.role as string);
+    if (userRole && userRole !== 'admin' && userRole !== 'gestor') {
+      return { success: false, error: 'Acesso negado: apenas Administradores ou Gestores podem limpar tabelas ERP.' };
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
+  }
+
+  try {
+    const { error: delErr } = await supabase.from(tabela).delete().gte('id', 0);
+    if (delErr) {
+      return { success: false, error: delErr.message };
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao limpar tabela';
+    return { success: false, error: msg };
+  }
+}
+
