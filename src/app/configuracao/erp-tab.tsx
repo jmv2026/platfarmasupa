@@ -7,6 +7,10 @@ import {
   importarErpEntradasAction,
   importarErpSaidasAction,
   limparTabelaErpAction,
+  obterStatusSincronizacaoErpAction,
+  sincronizarErpAction,
+  obterClientesParaSyncAction,
+  StatusSincronizacaoErp,
 } from './actions';
 import {
   PlatEntradaRow,
@@ -44,16 +48,36 @@ export default function ErpTab({ onRefresh }: { onRefresh?: () => void }) {
   const [modoSaidas, setModoSaidas] = useState<'adicionar' | 'substituir'>('adicionar');
   const fileInputSaidasRef = useRef<HTMLInputElement>(null);
 
+  // Estados do Processo de Sincronização ERP
+  const [syncStatus, setSyncStatus] = useState<StatusSincronizacaoErp | null>(null);
+  const [syncStatusLoading, setSyncStatusLoading] = useState(false);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncArtigos, setSyncArtigos] = useState(true);
+  const [syncDocVenda, setSyncDocVenda] = useState(true);
+  const [syncMovimentos, setSyncMovimentos] = useState(true);
+  const [clientsList, setClientsList] = useState<Array<{ id: string; sigla: string; name: string; cli_primavera?: string | null }>>([]);
+  const [selectedDefaultClient, setSelectedDefaultClient] = useState<string>('');
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<{
+    artigosNovos: number;
+    docVendaNovos: number;
+    movimentosTotalNovos: number;
+    data: string;
+  } | null>(null);
+
   // Sub-aba de visualização das tabelas
   const [viewTab, setViewTab] = useState<'entradas' | 'saidas'>('entradas');
   const [searchEntradas, setSearchEntradas] = useState('');
   const [searchSaidas, setSearchSaidas] = useState('');
 
-  // Carregar dados iniciais do Supabase
+  // Carregar dados do Supabase (resumo das tabelas e estado da sincronização)
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const res = await obterResumoErpAction();
+      const [res] = await Promise.all([
+        obterResumoErpAction(),
+        carregarStatusSync(),
+      ]);
       if (res.success) {
         setEntradasCount(res.entradasCount);
         setSaidasCount(res.saidasCount);
@@ -67,8 +91,32 @@ export default function ErpTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
+  const carregarStatusSync = async () => {
+    setSyncStatusLoading(true);
+    try {
+      const [statusRes, clientsRes] = await Promise.all([
+        obterStatusSincronizacaoErpAction(),
+        obterClientesParaSyncAction(),
+      ]);
+      if (statusRes.success && statusRes.status) {
+        setSyncStatus(statusRes.status);
+      }
+      if (clientsRes.success && clientsRes.clients) {
+        setClientsList(clientsRes.clients);
+        if (clientsRes.clients.length > 0) {
+          setSelectedDefaultClient(prev => prev || clientsRes.clients[0].id);
+        }
+      }
+    } catch {
+      // Ignora erro
+    } finally {
+      setSyncStatusLoading(false);
+    }
+  };
+
   useEffect(() => {
     carregarDados();
+    carregarStatusSync();
   }, []);
 
   // Handler Janela 1: Seleção de Ficheiro de Entradas
@@ -268,6 +316,55 @@ export default function ErpTab({ onRefresh }: { onRefresh?: () => void }) {
     }
   };
 
+  // Handler do Processo de Sincronização
+  const handleExecutarSincronizacao = async () => {
+    if (!syncArtigos && !syncDocVenda && !syncMovimentos) {
+      setFeedback({
+        type: 'error',
+        message: 'Selecione pelo menos um módulo para sincronizar (Artigos, Documentos de Venda ou Movimentos).',
+      });
+      return;
+    }
+
+    setSyncLoading(true);
+    setSyncProgress('A processar sincronização na base de dados PostgreSQL...');
+    setFeedback(null);
+
+    try {
+      const res = await sincronizarErpAction({
+        syncArtigos,
+        syncDocVenda,
+        syncMovimentos,
+        defaultClientId: selectedDefaultClient || undefined,
+      });
+
+      if (!res.success) {
+        throw new Error(res.error || 'Falha na sincronização.');
+      }
+
+      setSyncResult({
+        artigosNovos: res.artigosNovos ?? 0,
+        docVendaNovos: res.docVendaNovos ?? 0,
+        movimentosTotalNovos: res.movimentosTotalNovos ?? 0,
+        data: new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
+
+      setFeedback({
+        type: 'success',
+        message: `Sincronização concluída com sucesso! ${res.artigosNovos ?? 0} novos artigos, ${res.docVendaNovos ?? 0} faturas em doc_venda e ${res.movimentosTotalNovos ?? 0} movimentos criados.`,
+      });
+
+      await Promise.all([carregarDados(), carregarStatusSync()]);
+      if (onRefresh) onRefresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro na sincronização';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setSyncLoading(false);
+      setSyncProgress(null);
+    }
+  };
+
   // Filtros de busca
   const filteredEntradas = useMemo(() => {
     if (!searchEntradas.trim()) return entradasList;
@@ -322,15 +419,30 @@ export default function ErpTab({ onRefresh }: { onRefresh?: () => void }) {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             PostgreSQL 17 Supabase
           </span>
-          <button
-            type="button"
-            onClick={carregarDados}
-            disabled={loading}
-            className="px-3 py-1.5 rounded-xl border border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50 transition-all flex items-center gap-1"
-          >
-            <span className={`material-symbols-outlined text-sm ${loading ? 'animate-spin' : ''}`}>sync</span>
-            Atualizar
-          </button>
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={carregarDados}
+              disabled={loading}
+              className="px-3.5 py-1.5 rounded-xl bg-lime-400 hover:bg-lime-300 active:bg-lime-500 text-slate-950 font-bold border border-lime-500 text-xs shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className={`material-symbols-outlined text-sm text-slate-950 font-medium ${loading ? 'animate-spin' : ''}`}>sync</span>
+              Atualizar
+            </button>
+            {/* Pop-up explicativo ao passar o rato */}
+            <div className="pointer-events-none absolute right-0 top-full mt-2 w-72 p-3 bg-neutral-900/95 text-white text-xs rounded-xl shadow-2xl border border-neutral-700/60 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 z-50">
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-secondary text-base shrink-0 mt-0.5">refresh</span>
+                <div>
+                  <p className="font-bold text-white text-xs mb-0.5">Atualizar Dados ERP</p>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Recarrega as contagens totais, os registos recentes de entradas e saídas e revalida o estado da sincronização em tempo real.
+                  </p>
+                </div>
+              </div>
+              <div className="absolute -top-1.5 right-6 w-3 h-3 bg-neutral-900/95 border-t border-l border-neutral-700/60 rotate-45"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -686,6 +798,274 @@ export default function ErpTab({ onRefresh }: { onRefresh?: () => void }) {
               )}
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SEÇÃO DO PROCESSO DE SINCRONIZAÇÃO ERP */}
+      {/* ========================================================================= */}
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+        {/* Cabeçalho da Sincronização */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-secondary/15 flex items-center justify-center text-secondary shadow-sm">
+              <span className="material-symbols-outlined text-2xl">sync_alt</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-lg font-bold font-headline text-on-surface">
+                  Processo de Sincronização ERP
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary/10 text-secondary border border-secondary/20">
+                  Consolidação Operacional
+                </span>
+              </div>
+              <p className="text-xs text-on-surface-variant mt-1">
+                Converte e consolida os registos carregados em <code className="font-mono text-secondary font-bold">plat_entradas</code> e <code className="font-mono text-secondary font-bold">plat_saidas</code> para alimentar o Catálogo de Artigos, Documentos de Venda e Movimentos de Stock.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={carregarStatusSync}
+              disabled={syncStatusLoading || syncLoading}
+              className="px-3.5 py-2 rounded-xl bg-lime-400 hover:bg-lime-300 active:bg-lime-500 text-slate-950 font-bold border border-lime-500 text-xs shadow-xs hover:shadow-sm transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className={`material-symbols-outlined text-sm text-slate-950 font-medium ${syncStatusLoading ? 'animate-spin' : ''}`}>sync</span>
+              Verificar Estado
+            </button>
+            {/* Pop-up explicativo ao passar o rato */}
+            <div className="pointer-events-none absolute right-0 top-full mt-2 w-72 p-3 bg-neutral-900/95 text-white text-xs rounded-xl shadow-2xl border border-neutral-700/60 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 z-50">
+              <div className="flex items-start gap-2.5">
+                <span className="material-symbols-outlined text-secondary text-base shrink-0 mt-0.5">sync_alt</span>
+                <div>
+                  <p className="font-bold text-white text-xs mb-0.5">Verificar Estado da Sincronização</p>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Recalcula os novos artigos, documentos de venda e movimentos pendentes de consolidação, atualizando os indicadores.
+                  </p>
+                </div>
+              </div>
+              <div className="absolute -top-1.5 right-6 w-3 h-3 bg-neutral-900/95 border-t border-l border-neutral-700/60 rotate-45"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Cartões de Estado dos Módulos */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Card 1: Artigos */}
+          <div className="bg-surface-container-low/50 border border-outline-variant/30 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-lg">inventory_2</span>
+                <span className="text-xs font-bold text-on-surface">Catálogo de Artigos</span>
+              </div>
+              {syncStatus?.artigos_pendentes === 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Sincronizado
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                  {syncStatus?.artigos_pendentes ?? 0} pendentes
+                </span>
+              )}
+            </div>
+            <div className="text-2xl font-bold font-headline text-on-surface">
+              {syncStatus?.total_artigos ?? 0}
+              <span className="text-xs font-normal text-on-surface-variant ml-1.5">artigos no catálogo</span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant">
+              {syncStatus?.artigos_pendentes ?? 0} novos artigos detetados nas compras e vendas do ERP.
+            </p>
+          </div>
+
+          {/* Card 2: Documentos de Venda */}
+          <div className="bg-surface-container-low/50 border border-outline-variant/30 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-lg">receipt_long</span>
+                <span className="text-xs font-bold text-on-surface">Documentos de Venda</span>
+              </div>
+              {syncStatus?.doc_venda_pendentes === 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Sincronizado
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                  {syncStatus?.doc_venda_pendentes ?? 0} pendentes
+                </span>
+              )}
+            </div>
+            <div className="text-2xl font-bold font-headline text-on-surface">
+              {syncStatus?.total_doc_venda ?? 0}
+              <span className="text-xs font-normal text-on-surface-variant ml-1.5">faturas registadas</span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant">
+              Tabela operacional <code className="font-mono text-secondary">doc_venda</code> sincronizada com as saídas do ERP.
+            </p>
+          </div>
+
+          {/* Card 3: Movimentos de Stock */}
+          <div className="bg-surface-container-low/50 border border-outline-variant/30 rounded-xl p-4.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary text-lg">swap_horiz</span>
+                <span className="text-xs font-bold text-on-surface">Movimentos de Stock</span>
+              </div>
+              {syncStatus?.movimentos_pendentes === 0 ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  Sincronizado
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                  {syncStatus?.movimentos_pendentes ?? 0} pendentes
+                </span>
+              )}
+            </div>
+            <div className="text-2xl font-bold font-headline text-on-surface">
+              {syncStatus?.total_movimentos ?? 0}
+              <span className="text-xs font-normal text-on-surface-variant ml-1.5">movimentos gerados</span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant">
+              {syncStatus?.mov_entradas_pendentes ?? 0} entradas (compras) e {syncStatus?.mov_saidas_pendentes ?? 0} saídas (vendas).
+            </p>
+          </div>
+        </div>
+
+        {/* Painel de Configuração e Execução */}
+        <div className="bg-surface-container-low/30 border border-outline-variant/30 rounded-2xl p-5 sm:p-6 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Opção 1: Artigos */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface cursor-pointer hover:border-secondary/50 transition-all">
+              <input
+                type="checkbox"
+                checked={syncArtigos}
+                onChange={e => setSyncArtigos(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-outline-variant text-secondary focus:ring-secondary/40"
+              />
+              <div>
+                <span className="text-xs font-bold text-on-surface block">
+                  Sincronizar Artigos
+                </span>
+                <span className="text-[11px] text-on-surface-variant mt-0.5 block leading-relaxed">
+                  Insere ou atualiza os artigos na tabela <code className="font-mono text-secondary">artigos</code> com descrição e tipo de conservação.
+                </span>
+              </div>
+            </label>
+
+            {/* Opção 2: Documentos de Venda */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface cursor-pointer hover:border-secondary/50 transition-all">
+              <input
+                type="checkbox"
+                checked={syncDocVenda}
+                onChange={e => setSyncDocVenda(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-outline-variant text-secondary focus:ring-secondary/40"
+              />
+              <div>
+                <span className="text-xs font-bold text-on-surface block">
+                  Documentos de Venda
+                </span>
+                <span className="text-[11px] text-on-surface-variant mt-0.5 block leading-relaxed">
+                  Converte as linhas de faturação de <code className="font-mono text-secondary">plat_saidas</code> para a tabela <code className="font-mono text-secondary">doc_venda</code>.
+                </span>
+              </div>
+            </label>
+
+            {/* Opção 3: Movimentos de Stock */}
+            <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface cursor-pointer hover:border-secondary/50 transition-all">
+              <input
+                type="checkbox"
+                checked={syncMovimentos}
+                onChange={e => setSyncMovimentos(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-outline-variant text-secondary focus:ring-secondary/40"
+              />
+              <div>
+                <span className="text-xs font-bold text-on-surface block">
+                  Movimentos de Stock
+                </span>
+                <span className="text-[11px] text-on-surface-variant mt-0.5 block leading-relaxed">
+                  Gera entradas (<code className="font-mono">es</code>) e saídas (<code className="font-mono">ss</code>) na tabela <code className="font-mono text-secondary">movimentos</code>.
+                </span>
+              </div>
+            </label>
+          </div>
+
+          {/* Seleção de Cliente Padrão (Fallback) */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-outline-variant/20">
+            <div className="flex-1 max-w-md">
+              <label className="text-xs font-semibold text-on-surface block mb-1">
+                Cliente Padrão (Fallback para movimentos sem sigla direta)
+              </label>
+              <select
+                value={selectedDefaultClient}
+                onChange={e => setSelectedDefaultClient(e.target.value)}
+                disabled={syncLoading || clientsList.length === 0}
+                className="w-full text-xs bg-surface border border-outline-variant/40 rounded-xl px-3 py-2 text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40"
+              >
+                {clientsList.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.sigla} • {c.name} {c.cli_primavera ? `(Cód: ${c.cli_primavera})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleExecutarSincronizacao}
+                disabled={syncLoading || (!syncArtigos && !syncDocVenda && !syncMovimentos)}
+                className="px-6 py-3 rounded-xl bg-secondary text-on-secondary text-xs sm:text-sm font-bold shadow-md hover:bg-secondary/90 transition-all flex items-center gap-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {syncLoading ? (
+                  <>
+                    <span className="material-symbols-outlined text-base animate-spin">sync</span>
+                    A sincronizar dados...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">cloud_sync</span>
+                    Executar Sincronização
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Barra de Progresso durante a sincronização */}
+          {syncProgress && (
+            <div className="p-3.5 bg-secondary/10 border border-secondary/20 rounded-xl text-xs text-secondary font-medium flex items-center gap-2.5 animate-pulse">
+              <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+              <span>{syncProgress}</span>
+            </div>
+          )}
+
+          {/* Resumo do Último Resultado */}
+          {syncResult && (
+            <div className="p-4 bg-emerald-50/80 border border-emerald-200/80 rounded-xl text-xs text-emerald-900 space-y-2">
+              <div className="flex items-center justify-between font-bold">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-base text-emerald-700">check_circle</span>
+                  Última Sincronização Concluída ({syncResult.data})
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-emerald-800 pt-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Artigos adicionados: <strong>{syncResult.artigosNovos}</strong>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Doc. Venda criados: <strong>{syncResult.docVendaNovos}</strong>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Movimentos de stock: <strong>{syncResult.movimentosTotalNovos}</strong>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1088,3 +1088,105 @@ export async function limparTabelaErpAction(tabela: 'plat_entradas' | 'plat_said
   }
 }
 
+// 11. AÇÕES: Sincronização ERP para Tabelas do Sistema (artigos, doc_venda, movimentos)
+export interface StatusSincronizacaoErp {
+  total_entradas: number;
+  total_saidas: number;
+  total_artigos: number;
+  total_doc_venda: number;
+  total_movimentos: number;
+  artigos_pendentes: number;
+  doc_venda_pendentes: number;
+  mov_entradas_pendentes: number;
+  mov_saidas_pendentes: number;
+  movimentos_pendentes: number;
+}
+
+export async function obterStatusSincronizacaoErpAction(): Promise<{
+  success: boolean;
+  status?: StatusSincronizacaoErp;
+  error?: string;
+}> {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.rpc('obter_status_sincronizacao_erp');
+    if (error) {
+      console.error('Erro ao obter status sincronizacao ERP:', error);
+      return { success: false, error: error.message };
+    }
+    return { success: true, status: data as StatusSincronizacaoErp };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao obter estado de sincronização';
+    return { success: false, error: msg };
+  }
+}
+
+export async function obterClientesParaSyncAction() {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('id, sigla, name, cli_primavera')
+      .order('name');
+    if (error) return { success: false, error: error.message, clients: [] };
+    return { success: true, clients: data || [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao carregar clientes';
+    return { success: false, error: msg, clients: [] };
+  }
+}
+
+export async function sincronizarErpAction(options: {
+  syncArtigos: boolean;
+  syncDocVenda: boolean;
+  syncMovimentos: boolean;
+  defaultClientId?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single();
+    const userRole = profile?.role || (user.user_metadata?.role as string);
+    if (userRole && userRole !== 'admin' && userRole !== 'gestor') {
+      return {
+        success: false,
+        error: 'Acesso negado: apenas Administradores ou Gestores podem executar a sincronização ERP.',
+      };
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('sincronizar_erp_dados', {
+      p_sync_artigos: options.syncArtigos,
+      p_sync_doc_venda: options.syncDocVenda,
+      p_sync_movimentos: options.syncMovimentos,
+      p_default_client_id: options.defaultClientId || null,
+    });
+
+    if (error) {
+      console.error('Erro na RPC sincronizar_erp_dados:', error);
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/dashboard');
+    revalidatePath('/stocks');
+    revalidatePath('/pedidos');
+
+    return {
+      success: true,
+      artigosNovos: data?.artigos_novos ?? 0,
+      docVendaNovos: data?.doc_venda_novos ?? 0,
+      movEntradasNovos: data?.mov_entradas_novos ?? 0,
+      movSaidasNovos: data?.mov_saidas_novos ?? 0,
+      movimentosTotalNovos: data?.movimentos_total_novos ?? 0,
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro durante o processo de sincronização';
+    return { success: false, error: msg };
+  }
+}
+
