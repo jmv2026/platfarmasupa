@@ -487,26 +487,39 @@ export default function NovoPedidoForm({
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
-      {/* Banner Topo */}
-      <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
-          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
-            {t.pedidos.bannerTitle}
-          </h1>
-          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
-            {t.pedidos.bannerSubtitle}
-          </p>
+      {/* Banner Topo Sermail */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-2xl px-6 py-4 shadow-sm relative overflow-hidden border border-emerald-950/30">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
+              <span className="material-symbols-outlined text-xl">add_shopping_cart</span>
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold font-headline leading-tight text-white">
+                {t.pedidos.bannerTitle}
+              </h1>
+              <p className="text-xs sm:text-sm text-lime-300/90 font-medium">
+                {t.pedidos.bannerSubtitle}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="badge-sermail-lime shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-sermail-lime-vibrant"></span>
+              Novo Pedido
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
-        <div className="flex items-center justify-between pb-6 border-b border-outline-variant/20 mb-6">
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-2xs">
+        <div className="flex items-center justify-between pb-6 border-b border-slate-100 mb-6">
           <div>
-            <h2 className="text-xl font-bold font-headline text-on-surface flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">add_shopping_cart</span>
+            <h2 className="text-xl font-bold font-headline text-sermail-green-dark flex items-center gap-2">
+              <span className="material-symbols-outlined text-sermail-green">add_shopping_cart</span>
               {t.pedidos.bannerTitle}
             </h2>
-            <p className="text-xs text-on-surface-variant mt-1">
+            <p className="text-xs text-slate-500 font-medium mt-1">
               {t.pedidos.bannerSubtitle}
             </p>
           </div>

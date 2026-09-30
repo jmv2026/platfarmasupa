@@ -468,37 +468,50 @@ export default function StocksView({
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
-      {/* Banner */}
-      <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
-          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
-            {t.stocks.bannerTitle}
-          </h1>
-          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
-            {t.stocks.bannerSubtitle}
-          </p>
+      {/* Banner Sermail */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-2xl px-6 py-4 shadow-sm relative overflow-hidden border border-emerald-950/30">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
+              <span className="material-symbols-outlined text-xl">inventory_2</span>
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold font-headline leading-tight text-white">
+                {t.stocks.bannerTitle}
+              </h1>
+              <p className="text-xs sm:text-sm text-lime-300/90 font-medium">
+                {t.stocks.bannerSubtitle}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="badge-sermail-lime shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-sermail-lime-vibrant"></span>
+              Gestão de Stocks
+            </span>
+          </div>
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* KPIs Grid (4 Indicadores atualizados dinamicamente - Formatação adaptável do Dashboard) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+        {/* KPIs Grid (4 Indicadores com espaço amplo, respiro e contraste WCAG AAA) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
           {/* 1. Stock Outros Armazéns */}
-          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-1.5">
-              <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
                 Stock Outros Armazéns
               </span>
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-lg">warehouse</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-on-surface leading-none">
+            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
+              <span className="text-2xl sm:text-3xl font-extrabold font-headline text-slate-900 leading-none">
                 {totalStockOutros.toLocaleString('pt-PT')}{' '}
-                <span className="text-xs font-normal text-on-surface-variant">un</span>
+                <span className="text-xs font-normal text-slate-500">un</span>
               </span>
-              <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium flex items-center gap-0.5 leading-tight whitespace-normal">
+              <span className="text-[11px] text-amber-800 font-semibold flex items-center gap-1 leading-tight">
                 <span className="material-symbols-outlined text-xs shrink-0">info</span>
                 <span>Quarentena / Devoluções</span>
               </span>
@@ -506,30 +519,30 @@ export default function StocksView({
           </div>
 
           {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
-          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-1.5">
+          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDm}
                 </span>
-                <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                <span className="text-[11px] font-semibold text-rose-700 leading-tight mt-0.5">
                   Dispositivos Médicos
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                artigosAlertaValidadeDM > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                artigosAlertaValidadeDM > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
                 <span className="material-symbols-outlined text-lg">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-                artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-600'
+            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
+              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+                artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDM}
               </span>
-              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-                artigosAlertaValidadeDM > 0 ? 'text-rose-700' : 'text-emerald-700'
+              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+                artigosAlertaValidadeDM > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
                 <span className="material-symbols-outlined text-xs shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
@@ -537,31 +550,31 @@ export default function StocksView({
             </div>
           </div>
 
-          {/* 3. Alertas Validade DC e SA (Expirados - Dermocosméticos e Suplementos Alimentares) */}
-          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-1.5">
+          {/* 3. Alertas Validade DC e SA */}
+          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDcSa}
                 </span>
-                <span className="text-[9.5px] sm:text-[10px] font-medium text-rose-800/90 leading-tight whitespace-normal mt-0.5">
+                <span className="text-[11px] font-semibold text-rose-700 leading-tight mt-0.5">
                   Dermocosméticos, Suplementos
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                artigosAlertaValidadeDCSA > 0 ? 'bg-rose-500/10 text-rose-600' : 'bg-emerald-500/10 text-emerald-600'
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                artigosAlertaValidadeDCSA > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
                 <span className="material-symbols-outlined text-lg">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-                artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-600'
+            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
+              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+                artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDCSA}
               </span>
-              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-                artigosAlertaValidadeDCSA > 0 ? 'text-rose-700' : 'text-emerald-700'
+              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+                artigosAlertaValidadeDCSA > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
                 <span className="material-symbols-outlined text-xs shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
@@ -569,31 +582,31 @@ export default function StocksView({
             </div>
           </div>
 
-          {/* 4. Alertas Validade MH (< 180 dias - Medicamentos Uso Humano) */}
-          <div className="min-h-[100px] p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 shadow-2xs hover:shadow-xs transition-shadow flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-1.5">
+          {/* 4. Alertas Validade MH (< 180 dias) */}
+          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-[11px] sm:text-xs font-bold text-on-surface-variant uppercase tracking-wider leading-snug whitespace-normal break-words">
+                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsMh}
                 </span>
-                <span className="text-[9.5px] sm:text-[10px] font-medium text-amber-800/90 leading-tight whitespace-normal mt-0.5">
+                <span className="text-[11px] font-semibold text-amber-700 leading-tight mt-0.5">
                   Medicamentos Uso Humano
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                artigosAlertaValidadeMH > 0 ? 'bg-amber-500/10 text-amber-600' : 'bg-emerald-500/10 text-emerald-600'
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                artigosAlertaValidadeMH > 0 ? 'bg-amber-50 text-amber-600 border-amber-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
                 <span className="material-symbols-outlined text-lg">warning</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap pt-1">
-              <span className={`text-xl sm:text-2xl font-bold font-headline leading-none ${
-                artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-600'
+            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
+              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+                artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeMH}
               </span>
-              <span className={`text-[10px] sm:text-[11px] font-medium flex items-center gap-0.5 leading-tight whitespace-normal ${
-                artigosAlertaValidadeMH > 0 ? 'text-amber-700' : 'text-emerald-700'
+              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+                artigosAlertaValidadeMH > 0 ? 'text-amber-800' : 'text-emerald-800'
               }`}>
                 <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
                 <span>{t.stocks.inRisk} (&lt; 180d)</span>
@@ -602,12 +615,12 @@ export default function StocksView({
           </div>
         </div>
 
-        {/* Painel de Filtros e Busca */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
+        {/* Painel de Filtros e Busca Sermail */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Barra de Pesquisa */}
             <div className="relative flex-1">
-              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
+              <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
                 search
               </span>
               <input
@@ -615,12 +628,12 @@ export default function StocksView({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={t.stocks.searchPlaceholder}
-                className="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sermail-green/20 focus:border-sermail-green transition-all"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
                 >
                   <span className="material-symbols-outlined text-sm">close</span>
                 </button>
@@ -632,7 +645,7 @@ export default function StocksView({
               {hasActiveFilters && (
                 <button
                   onClick={handleClearFilters}
-                  className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1"
+                  className="px-3.5 py-2.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">filter_alt_off</span>
                   {t.common.cancel}
@@ -640,35 +653,35 @@ export default function StocksView({
               )}
               <button
                 onClick={handleExportCSV}
-                className="px-3.5 py-2.5 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5"
+                className="px-3.5 py-2.5 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 title="Exportar CSV"
               >
-                <span className="material-symbols-outlined text-sm text-secondary">description</span>
+                <span className="material-symbols-outlined text-sm text-sermail-green">description</span>
                 CSV
               </button>
               <button
                 onClick={handleExportExcel}
-                className="px-3.5 py-2.5 bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 active:scale-98"
+                className="px-4 py-2.5 bg-sermail-green hover:bg-sermail-green-light text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 active:scale-98 cursor-pointer"
                 title="Exportar Excel (.xlsx)"
               >
-                <span className="material-symbols-outlined text-sm text-emerald-200">table_view</span>
+                <span className="material-symbols-outlined text-sm text-sermail-lime-border">table_view</span>
                 {t.stocks.exportExcel}
               </button>
             </div>
           </div>
 
           {/* Linha de Filtros Dropdown */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/15">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
             {/* Filtro Cliente (Apenas se Admin/Gestor) */}
             {isManagerOrAdmin ? (
               <div>
-                <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                <label className="block text-xs font-bold text-slate-600 mb-1">
                   {t.stocks.filterClient}
                 </label>
                 <select
                   value={selectedClientId}
                   onChange={(e) => setSelectedClientId(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
                 >
                   <option value="todos">{t.stocks.allClients}</option>
                   {clients.map((c) => (
@@ -680,10 +693,10 @@ export default function StocksView({
               </div>
             ) : (
               <div>
-                <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+                <label className="block text-xs font-bold text-slate-600 mb-1">
                   {t.stocks.filterClient}
                 </label>
-                <div className="px-3 py-1.5 bg-surface-container/40 border border-outline-variant/30 rounded-lg text-xs font-mono font-bold text-secondary">
+                <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-sermail-green">
                   {currentUserProfile?.empresa || 'Cliente Associado'}
                 </div>
               </div>
@@ -691,13 +704,13 @@ export default function StocksView({
 
             {/* Filtro Conservação */}
             <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.stocks.filterStorage}
               </label>
               <select
                 value={selectedArmazenamento}
                 onChange={(e) => setSelectedArmazenamento(e.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
               >
                 <option value="todos">{t.stocks.allStorage}</option>
                 <option value="TF">TF - Frio (2-8 ºC)</option>
@@ -708,13 +721,13 @@ export default function StocksView({
 
             {/* Filtro Tipo Artigo */}
             <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.stocks.filterArticleType}
               </label>
               <select
                 value={selectedTipoArtigo}
                 onChange={(e) => setSelectedTipoArtigo(e.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
               >
                 <option value="todos">{t.stocks.allTypes}</option>
                 <option value="MH">MH - Medicamento Humano</option>
@@ -727,13 +740,13 @@ export default function StocksView({
 
             {/* Filtro Tipo Armazém */}
             <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.stocks.filterWarehouse}
               </label>
               <select
                 value={selectedTipoArmazem}
                 onChange={(e) => setSelectedTipoArmazem(e.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
               >
                 <option value="todos">{t.stocks.allWarehouses}</option>
                 <option value="01">01 - Venda (Disponível)</option>
@@ -750,66 +763,66 @@ export default function StocksView({
           </div>
         </div>
 
-        {/* Abas de Navegação de Stock */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl shadow-sm overflow-hidden">
-          <div className="border-b border-outline-variant/20 px-6 pt-4 bg-surface-container/20">
+        {/* Abas de Navegação de Stock Sermail */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs overflow-hidden">
+          <div className="border-b border-slate-200/80 px-6 pt-3 bg-slate-50/70">
             <div className="flex items-center gap-2 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('pedidos')}
-                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'pedidos'
-                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                    ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-xl'
                 }`}
               >
-                <span className="material-symbols-outlined text-base">shopping_cart_checkout</span>
+                <span className={`material-symbols-outlined text-base ${activeTab === 'pedidos' ? 'text-sermail-green' : 'text-slate-400'}`}>shopping_cart_checkout</span>
                 {t.stocks.tabVenda}
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                <span className="badge-sermail-lime">
                   {filteredStockPedidos.length}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('consolidado')}
-                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'consolidado'
-                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                    ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-xl'
                 }`}
               >
-                <span className="material-symbols-outlined text-base">inventory</span>
+                <span className={`material-symbols-outlined text-base ${activeTab === 'consolidado' ? 'text-sermail-green' : 'text-slate-400'}`}>inventory</span>
                 {t.stocks.tabConsolidado}
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                <span className="badge-sermail-lime">
                   {filteredStockAtual.length}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('artigos')}
-                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'artigos'
-                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                    ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-xl'
                 }`}
               >
-                <span className="material-symbols-outlined text-base">category</span>
+                <span className={`material-symbols-outlined text-base ${activeTab === 'artigos' ? 'text-sermail-green' : 'text-slate-400'}`}>category</span>
                 {t.stocks.tabArtigos}
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                <span className="badge-sermail-lime">
                   {resumoArtigos.length}
                 </span>
               </button>
 
               <button
                 onClick={() => setActiveTab('validade')}
-                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'validade'
-                    ? 'border-secondary text-secondary bg-surface-container-lowest rounded-t-xl shadow-sm'
-                    : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 rounded-t-xl'
+                    ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-xl'
                 }`}
               >
-                <span className="material-symbols-outlined text-base">notification_important</span>
+                <span className={`material-symbols-outlined text-base ${activeTab === 'validade' ? 'text-sermail-green' : 'text-slate-400'}`}>notification_important</span>
                 {t.stocks.tabValidades}
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-secondary-container text-on-secondary-container">
+                <span className="badge-sermail-lime">
                   {lotesValidade.length}
                 </span>
               </button>

@@ -9,16 +9,82 @@
 
 body {
   font-family: var(--font-inter), sans-serif;
+  color: #0f172a;
+  background-color: #f8fafc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-manrope), sans-serif;
+  letter-spacing: -0.02em;
+  color: #00382b;
 }
 
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+}
+
+/* Cartões com respiro e sombra refinada Sermail */
+.sermail-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 56, 43, 0.03), 0 1px 2px -1px rgba(0, 56, 43, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sermail-card:hover {
+  box-shadow: 0 4px 14px -2px rgba(0, 56, 43, 0.07), 0 2px 6px -2px rgba(0, 56, 43, 0.04);
+}
+
+/* Badges de Identidade Sermail */
+.badge-sermail-green {
+  background-color: #e6f4ee;
+  color: #004d3d;
+  border: 1px solid #a3d9c3;
+  padding: 0.15rem 0.65rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.badge-sermail-lime {
+  background-color: #f7fee7;
+  color: #365314;
+  border: 1px solid #d9f99d;
+  padding: 0.15rem 0.65rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Scrollbar refinada */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .material-symbols-outlined {

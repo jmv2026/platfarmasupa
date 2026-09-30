@@ -91,9 +91,9 @@ export default function PrevisaoStockView({
         <div className="flex flex-wrap items-center gap-4">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-lime-100/70 hover:bg-lime-200/80 text-emerald-950 font-extrabold text-xs sm:text-sm border border-lime-500 shadow-2xs hover:shadow-xs transition-all cursor-pointer group shrink-0"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-sermail-green-dark font-bold text-xs sm:text-sm border border-slate-300 shadow-2xs transition-all cursor-pointer group shrink-0"
           >
-            <span className="material-symbols-outlined text-base sm:text-lg group-hover:-translate-x-1 transition-transform text-emerald-800">
+            <span className="material-symbols-outlined text-base sm:text-lg group-hover:-translate-x-1 transition-transform text-sermail-green">
               arrow_back
             </span>
             <span>{t.dashboard.backToDashboard}</span>

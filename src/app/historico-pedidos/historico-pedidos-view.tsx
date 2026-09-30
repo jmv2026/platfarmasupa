@@ -278,15 +278,28 @@ export default function HistoricoPedidosView({
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
-      {/* Banner Topo */}
-      <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
-          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
-            {t.historico.bannerTitle}
-          </h1>
-          <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
-            {t.historico.bannerSubtitle}
-          </p>
+      {/* Banner Topo Sermail */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-2xl px-6 py-4 shadow-sm relative overflow-hidden border border-emerald-950/30">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
+              <span className="material-symbols-outlined text-xl">receipt_long</span>
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-bold font-headline leading-tight text-white">
+                {t.historico.bannerTitle}
+              </h1>
+              <p className="text-xs sm:text-sm text-lime-300/90 font-medium">
+                {t.historico.bannerSubtitle}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className="badge-sermail-lime shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-sermail-lime-vibrant"></span>
+              Histórico & Rastreabilidade
+            </span>
+          </div>
         </div>
       </div>
 
@@ -314,12 +327,12 @@ export default function HistoricoPedidosView({
         </div>
       )}
 
-      {/* Painel de Filtros e Busca */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
+      {/* Painel de Filtros e Busca Sermail */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Barra de Pesquisa */}
           <div className="relative flex-1">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">
+            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg">
               search
             </span>
             <input
@@ -327,12 +340,12 @@ export default function HistoricoPedidosView({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t.historico.searchPlaceholder}
-              className="w-full pl-10 pr-4 py-2.5 bg-surface border border-outline-variant/40 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300/80 rounded-xl text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-sermail-green/20 focus:border-sermail-green transition-all"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
               >
                 <span className="material-symbols-outlined text-sm">close</span>
               </button>
@@ -340,11 +353,11 @@ export default function HistoricoPedidosView({
           </div>
 
           {/* Botões de Ação e Alternador de Vista */}
-          <div className="flex items-center gap-2 self-end md:self-auto shrink-0">
+          <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap sm:flex-nowrap">
             {hasActiveFilters && (
               <button
                 onClick={handleClearFilters}
-                className="px-3 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">filter_alt_off</span>
                 {language === 'pt' ? 'Limpar Filtros' : language === 'es' ? 'Limpiar Filtros' : 'Clear Filters'}
@@ -352,55 +365,55 @@ export default function HistoricoPedidosView({
             )}
 
             {/* Alternador de Vista (Tabela vs Linhas) */}
-            <div className="flex items-center bg-surface-container rounded-xl p-0.5 border border-outline-variant/30">
+            <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200">
               <button
                 onClick={() => setViewMode('tabela')}
                 title={t.historico.viewTable}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                   viewMode === 'tabela'
-                    ? 'bg-surface-container-lowest text-secondary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
+                    ? 'bg-sermail-green text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">table_rows</span>
+                <span className={`material-symbols-outlined text-sm ${viewMode === 'tabela' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>table_rows</span>
                 <span className="hidden sm:inline">{t.historico.viewTable}</span>
               </button>
               <button
                 onClick={() => setViewMode('detalhado')}
                 title={t.historico.viewCards}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                   viewMode === 'detalhado'
-                    ? 'bg-surface-container-lowest text-secondary shadow-sm'
-                    : 'text-on-surface-variant hover:text-on-surface'
+                    ? 'bg-sermail-green text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span className="material-symbols-outlined text-sm">view_agenda</span>
+                <span className={`material-symbols-outlined text-sm ${viewMode === 'detalhado' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>view_agenda</span>
                 <span className="hidden sm:inline">{t.historico.viewCards}</span>
               </button>
             </div>
 
             <button
               onClick={handleExportCSV}
-              className="px-4 py-2 bg-surface-container border border-outline-variant/40 text-on-surface hover:bg-surface-container-high font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
-              <span className="material-symbols-outlined text-sm text-secondary">download</span>
+              <span className="material-symbols-outlined text-sm text-sermail-green">download</span>
               {t.common.export} CSV
             </button>
           </div>
         </div>
 
         {/* Linha de Filtros Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-outline-variant/15">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
           {/* Filtro Cliente (Apenas se Admin/Gestor) */}
           {isManagerOrAdmin ? (
             <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.historico.filterClient}
               </label>
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
               >
                 <option value="todos">{t.historico.allClients}</option>
                 {clients.map((c) => (
@@ -412,10 +425,10 @@ export default function HistoricoPedidosView({
             </div>
           ) : (
             <div>
-              <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.historico.filterClient}
               </label>
-              <div className="px-3 py-1.5 bg-surface-container/40 border border-outline-variant/30 rounded-lg text-xs font-mono font-bold text-secondary">
+              <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-sermail-green">
                 {currentUserProfile?.empresa || t.common.client}
               </div>
             </div>
