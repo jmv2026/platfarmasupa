@@ -458,6 +458,7 @@ export default function DashboardView({
 
         <Link
           href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
+          prefetch={true}
           className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer bg-white text-sermail-green hover:bg-sermail-lime-light border border-slate-200/90 hover:border-sermail-lime-border shadow-2xs group"
           title={t.dashboard.chartForecastDesc}
         >

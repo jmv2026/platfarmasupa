@@ -91,6 +91,7 @@ export default function PrevisaoStockView({
         <div className="flex flex-wrap items-center gap-4">
           <Link
             href="/dashboard"
+            prefetch={true}
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-sermail-green-dark font-bold text-xs sm:text-sm border border-slate-300 shadow-2xs transition-all cursor-pointer group shrink-0"
           >
             <span className="material-symbols-outlined text-base sm:text-lg group-hover:-translate-x-1 transition-transform text-sermail-green">

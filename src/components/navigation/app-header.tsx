@@ -62,6 +62,7 @@ export default function AppHeader({
           <nav className="flex items-center gap-1.5" aria-label="Menu Principal">
             <Link
               href="/dashboard"
+              prefetch={true}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'dashboard'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -74,6 +75,7 @@ export default function AppHeader({
 
             <Link
               href="/stocks"
+              prefetch={true}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'stocks'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -86,6 +88,7 @@ export default function AppHeader({
 
             <Link
               href="/pedidos"
+              prefetch={true}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'pedidos'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -98,6 +101,7 @@ export default function AppHeader({
 
             <Link
               href="/historico-pedidos"
+              prefetch={true}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'historico-pedidos'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -111,6 +115,7 @@ export default function AppHeader({
             {userProfile?.role === 'admin' && (
               <Link
                 href="/configuracao"
+                prefetch={true}
                 className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                   currentTab === 'configuracao'
                     ? 'bg-sermail-green text-white shadow-xs font-bold'
