@@ -6,10 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test:fase1": "node testes/fase1/teste-login.mjs",
-    "test:fase7": "node testes/fase7/teste-resend-pedidos.mjs",
-    "test": "node testes/runner.mjs"
+    "lint": "next lint"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",
