@@ -120,7 +120,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       const total_merc = mesData.merc;
       const total_iva = mesData.iva;
       const total_desc = mesData.desc;
-      const total_liquido = total_merc - total_desc + total_iva;
+      const total_liquido = total_merc - total_desc - total_iva;
       const mShort = monthsShort[month] || String(month + 1);
       const mFull = monthsNames[month] || String(month + 1);
       const label = `${mShort} '${String(year).slice(-2)}`;
@@ -129,12 +129,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       let diffAnterior: number | null = null;
       if (prevtotal_merc !== null) {
         if (prevtotal_merc === 0) {
-          diffAnterior = total_merc > 0 ? 100 : 0;
+          diffAnterior = total_liquido > 0 ? 100 : 0;
         } else {
-          diffAnterior = Math.round(((total_merc - prevtotal_merc) / prevtotal_merc) * 100);
+          diffAnterior = Math.round(((total_liquido - prevtotal_merc) / prevtotal_merc) * 100);
         }
       }
-      prevtotal_merc = total_merc;
+      prevtotal_merc = total_liquido;
 
       return {
         key,
@@ -151,11 +151,11 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     });
 
     // Estatísticas resumidas do período
-    const totalfaturacaoPeriodo = resultado.reduce((acc, curr) => acc + curr.total_merc, 0);
+    const totalfaturacaoPeriodo = resultado.reduce((acc, curr) => acc + curr.total_liquido, 0);
     const mediaMensal = resultado.length > 0 ? totalfaturacaoPeriodo / resultado.length : 0;
 
     const mesPico = resultado.reduce<MesData | null>((pico, curr) => {
-      if (!pico || curr.total_merc > pico.total_merc) {
+      if (!pico || curr.total_liquido > pico.total_liquido) {
         return curr;
       }
       return pico;
@@ -165,9 +165,9 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     const ultimoMes = resultado[resultado.length - 1];
     const penultimoMes = resultado.length > 1 ? resultado[resultado.length - 2] : null;
     let variacaoUltimoMes = 0;
-    if (penultimoMes && penultimoMes.total_merc > 0 && ultimoMes) {
-      variacaoUltimoMes = Math.round(((ultimoMes.total_merc - penultimoMes.total_merc) / penultimoMes.total_merc) * 100);
-    } else if (ultimoMes && ultimoMes.total_merc > 0 && penultimoMes?.total_merc === 0) {
+    if (penultimoMes && penultimoMes.total_liquido > 0 && ultimoMes) {
+      variacaoUltimoMes = Math.round(((ultimoMes.total_liquido - penultimoMes.total_liquido) / penultimoMes.total_liquido) * 100);
+    } else if (ultimoMes && ultimoMes.total_liquido > 0 && penultimoMes?.total_liquido === 0) {
       variacaoUltimoMes = 100;
     }
 
@@ -176,7 +176,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       estatisticas: {
         total: totalfaturacaoPeriodo,
         media: mediaMensal,
-        pico: mesPico && mesPico.total_merc > 0 ? mesPico : null,
+        pico: mesPico && mesPico.total_liquido > 0 ? mesPico : null,
         ultimoMes,
         variacaoUltimoMes,
       },
@@ -218,7 +218,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         numPoints === 1
           ? padding.left + chartWidth / 2
           : padding.left + (index / (numPoints - 1)) * chartWidth;
-      const y = padding.top + chartHeight - (d.total_merc / yMax) * chartHeight;
+      const y = padding.top + chartHeight - (d.total_liquido / yMax) * chartHeight;
       return { x, y, data: d, index };
     });
   }, [dadosMensais, chartWidth, chartHeight, padding, yMax]);
@@ -421,7 +421,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.pico ? estatisticas.pico.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
+                {estatisticas.pico ? estatisticas.pico.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
                 {''}
@@ -456,7 +456,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.ultimoMes ? estatisticas.ultimoMes.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
+                {estatisticas.ultimoMes ? estatisticas.ultimoMes.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
                 {''}
@@ -543,20 +543,20 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
             {(tipoGrafico === 'barras' || tipoGrafico === 'combinado') &&
               points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
-                const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_merc > 0;
+                const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_liquido > 0;
                 
                 const totalBarW = Math.min(chartWidth / points.length, 75);
-                const barW = Math.min(totalBarW / 4.5, 12);
-                const spacing = 1.5;
+                const barW = Math.min(totalBarW / 2.5, 16);
+                const spacing = 2;
                 
-                const bHeightMerc = ((p.data.total_merc / yMax) * chartHeight) || 0;
-                const bYMerc = padding.top + chartHeight - bHeightMerc;
-                const bHeightIva = ((p.data.total_iva / yMax) * chartHeight) || 0;
-                const bYIva = padding.top + chartHeight - bHeightIva;
+                // Vendas Líquidas (sem IVA e sem descontos)
+                const vendasLiquidas = p.data.total_liquido;
+                const bHeightVendas = ((vendasLiquidas / yMax) * chartHeight) || 0;
+                const bYVendas = padding.top + chartHeight - bHeightVendas;
+                
+                // Descontos
                 const bHeightDesc = ((p.data.total_desc / yMax) * chartHeight) || 0;
                 const bYDesc = padding.top + chartHeight - bHeightDesc;
-                const bHeightLiq = ((p.data.total_liquido / yMax) * chartHeight) || 0;
-                const bYLiq = padding.top + chartHeight - bHeightLiq;
 
                 return (
                   <g key={`bar-group-${i}`}>
@@ -572,13 +572,13 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       onMouseLeave={() => setHoveredIndex(null)}
                     />
 
-                    {/* Mercadorias */}
-                    {bHeightMerc > 0 && (
+                    {/* Vendas (Sem IVA e Descontos) */}
+                    {bHeightVendas > 0 && (
                       <rect
-                        x={p.x - barW * 1.5 - spacing * 1.5}
-                        y={bYMerc}
+                        x={p.x - barW - spacing / 2}
+                        y={bYVendas}
                         width={barW}
-                        height={bHeightMerc}
+                        height={bHeightVendas}
                         rx={Math.min(barW / 2, 4)}
                         ry={Math.min(barW / 2, 4)}
                         fill={isHovered ? 'url(#barGradientLimaHover)' : 'url(#barGradientLima)'}
@@ -591,29 +591,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       />
                     )}
 
-                    {/* IVA */}
-                    {bHeightIva > 0 && (
-                      <rect
-                        x={p.x - barW * 0.5 - spacing * 0.5}
-                        y={bYIva}
-                        width={barW}
-                        height={bHeightIva}
-                        rx={Math.min(barW / 2, 4)}
-                        ry={Math.min(barW / 2, 4)}
-                        fill={isHovered ? '#fde047' : '#fef08a'}
-                        stroke={isHovered ? '#ca8a04' : '#fde047'}
-                        strokeWidth={isHovered ? '1.5' : '1'}
-                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
-                        className="transition-all duration-200 cursor-pointer hover:opacity-100"
-                        onMouseEnter={() => setHoveredIndex(i)}
-                        onMouseLeave={() => setHoveredIndex(null)}
-                      />
-                    )}
-
                     {/* Descontos */}
                     {bHeightDesc > 0 && (
                       <rect
-                        x={p.x + barW * 0.5 + spacing * 0.5}
+                        x={p.x + spacing / 2}
                         y={bYDesc}
                         width={barW}
                         height={bHeightDesc}
@@ -629,41 +610,22 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       />
                     )}
 
-                    {/* Líquido */}
-                    {bHeightLiq > 0 && (
-                      <rect
-                        x={p.x + barW * 1.5 + spacing * 1.5}
-                        y={bYLiq}
-                        width={barW}
-                        height={bHeightLiq}
-                        rx={Math.min(barW / 2, 4)}
-                        ry={Math.min(barW / 2, 4)}
-                        fill={isHovered ? '#60a5fa' : '#93c5fd'}
-                        stroke={isHovered ? '#2563eb' : '#60a5fa'}
-                        strokeWidth={isHovered ? '1.5' : '1'}
-                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
-                        className="transition-all duration-200 cursor-pointer hover:opacity-100"
-                        onMouseEnter={() => setHoveredIndex(i)}
-                        onMouseLeave={() => setHoveredIndex(null)}
-                      />
-                    )}
-
-                    {/* Rótulo de Líquido no topo quando Hover */}
-                    {(isHovered || (tipoGrafico === 'barras' && p.data.total_liquido > 0)) && (
+                    {/* Rótulo de Vendas no topo quando Hover */}
+                    {(isHovered || (tipoGrafico === 'barras' && vendasLiquidas > 0)) && (
                       <text
                         x={p.x}
-                        y={Math.min(bYMerc, bYIva, bYDesc, bYLiq) - 6}
+                        y={Math.min(bYVendas, bYDesc) - 6}
                         textAnchor="middle"
                         fontSize="10"
                         fontWeight="700"
                         fill={isHovered ? '#14532d' : '#334155'}
                       >
-                        {p.data.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
+                        {vendasLiquidas.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
                       </text>
                     )}
 
                     {isPeak && !isHovered && tipoGrafico === 'barras' && (
-                      <circle cx={p.x} cy={Math.min(bYMerc, bYIva, bYDesc, bYLiq) - 16} r="3" fill="#65a30d" />
+                      <circle cx={p.x} cy={Math.min(bYVendas, bYDesc) - 16} r="3" fill="#65a30d" />
                     )}
                   </g>
                 );
@@ -692,7 +654,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 {/* Pontos de Dados Interativos */}
                 {points.map((p, i) => {
                   const isHovered = hoveredIndex === i;
-                  const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_merc > 0;
+                  const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_liquido > 0;
 
                   return (
                     <g key={`point-${i}`}>
@@ -794,7 +756,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                   <span className="material-symbols-outlined text-xs text-lime-400">event</span>
                   {activeItem.labelCompleto}
                 </span>
-                {activeItem.total_merc === estatisticas.pico?.total_merc && activeItem.total_merc > 0 && (
+                {activeItem.total_liquido === estatisticas.pico?.total_liquido && activeItem.total_liquido > 0 && (
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
                     Máx
                   </span>
@@ -830,7 +792,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 <span className="text-slate-400">{t.dashboard.top10ShareOfTotal}:</span>
                 <span className="font-semibold text-emerald-300">
                   {estatisticas.total > 0
-                    ? Math.round((activeItem.total_merc / estatisticas.total) * 100)
+                    ? Math.round((activeItem.total_liquido / estatisticas.total) * 100)
                     : 0}
                   %
                 </span>

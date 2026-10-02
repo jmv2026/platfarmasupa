@@ -1006,19 +1006,26 @@ export async function importarPlatMovimentosAction(
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
         let resolvedClientId = fallbackClientId || null;
-        if (r.cliente_id && clientMapById.has(r.cliente_id)) {
-          resolvedClientId = r.cliente_id;
-        } else if (r.sigla_cliente && clientMapBySigla.has(r.sigla_cliente.toUpperCase())) {
-          resolvedClientId = clientMapBySigla.get(r.sigla_cliente.toUpperCase())!;
-        } else if (r.sub_familia && clientMapBySigla.has(r.sub_familia.toUpperCase())) {
-          resolvedClientId = clientMapBySigla.get(r.sub_familia.toUpperCase())!;
+        let inferredSigla = r.sigla_cliente || r.sub_familia || null;
+
+        if (!inferredSigla && r.chave2) {
+          inferredSigla = r.chave2.replace(/[0-9]/g, '');
+        }
+        if (!inferredSigla && r.armazem) {
+          inferredSigla = r.armazem.replace(/[0-9]/g, '');
         }
 
-        const resolvedSigla = r.sigla_cliente
-          ? r.sigla_cliente.toUpperCase()
-          : resolvedClientId
-          ? clientMapById.get(resolvedClientId) || null
-          : r.sub_familia || null;
+        if (r.cliente_id && clientMapById.has(r.cliente_id)) {
+          resolvedClientId = r.cliente_id;
+        } else if (inferredSigla && clientMapBySigla.has(inferredSigla.toUpperCase())) {
+          resolvedClientId = clientMapBySigla.get(inferredSigla.toUpperCase())!;
+        }
+
+        const resolvedSigla =
+          (r.sigla_cliente && r.sigla_cliente.toUpperCase()) ||
+          (resolvedClientId && clientMapById.get(resolvedClientId)) ||
+          (inferredSigla && inferredSigla.toUpperCase()) ||
+          null;
 
         return {
           cliente_id: resolvedClientId,
