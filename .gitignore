@@ -28,6 +28,8 @@ yarn-error.log*
 # agent / ide configs & local scripts
 .agents/
 scripts/
+.mcp*.json
+.mcp.json
 
 # vercel
 .vercel

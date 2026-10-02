@@ -31,7 +31,6 @@ import {
 import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 import ImportacaoDocVendaTab from './importacao-doc-venda-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
-import ErpTab from './erp-tab';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -66,7 +65,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -537,20 +536,6 @@ export default function ConfiguracaoTabs({
             Doc. Venda
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('erp');
-              setFeedback(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'erp'
-                ? 'bg-secondary text-on-secondary shadow-md'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base">domain</span>
-            ERP
-          </button>
 
           <button
             type="button"
@@ -1710,12 +1695,6 @@ export default function ConfiguracaoTabs({
           />
         )}
 
-        {/* ========================================================================= */}
-        {/* ABA: ERP (PLAT_ENTRADAS & PLAT_SAIDAS) */}
-        {/* ========================================================================= */}
-        {activeTab === 'erp' && (
-          <ErpTab onRefresh={() => router.refresh()} />
-        )}
 
         {/* ========================================================================= */}
         {/* ABA 5: EMAIL & RESEND */}
