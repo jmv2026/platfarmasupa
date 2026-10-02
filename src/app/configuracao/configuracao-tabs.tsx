@@ -30,6 +30,7 @@ import {
 } from './actions';
 import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 import ImportacaoDocVendaTab from './importacao-doc-venda-tab';
+import ImportacaoErpTab from './importacao-erp-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
 
 export interface ServerEmailConfig {
@@ -65,7 +66,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -534,6 +535,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">receipt_long</span>
             Doc. Venda
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('erp');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'erp'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">dataset</span>
+            ERP
           </button>
 
 
@@ -1690,6 +1706,16 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {activeTab === 'doc_venda' && (
           <ImportacaoDocVendaTab
+            clients={clients}
+            onRefresh={() => router.refresh()}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: ERP (IMPORTAÇÃO PLAT_MOVIMENTOS & SINCRONIZAÇÃO) */}
+        {/* ========================================================================= */}
+        {activeTab === 'erp' && (
+          <ImportacaoErpTab
             clients={clients}
             onRefresh={() => router.refresh()}
           />

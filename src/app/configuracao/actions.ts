@@ -11,6 +11,7 @@ import {
   parseMovimentoDate,
 } from '@/lib/parse-movimentos-file';
 import { DocVendaImportInput } from '@/lib/parse-doc-venda-file';
+import { PlatMovimentoRow } from '@/lib/parse-erp-file';
 
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
@@ -958,4 +959,156 @@ export async function importarDocVendaAction(
     return { success: false, error: msg };
   }
 }
+
+// 12. AÇÃO: Importar Movimentos ERP para plat_movimentos
+export async function importarPlatMovimentosAction(
+  rows: PlatMovimentoRow[],
+  defaultClientId?: string
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, client_id')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return { success: false, error: 'Apenas administradores podem importar movimentos ERP.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'Nenhum registo de movimentos ERP fornecido para importação.' };
+  }
+
+  try {
+    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    const clientMapBySigla = new Map<string, string>();
+    const clientMapById = new Map<string, string>();
+
+    (clientsData || []).forEach((c) => {
+      if (c.sigla) clientMapBySigla.set(c.sigla.toUpperCase(), c.id);
+      if (c.id) clientMapById.set(c.id, c.sigla);
+    });
+
+    const fallbackClientId = defaultClientId || profile?.client_id;
+
+    const BATCH_SIZE = 250;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
+        let resolvedClientId = fallbackClientId || null;
+        if (r.cliente_id && clientMapById.has(r.cliente_id)) {
+          resolvedClientId = r.cliente_id;
+        } else if (r.sigla_cliente && clientMapBySigla.has(r.sigla_cliente.toUpperCase())) {
+          resolvedClientId = clientMapBySigla.get(r.sigla_cliente.toUpperCase())!;
+        } else if (r.sub_familia && clientMapBySigla.has(r.sub_familia.toUpperCase())) {
+          resolvedClientId = clientMapBySigla.get(r.sub_familia.toUpperCase())!;
+        }
+
+        const resolvedSigla = r.sigla_cliente
+          ? r.sigla_cliente.toUpperCase()
+          : resolvedClientId
+          ? clientMapById.get(resolvedClientId) || null
+          : r.sub_familia || null;
+
+        return {
+          cliente_id: resolvedClientId,
+          sigla_cliente: resolvedSigla,
+          num_linha: r.num_linha,
+          data: r.data,
+          documento: r.documento,
+          chave1: r.chave1,
+          chave2: r.chave2,
+          ativa: r.ativa ?? true,
+          valor_unitario: r.valor_unitario ?? 0,
+          valor_adicional: r.valor_adicional ?? 0,
+          valor_abater: r.valor_abater ?? 0,
+          artigo: r.artigo,
+          descricao: r.descricao,
+          tipo_artigo: r.tipo_artigo,
+          armazem: r.armazem,
+          localizacao: r.localizacao,
+          lote: r.lote,
+          estado_stock: r.estado_stock,
+          tipo_movimento: r.tipo_movimento,
+          quantidade: r.quantidade ?? 0,
+          stock_anterior: r.stock_anterior ?? 0,
+          stock_actual: r.stock_actual ?? 0,
+          stock_lot_anterior: r.stock_lot_anterior ?? 0,
+          stock_arm_anterior: r.stock_arm_anterior ?? 0,
+          stock_lot_actual: r.stock_lot_actual ?? 0,
+          stock_arm_actual: r.stock_arm_actual ?? 0,
+          stock_arm_lot_anterior: r.stock_arm_lot_anterior ?? 0,
+          stock_arm_lot_actual: r.stock_arm_lot_actual ?? 0,
+          stock_loc_anterior: r.stock_loc_anterior ?? 0,
+          stock_loc_actual: r.stock_loc_actual ?? 0,
+          stock_loc_lot_actual: r.stock_loc_lot_actual ?? 0,
+          stock_loc_lot_anterior: r.stock_loc_lot_anterior ?? 0,
+          familia: r.familia,
+          sub_familia: r.sub_familia,
+        };
+      });
+
+      const { error: insertErr } = await supabase.from('plat_movimentos').insert(batch);
+      if (insertErr) {
+        console.error('Erro ao inserir lote em plat_movimentos:', insertErr);
+        return {
+          success: false,
+          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
+        };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de plat_movimentos';
+    return { success: false, error: msg };
+  }
+}
+
+// 13. AÇÃO: Limpar Registos de plat_movimentos
+export async function limparPlatMovimentosAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    return { success: false, error: 'Apenas administradores podem limpar a tabela plat_movimentos.' };
+  }
+
+  try {
+    const { error } = await supabase.from('plat_movimentos').delete().gt('id', 0);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    revalidatePath('/configuracao');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao limpar plat_movimentos';
+    return { success: false, error: msg };
+  }
+}
+
 

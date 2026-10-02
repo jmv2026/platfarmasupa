@@ -510,3 +510,189 @@ export async function parseSaidasFile(file: File): Promise<PlatSaidaRow[]> {
     throw new Error(`Falha ao ler ficheiro de saídas: ${msg}`);
   }
 }
+
+export interface PlatMovimentoRow {
+  id?: number;
+  cliente_id?: string | null;
+  sigla_cliente?: string | null;
+  num_linha?: number | null;
+  data?: string | null;
+  documento?: string | null;
+  chave1?: string | null;
+  chave2?: string | null;
+  ativa?: boolean | null;
+  valor_unitario?: number | null;
+  valor_adicional?: number | null;
+  valor_abater?: number | null;
+  artigo?: string | null;
+  descricao?: string | null;
+  tipo_artigo?: string | null;
+  armazem?: string | null;
+  localizacao?: string | null;
+  lote?: string | null;
+  estado_stock?: string | null;
+  tipo_movimento?: string | null;
+  quantidade?: number | null;
+  stock_anterior?: number | null;
+  stock_actual?: number | null;
+  stock_lot_anterior?: number | null;
+  stock_arm_anterior?: number | null;
+  stock_lot_actual?: number | null;
+  stock_arm_actual?: number | null;
+  stock_arm_lot_anterior?: number | null;
+  stock_arm_lot_actual?: number | null;
+  stock_loc_anterior?: number | null;
+  stock_loc_actual?: number | null;
+  stock_loc_lot_actual?: number | null;
+  stock_loc_lot_anterior?: number | null;
+  familia?: string | null;
+  sub_familia?: string | null;
+  created_at?: string;
+}
+
+export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return [];
+
+  let delimiter = ';';
+  if (lines[0].includes(';')) delimiter = ';';
+  else if (lines[0].includes('\t')) delimiter = '\t';
+  else if (lines[0].includes(',')) delimiter = ',';
+  const header = lines[0].split(delimiter).map(c => normalizeHeader(c));
+  const rows: PlatMovimentoRow[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(delimiter);
+    const r: Record<string, string> = {};
+    header.forEach((h, idx) => {
+      r[h] = cols[idx] !== undefined ? cols[idx].trim() : '';
+    });
+
+    const ativaVal = (r['ativa'] || '').toLowerCase();
+    const ativa = ativaVal === 'verdadeiro' || ativaVal === 'true' || ativaVal === '1';
+
+    rows.push({
+      num_linha: parseNum(r['numlinha'] || r['num_linha']),
+      data: parseDate(r['data']),
+      documento: r['documento'] || null,
+      chave1: r['chave1'] || null,
+      chave2: r['chave2'] || null,
+      ativa,
+      valor_unitario: parseNum(r['valorunitario'] || r['valor_unitario']),
+      valor_adicional: parseNum(r['valoradicional'] || r['valor_adicional']),
+      valor_abater: parseNum(r['valorabater'] || r['valor_abater']),
+      artigo: r['artigo'] || null,
+      descricao: r['descricao'] || null,
+      tipo_artigo: r['tipoartigo'] || r['tipo_artigo'] || null,
+      armazem: r['armazem'] || null,
+      localizacao: r['localizacao'] || null,
+      lote: r['lote'] || null,
+      estado_stock: r['estadostock'] || r['estado_stock'] || null,
+      tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] || null,
+      quantidade: parseNum(r['quantidade']),
+      stock_anterior: parseNum(r['stockanterior'] || r['stock_anterior']),
+      stock_actual: parseNum(r['stockactual'] || r['stock_actual'] || r['stockatual'] || r['stock_atual']),
+      stock_lot_anterior: parseNum(r['stocklotanterior'] || r['stock_lot_anterior']),
+      stock_arm_anterior: parseNum(r['stockarmanterior'] || r['stock_arm_anterior']),
+      stock_lot_actual: parseNum(r['stocklotactual'] || r['stock_lot_actual'] || r['stocklotatual'] || r['stock_lot_atual']),
+      stock_arm_actual: parseNum(r['stockarmactual'] || r['stock_arm_actual'] || r['stockarmatual'] || r['stock_arm_atual']),
+      stock_arm_lot_anterior: parseNum(r['stockarmlotanterior'] || r['stock_arm_lot_anterior']),
+      stock_arm_lot_actual: parseNum(r['stockarmlotactual'] || r['stock_arm_lot_actual'] || r['stockarmlotatual'] || r['stock_arm_lot_atual']),
+      stock_loc_anterior: parseNum(r['stocklocanterior'] || r['stock_loc_anterior']),
+      stock_loc_actual: parseNum(r['stocklocactual'] || r['stock_loc_actual'] || r['stocklocatual'] || r['stock_loc_atual']),
+      stock_loc_lot_actual: parseNum(r['stockloclotactual'] || r['stock_loc_lot_actual'] || r['stockloclotatual'] || r['stock_loc_lot_atual']),
+      stock_loc_lot_anterior: parseNum(r['stockloclotanterior'] || r['stock_loc_lot_anterior']),
+      familia: r['familia'] || null,
+      sub_familia: r['subfamilia'] || r['sub_familia'] || null,
+    });
+  }
+
+  return rows;
+}
+
+export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Promise<PlatMovimentoRow[]> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(arrayBuffer);
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+
+  const headers: string[] = [];
+  const rows: PlatMovimentoRow[] = [];
+
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) {
+      row.eachCell((cell, colNumber) => {
+        headers[colNumber] = normalizeHeader(cell.text || String(cell.value || ''));
+      });
+    } else {
+      const r: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => {
+        const h = headers[colNumber];
+        if (h) r[h] = cell.value;
+      });
+
+      const isEmpty = Object.values(r).every(v => v === null || v === undefined || v === '');
+      if (isEmpty) return;
+
+      const ativaVal = String(r['ativa'] || '').toLowerCase();
+      const ativa = ativaVal === 'verdadeiro' || ativaVal === 'true' || ativaVal === '1' || r['ativa'] === true || r['ativa'] === 1;
+
+      rows.push({
+        num_linha: parseNum(r['numlinha'] || r['num_linha']),
+        data: parseDate(r['data']),
+        documento: r['documento'] ? String(r['documento']).trim() : null,
+        chave1: r['chave1'] ? String(r['chave1']).trim() : null,
+        chave2: r['chave2'] ? String(r['chave2']).trim() : null,
+        ativa,
+        valor_unitario: parseNum(r['valorunitario'] || r['valor_unitario']),
+        valor_adicional: parseNum(r['valoradicional'] || r['valor_adicional']),
+        valor_abater: parseNum(r['valorabater'] || r['valor_abater']),
+        artigo: r['artigo'] ? String(r['artigo']).trim() : null,
+        descricao: r['descricao'] ? String(r['descricao']).trim() : null,
+        tipo_artigo: r['tipoartigo'] || r['tipo_artigo'] ? String(r['tipoartigo'] || r['tipo_artigo']).trim() : null,
+        armazem: r['armazem'] ? String(r['armazem']).trim() : null,
+        localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
+        lote: r['lote'] ? String(r['lote']).trim() : null,
+        estado_stock: r['estadostock'] || r['estado_stock'] ? String(r['estadostock'] || r['estado_stock']).trim() : null,
+        tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] ? String(r['tipomovimento'] || r['tipo_movimento']).trim() : null,
+        quantidade: parseNum(r['quantidade']),
+        stock_anterior: parseNum(r['stockanterior'] || r['stock_anterior']),
+        stock_actual: parseNum(r['stockactual'] || r['stock_actual'] || r['stockatual'] || r['stock_atual']),
+        stock_lot_anterior: parseNum(r['stocklotanterior'] || r['stock_lot_anterior']),
+        stock_arm_anterior: parseNum(r['stockarmanterior'] || r['stock_arm_anterior']),
+        stock_lot_actual: parseNum(r['stocklotactual'] || r['stock_lot_actual'] || r['stocklotatual'] || r['stock_lot_atual']),
+        stock_arm_actual: parseNum(r['stockarmactual'] || r['stock_arm_actual'] || r['stockarmatual'] || r['stock_arm_atual']),
+        stock_arm_lot_anterior: parseNum(r['stockarmlotanterior'] || r['stock_arm_lot_anterior']),
+        stock_arm_lot_actual: parseNum(r['stockarmlotactual'] || r['stock_arm_lot_actual'] || r['stockarmlotatual'] || r['stock_arm_lot_atual']),
+        stock_loc_anterior: parseNum(r['stocklocanterior'] || r['stock_loc_anterior']),
+        stock_loc_actual: parseNum(r['stocklocactual'] || r['stock_loc_actual'] || r['stocklocatual'] || r['stock_loc_atual']),
+        stock_loc_lot_actual: parseNum(r['stockloclotactual'] || r['stock_loc_lot_actual'] || r['stockloclotatual'] || r['stock_loc_lot_atual']),
+        stock_loc_lot_anterior: parseNum(r['stockloclotanterior'] || r['stock_loc_lot_anterior']),
+        familia: r['familia'] ? String(r['familia']).trim() : null,
+        sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
+      });
+    }
+  });
+
+  return rows;
+}
+
+export async function parsePlatMovimentosFile(file: File): Promise<PlatMovimentoRow[]> {
+  const name = file.name.toLowerCase();
+  try {
+    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+      const buffer = await file.arrayBuffer();
+      return await parseExcelToPlatMovimentos(buffer);
+    } else {
+      const text = await file.text();
+      return parseCsvTextToPlatMovimentos(text);
+    }
+  } catch (err: unknown) {
+    if (name.endsWith('.xls')) {
+      throw new Error('O ficheiro está em formato .xls (Excel antigo). Por favor abra-o no Excel e guarde como .xlsx ou .csv antes de importar.');
+    }
+    const msg = err instanceof Error ? err.message : 'Erro ao processar ficheiro';
+    throw new Error(`Falha ao ler ficheiro de movimentos ERP: ${msg}`);
+  }
+}
+
