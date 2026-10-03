@@ -27,26 +27,18 @@ CREATE TABLE IF NOT EXISTS public.plat_movimentos (
     armazem TEXT,
     localizacao TEXT,
     lote TEXT,
-    estado_stock TEXT,
+    validade DATE,
+    datafabrico DATE,
     tipo_movimento TEXT,
     quantidade NUMERIC DEFAULT 0,
-    stock_anterior NUMERIC DEFAULT 0,
-    stock_actual NUMERIC DEFAULT 0,
-    stock_lot_anterior NUMERIC DEFAULT 0,
-    stock_arm_anterior NUMERIC DEFAULT 0,
-    stock_lot_actual NUMERIC DEFAULT 0,
-    stock_arm_actual NUMERIC DEFAULT 0,
-    stock_arm_lot_anterior NUMERIC DEFAULT 0,
-    stock_arm_lot_actual NUMERIC DEFAULT 0,
-    stock_loc_anterior NUMERIC DEFAULT 0,
-    stock_loc_actual NUMERIC DEFAULT 0,
-    stock_loc_lot_actual NUMERIC DEFAULT 0,
-    stock_loc_lot_anterior NUMERIC DEFAULT 0,
     familia TEXT,
     sub_familia TEXT,
     
     -- Auditoria
-    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    
+    -- Restrições
+    CONSTRAINT plat_movimentos_documento_num_linha_key UNIQUE (documento, num_linha)
 );
 
 -- Índices para otimização de consultas

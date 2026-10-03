@@ -18,6 +18,7 @@ import {
   Tempo,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
+  AcessoLog,
 } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 import {
@@ -32,6 +33,7 @@ import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 import ImportacaoDocVendaTab from './importacao-doc-venda-tab';
 import ImportacaoErpTab from './importacao-erp-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
+import LogAcessosTab from './log-acessos-tab';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -50,6 +52,7 @@ interface ConfiguracaoTabsProps {
   initialMovimentos?: MovimentoWithDetails[];
   armazens?: Armazem[];
   tempos?: Tempo[];
+  acessosLogs?: AcessoLog[];
   serverEmailConfig?: ServerEmailConfig;
 }
 
@@ -62,11 +65,12 @@ export default function ConfiguracaoTabs({
   initialMovimentos = [],
   armazens = [],
   tempos = [],
+  acessosLogs = [],
   serverEmailConfig,
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'erp' | 'email' | 'log'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -550,6 +554,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">dataset</span>
             ERP
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('log');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'log'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">manage_search</span>
+            Log
           </button>
 
 
@@ -1692,7 +1711,7 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {activeTab === 'movimentos' && (
           <ImportacaoMovimentosTab
-            initialImpStk={initialImpStk}
+            
             initialMovimentos={initialMovimentos}
             clients={clients}
             artigos={artigos}
@@ -2102,6 +2121,16 @@ export default function ConfiguracaoTabs({
           </div>
         </div>
       )}
+      
+      {/* ========================================================================= */}
+      {/* ABA: LOG DE ACESSOS */}
+      {/* ========================================================================= */}
+      {activeTab === 'log' && (
+        <div className="space-y-8 mt-8">
+          <LogAcessosTab acessosLogs={acessosLogs} />
+        </div>
+      )}
+
     </main>
   );
 }

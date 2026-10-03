@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS public.movimentos (
     data_fabrico DATE,
     data_movimento TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     documento_ref VARCHAR(100),
+    doc_linha TEXT,
     observacoes TEXT,
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

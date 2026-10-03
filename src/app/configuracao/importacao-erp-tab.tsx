@@ -354,8 +354,6 @@ export default function ImportacaoErpTab({
                         <th className="py-2.5 px-3">Lote</th>
                         <th className="py-2.5 px-3">Tipo</th>
                         <th className="py-2.5 px-3 text-right">Qtd</th>
-                        <th className="py-2.5 px-3 text-right">Stk Ant</th>
-                        <th className="py-2.5 px-3 text-right">Stk Act</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/20 font-mono text-[11px]">
@@ -384,12 +382,6 @@ export default function ImportacaoErpTab({
                           </td>
                           <td className="py-2 px-3 text-right font-bold text-on-surface">
                             {row.quantidade?.toLocaleString() || 0}
-                          </td>
-                          <td className="py-2 px-3 text-right text-on-surface-variant">
-                            {row.stock_anterior?.toLocaleString() || 0}
-                          </td>
-                          <td className="py-2 px-3 text-right font-bold text-indigo-700">
-                            {row.stock_actual?.toLocaleString() || 0}
                           </td>
                         </tr>
                       ))}
@@ -421,7 +413,7 @@ export default function ImportacaoErpTab({
             <div><span className="text-indigo-600 font-semibold">Valores:</span> valor_unitario, valor_adicional, valor_abater</div>
             <div><span className="text-indigo-600 font-semibold">Artigo & Lote:</span> artigo, descricao, tipo_artigo, armazem, localizacao, lote, estado_stock</div>
             <div><span className="text-indigo-600 font-semibold">Movimento & Stock:</span> tipo_movimento (E/S), quantidade, stock_anterior, stock_actual, stock_lot_actual, stock_arm_actual, stock_loc_actual</div>
-            <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, cliente_id, sigla_cliente</div>
+            <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, client_id, sigla</div>
           </div>
         </div>
 
@@ -435,7 +427,7 @@ export default function ImportacaoErpTab({
               Integração direta com a base de dados centralizada no <strong>Supabase</strong>.
             </li>
             <li>
-              Associação inteligente de <strong>cliente_id</strong> com base na Sigla ou SubFamília.
+              Associação inteligente de <strong>client_id</strong> com base na Sigla ou SubFamília.
             </li>
             <li>
               Suporte a <strong>Row Level Security (RLS)</strong> com isolamento por cliente e permissões de administrador.

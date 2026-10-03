@@ -936,8 +936,8 @@ export async function importarDocVendaAction(
 
         return {
           ...r,
-          cliente_id: resolvedClientId,
-          sigla_cliente: resolvedSigla,
+          client_id: resolvedClientId,
+          sigla: resolvedSigla,
         };
       });
 
@@ -1028,8 +1028,8 @@ export async function importarPlatMovimentosAction(
           null;
 
         return {
-          cliente_id: resolvedClientId,
-          sigla_cliente: resolvedSigla,
+          client_id: resolvedClientId,
+          sigla: resolvedSigla,
           num_linha: r.num_linha,
           data: r.data,
           documento: r.documento,
@@ -1045,21 +1045,10 @@ export async function importarPlatMovimentosAction(
           armazem: r.armazem,
           localizacao: r.localizacao,
           lote: r.lote,
-          estado_stock: r.estado_stock,
+          validade: r.validade,
+          datafabrico: r.datafabrico,
           tipo_movimento: r.tipo_movimento,
           quantidade: r.quantidade ?? 0,
-          stock_anterior: r.stock_anterior ?? 0,
-          stock_actual: r.stock_actual ?? 0,
-          stock_lot_anterior: r.stock_lot_anterior ?? 0,
-          stock_arm_anterior: r.stock_arm_anterior ?? 0,
-          stock_lot_actual: r.stock_lot_actual ?? 0,
-          stock_arm_actual: r.stock_arm_actual ?? 0,
-          stock_arm_lot_anterior: r.stock_arm_lot_anterior ?? 0,
-          stock_arm_lot_actual: r.stock_arm_lot_actual ?? 0,
-          stock_loc_anterior: r.stock_loc_anterior ?? 0,
-          stock_loc_actual: r.stock_loc_actual ?? 0,
-          stock_loc_lot_actual: r.stock_loc_lot_actual ?? 0,
-          stock_loc_lot_anterior: r.stock_loc_lot_anterior ?? 0,
           familia: r.familia,
           sub_familia: r.sub_familia,
         };
@@ -1119,3 +1108,39 @@ export async function limparPlatMovimentosAction() {
 }
 
 
+
+// 14. AÇÃO: Transferir de plat_movimentos para movimentos
+export async function transferirPlatMovimentosParaMovimentosAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem executar esta ação.' };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('transferir_plat_movimentos_para_movimentos');
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    revalidatePath('/dashboard');
+    return { success: true, count: data };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao transferir movimentos';
+    return { success: false, error: msg };
+  }
+}

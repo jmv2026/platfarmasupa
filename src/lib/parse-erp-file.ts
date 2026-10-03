@@ -530,21 +530,10 @@ export interface PlatMovimentoRow {
   armazem?: string | null;
   localizacao?: string | null;
   lote?: string | null;
-  estado_stock?: string | null;
+  validade?: string | null;
+  datafabrico?: string | null;
   tipo_movimento?: string | null;
   quantidade?: number | null;
-  stock_anterior?: number | null;
-  stock_actual?: number | null;
-  stock_lot_anterior?: number | null;
-  stock_arm_anterior?: number | null;
-  stock_lot_actual?: number | null;
-  stock_arm_actual?: number | null;
-  stock_arm_lot_anterior?: number | null;
-  stock_arm_lot_actual?: number | null;
-  stock_loc_anterior?: number | null;
-  stock_loc_actual?: number | null;
-  stock_loc_lot_actual?: number | null;
-  stock_loc_lot_anterior?: number | null;
   familia?: string | null;
   sub_familia?: string | null;
   created_at?: string;
@@ -587,21 +576,10 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
       armazem: r['armazem'] || null,
       localizacao: r['localizacao'] || null,
       lote: r['lote'] || null,
-      estado_stock: r['estadostock'] || r['estado_stock'] || null,
+      validade: parseDate(r['validade']),
+      datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
       tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] || null,
       quantidade: parseNum(r['quantidade']),
-      stock_anterior: parseNum(r['stockanterior'] || r['stock_anterior']),
-      stock_actual: parseNum(r['stockactual'] || r['stock_actual'] || r['stockatual'] || r['stock_atual']),
-      stock_lot_anterior: parseNum(r['stocklotanterior'] || r['stock_lot_anterior']),
-      stock_arm_anterior: parseNum(r['stockarmanterior'] || r['stock_arm_anterior']),
-      stock_lot_actual: parseNum(r['stocklotactual'] || r['stock_lot_actual'] || r['stocklotatual'] || r['stock_lot_atual']),
-      stock_arm_actual: parseNum(r['stockarmactual'] || r['stock_arm_actual'] || r['stockarmatual'] || r['stock_arm_atual']),
-      stock_arm_lot_anterior: parseNum(r['stockarmlotanterior'] || r['stock_arm_lot_anterior']),
-      stock_arm_lot_actual: parseNum(r['stockarmlotactual'] || r['stock_arm_lot_actual'] || r['stockarmlotatual'] || r['stock_arm_lot_atual']),
-      stock_loc_anterior: parseNum(r['stocklocanterior'] || r['stock_loc_anterior']),
-      stock_loc_actual: parseNum(r['stocklocactual'] || r['stock_loc_actual'] || r['stocklocatual'] || r['stock_loc_atual']),
-      stock_loc_lot_actual: parseNum(r['stockloclotactual'] || r['stock_loc_lot_actual'] || r['stockloclotatual'] || r['stock_loc_lot_atual']),
-      stock_loc_lot_anterior: parseNum(r['stockloclotanterior'] || r['stock_loc_lot_anterior']),
       familia: r['familia'] || null,
       sub_familia: r['subfamilia'] || r['sub_familia'] || null,
     });
@@ -653,21 +631,10 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         armazem: r['armazem'] ? String(r['armazem']).trim() : null,
         localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
         lote: r['lote'] ? String(r['lote']).trim() : null,
-        estado_stock: r['estadostock'] || r['estado_stock'] ? String(r['estadostock'] || r['estado_stock']).trim() : null,
+        validade: parseDate(r['validade']),
+        datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
         tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] ? String(r['tipomovimento'] || r['tipo_movimento']).trim() : null,
         quantidade: parseNum(r['quantidade']),
-        stock_anterior: parseNum(r['stockanterior'] || r['stock_anterior']),
-        stock_actual: parseNum(r['stockactual'] || r['stock_actual'] || r['stockatual'] || r['stock_atual']),
-        stock_lot_anterior: parseNum(r['stocklotanterior'] || r['stock_lot_anterior']),
-        stock_arm_anterior: parseNum(r['stockarmanterior'] || r['stock_arm_anterior']),
-        stock_lot_actual: parseNum(r['stocklotactual'] || r['stock_lot_actual'] || r['stocklotatual'] || r['stock_lot_atual']),
-        stock_arm_actual: parseNum(r['stockarmactual'] || r['stock_arm_actual'] || r['stockarmatual'] || r['stock_arm_atual']),
-        stock_arm_lot_anterior: parseNum(r['stockarmlotanterior'] || r['stock_arm_lot_anterior']),
-        stock_arm_lot_actual: parseNum(r['stockarmlotactual'] || r['stock_arm_lot_actual'] || r['stockarmlotatual'] || r['stock_arm_lot_atual']),
-        stock_loc_anterior: parseNum(r['stocklocanterior'] || r['stock_loc_anterior']),
-        stock_loc_actual: parseNum(r['stocklocactual'] || r['stock_loc_actual'] || r['stocklocatual'] || r['stock_loc_atual']),
-        stock_loc_lot_actual: parseNum(r['stockloclotactual'] || r['stock_loc_lot_actual'] || r['stockloclotatual'] || r['stock_loc_lot_atual']),
-        stock_loc_lot_anterior: parseNum(r['stockloclotanterior'] || r['stock_loc_lot_anterior']),
         familia: r['familia'] ? String(r['familia']).trim() : null,
         sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
       });

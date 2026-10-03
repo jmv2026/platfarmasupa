@@ -376,3 +376,14 @@ export interface Tempo {
   created_at?: string;
   updated_at?: string;
 }
+export interface AcessoLog {
+  id: string;
+  user_id: string;
+  action: string;
+  ip_address: string | null;
+  created_at: string;
+  users?: {
+    email: string;
+    full_name: string | null;
+  };
+}
