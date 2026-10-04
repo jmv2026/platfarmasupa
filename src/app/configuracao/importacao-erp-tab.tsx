@@ -139,8 +139,8 @@ export default function ImportacaoErpTab({
     const totalQtd = parsedRows.reduce((acc, r) => acc + (r.quantidade || 0), 0);
     const totalArtigos = new Set(parsedRows.map((r) => r.artigo).filter(Boolean)).size;
     const totalLotes = new Set(parsedRows.map((r) => r.lote).filter(Boolean)).size;
-    const entradas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'E').length;
-    const saidas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'S').length;
+    const entradas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'ES').length;
+    const saidas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'SS').length;
 
     return { totalQtd, totalArtigos, totalLotes, entradas, saidas };
   }, [parsedRows]);
@@ -372,7 +372,7 @@ export default function ImportacaoErpTab({
                           <td className="py-2 px-3">
                             <span
                               className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
-                                (row.tipo_movimento || '').toUpperCase() === 'E'
+                                (row.tipo_movimento || '').toUpperCase() === 'ES'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : 'bg-amber-100 text-amber-800'
                               }`}
@@ -412,7 +412,7 @@ export default function ImportacaoErpTab({
             <div><span className="text-indigo-600 font-semibold">Cabeçalho & Doc:</span> num_linha, data, documento, chave1, chave2, ativa</div>
             <div><span className="text-indigo-600 font-semibold">Valores:</span> valor_unitario, valor_adicional, valor_abater</div>
             <div><span className="text-indigo-600 font-semibold">Artigo & Lote:</span> artigo, descricao, tipo_artigo, armazem, localizacao, lote, estado_stock</div>
-            <div><span className="text-indigo-600 font-semibold">Movimento & Stock:</span> tipo_movimento (E/S), quantidade, stock_anterior, stock_actual, stock_lot_actual, stock_arm_actual, stock_loc_actual</div>
+            <div><span className="text-indigo-600 font-semibold">Movimento & Stock:</span> tipo_movimento (ES/SS), quantidade, stock_anterior, stock_actual, stock_lot_actual, stock_arm_actual, stock_loc_actual</div>
             <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, client_id, sigla</div>
           </div>
         </div>

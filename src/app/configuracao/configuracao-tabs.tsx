@@ -459,7 +459,7 @@ export default function ConfiguracaoTabs({
               }`}
           >
             <span className="material-symbols-outlined text-base">group</span>
-            {t.configuracao.tabUsers} ({users.length})
+            {t.configuracao.tabUsers}
           </button>
 
           <button
@@ -474,7 +474,7 @@ export default function ConfiguracaoTabs({
               }`}
           >
             <span className="material-symbols-outlined text-base">corporate_fare</span>
-            {t.configuracao.tabClients} ({clients.length})
+            {t.configuracao.tabClients}
           </button>
 
           <button
@@ -489,7 +489,7 @@ export default function ConfiguracaoTabs({
               }`}
           >
             <span className="material-symbols-outlined text-base">medication</span>
-            {t.configuracao.tabArticles} ({artigos.length})
+            {t.configuracao.tabArticles}
           </button>
 
           <button
@@ -519,7 +519,7 @@ export default function ConfiguracaoTabs({
               }`}
           >
             <span className="material-symbols-outlined text-base">sync_alt</span>
-            {t.configuracao.tabMovements} ({initialMovimentos.length})
+            {t.configuracao.tabMovements}
           </button>
 
           <button

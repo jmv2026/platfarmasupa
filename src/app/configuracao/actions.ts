@@ -1028,7 +1028,6 @@ export async function importarPlatMovimentosAction(
           null;
 
         return {
-          client_id: resolvedClientId,
           sigla: resolvedSigla,
           num_linha: r.num_linha,
           data: r.data,

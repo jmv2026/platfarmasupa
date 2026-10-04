@@ -578,7 +578,14 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
       lote: r['lote'] || null,
       validade: parseDate(r['validade']),
       datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-      tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] || null,
+      tipo_movimento: (() => {
+        const t = r['tipomovimento'] || r['tipo_movimento'];
+        if (!t) return null;
+        const up = String(t).trim().toUpperCase();
+        if (up === 'E') return 'es';
+        if (up === 'S') return 'ss';
+        return String(t).trim().toLowerCase();
+      })(),
       quantidade: parseNum(r['quantidade']),
       familia: r['familia'] || null,
       sub_familia: r['subfamilia'] || r['sub_familia'] || null,
@@ -633,7 +640,14 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         lote: r['lote'] ? String(r['lote']).trim() : null,
         validade: parseDate(r['validade']),
         datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-        tipo_movimento: r['tipomovimento'] || r['tipo_movimento'] ? String(r['tipomovimento'] || r['tipo_movimento']).trim() : null,
+        tipo_movimento: (() => {
+          const t = r['tipomovimento'] || r['tipo_movimento'];
+          if (!t) return null;
+          const up = String(t).trim().toUpperCase();
+          if (up === 'E') return 'es';
+          if (up === 'S') return 'ss';
+          return String(t).trim().toLowerCase();
+        })(),
         quantidade: parseNum(r['quantidade']),
         familia: r['familia'] ? String(r['familia']).trim() : null,
         sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
