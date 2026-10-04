@@ -598,31 +598,16 @@ export default function NovoPedidoForm({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface mb-1">
-                    {t.pedidos.orderDate} <span className="text-rose-600">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={dataPedido}
-                    onChange={(e) => setDataPedido(e.target.value)}
-                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface mb-1">
-                    {t.pedidos.deliveryDate}
-                  </label>
-                  <input
-                    type="date"
-                    value={dataEntrega}
-                    onChange={(e) => setDataEntrega(e.target.value)}
-                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-on-surface mb-1">
+                  {t.pedidos.deliveryDate}
+                </label>
+                <input
+                  type="date"
+                  value={dataEntrega}
+                  onChange={(e) => setDataEntrega(e.target.value)}
+                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                />
               </div>
             </div>
           </div>

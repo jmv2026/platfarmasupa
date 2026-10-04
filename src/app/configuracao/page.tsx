@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem, Tempo, AcessoLog } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem, Tempo } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export default async function ConfiguracaoPage() {
@@ -27,7 +27,7 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações, Tempos e Logs
+  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações e Tempos
   const [
     { data: usersList },
     { data: clientsList },
@@ -37,7 +37,6 @@ export default async function ConfiguracaoPage() {
     { data: movimentosList },
     { data: armazensList },
     { data: temposList },
-    { data: acessosLogList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clients').select('*').order('name'),
@@ -51,7 +50,6 @@ export default async function ConfiguracaoPage() {
       .limit(300),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
-    supabase.from('acessos_log').select('*, users(email, full_name)').order('created_at', { ascending: false }).limit(200),
   ]);
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
@@ -93,7 +91,6 @@ export default async function ConfiguracaoPage() {
         initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
         tempos={(temposList as Tempo[]) || []}
-        acessosLogs={(acessosLogList as AcessoLog[]) || []}
         serverEmailConfig={serverEmailConfig}
       />
     </div>
