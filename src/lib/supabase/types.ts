@@ -104,6 +104,7 @@ export const TIPO_ARMAZENAMENTO_LABELS: Record<TipoArmazenamento, string> = {
 
 export interface Artigo {
   artigo_id: string;
+  artigo_cli: string;
   descricao: string;
   tipo_artigo: TipoArtigo;
   tipo_armazenamento: TipoArmazenamento;
@@ -147,7 +148,7 @@ export const TIPO_MOVIMENTO_LABELS: Record<TipoMovimento, string> = {
 
 export interface Movimento {
   id: string;
-  artigo_id: string;
+  artigo_cli: string;
   client_id: string;
   sigla?: string | null;
   tipo_movimento: TipoMovimento;
@@ -304,6 +305,7 @@ export interface PedidoComLinhas extends Pedido {
 
 export interface NovaLinhaPedidoInput {
   artigo_id: string;
+  artigo_cli?: string;
   artigo_codigo: string;
   descricao: string;
   lote: string;

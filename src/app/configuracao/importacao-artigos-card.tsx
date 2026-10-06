@@ -15,12 +15,16 @@ import {
 } from '@/lib/parse-artigos-file';
 import { importarArtigosAction } from './actions';
 
+import { Client } from '@/lib/supabase/types';
+
 interface ImportacaoArtigosCardProps {
+  clients?: Client[];
   onSuccess?: (importedArtigos?: any[]) => void;
 }
 
-export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCardProps) {
+export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: ImportacaoArtigosCardProps) {
   const router = useRouter();
+  const [selectedClientSigla, setSelectedClientSigla] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ArtigoImportInput[]>([]);
   const [parsingLoading, setParsingLoading] = useState(false);
@@ -96,7 +100,7 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
         const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
         setImportProgress(`A gravar lote ${chunkIndex} de ${totalChunks} (${Math.min(i + CHUNK_SIZE, parsedRows.length)} / ${parsedRows.length} artigos)...`);
 
-        const res = await importarArtigosAction(chunk);
+        const res = await importarArtigosAction(chunk, selectedClientSigla);
         if (!res.success) {
           throw new Error(res.error || `Erro ao gravar lote ${chunkIndex}`);
         }

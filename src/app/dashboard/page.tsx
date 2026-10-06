@@ -64,7 +64,7 @@ export default async function DashboardPage() {
       
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, client_id, data_movimento, created_at, artigo_id, quantidade')
+        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade')
         .in('tipo_movimento', ['ss', 'st', 'SS', 'ST'])
         .in('client_id', cfClientIds);
         
@@ -84,9 +84,9 @@ export default async function DashboardPage() {
           }
           
           acc[key].pedido_linhas.push({
-            id: `${key}_${mov.artigo_id}`,
-            artigo_codigo: mov.artigo_id,
-            descricao: mov.artigo_id,
+            id: `${key}_${mov.artigo_cli}`,
+            artigo_codigo: mov.artigo_cli,
+            descricao: mov.artigo_cli,
             quantidade: mov.quantidade || 0
           });
           

@@ -160,6 +160,8 @@ export async function parseExcelDocVendaFile(arrayBuffer: ArrayBuffer, fileName:
       };
 
       rows.push({
+        cliente_id: rowData['cliente_id'] ? String(rowData['cliente_id']) : rowData['client_id'] ? String(rowData['client_id']) : undefined,
+        sigla_cliente: rowData['sigla_cliente'] ? String(rowData['sigla_cliente']) : rowData['sigla'] ? String(rowData['sigla']) : undefined,
         data: dataFinal,
         serie: rowData['serie'] ? String(rowData['serie']) : null,
         entidade: rowData['entidade'] ? String(rowData['entidade']) : null,

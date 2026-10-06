@@ -330,6 +330,7 @@ export async function atualizarTemposClienteAction(input: {
 // 3. AÇÃO: Criar Artigo (Validação de Tipos Regulamentares)
 export async function criarArtigoAction(input: {
   artigo_id: string;
+  artigo_cli?: string;
   descricao: string;
   tipo_artigo: TipoArtigo;
   tipo_armazenamento: TipoArmazenamento;
@@ -454,7 +455,7 @@ export async function limparArtigosAction() {
 }
 
 // 3.2 AÇÃO: Importar Catálogo de Artigos em Lote (Upsert na tabela artigos)
-export async function importarArtigosAction(rows: ArtigoImportInput[]) {
+export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackSigla?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -483,13 +484,21 @@ export async function importarArtigosAction(rows: ArtigoImportInput[]) {
   try {
     // 1. Garantir deduplicação estrita de artigo_id para evitar erro de concorrência do Postgres (código 21000)
     const uniqueMap = new Map<string, ArtigoImportInput>();
-    for (const r of rows) {
+            for (const r of rows) {
       const code = (r.artigo_id || '').trim().toUpperCase();
       if (code) {
-        uniqueMap.set(code, {
+        let cli = r.artigo_cli ? r.artigo_cli.trim() : '';
+        if (!cli && fallbackSigla) {
+          cli = fallbackSigla + '-' + code;
+        } else if (!cli) {
+          cli = code; // Fallback se não houver sigla
+        }
+
+        uniqueMap.set(cli, {
           ...r,
           artigo_id: code,
           descricao: (r.descricao || '').trim() || code,
+          artigo_cli: cli,
         });
       }
     }
@@ -504,7 +513,7 @@ export async function importarArtigosAction(rows: ArtigoImportInput[]) {
     const allUpsertedData: any[] = [];
 
     for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
-      const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
+            const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
         artigo_id: r.artigo_id,
         descricao: r.descricao,
         tipo_artigo: r.tipo_artigo || 'MH',
@@ -515,11 +524,12 @@ export async function importarArtigosAction(rows: ArtigoImportInput[]) {
           ? Number(r.pva) 
           : (r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00),
         ativo: parseArtigoBoolean(r.ativo, true),
+        artigo_cli: r.artigo_cli,
       }));
 
       const { data: upsertedBatch, error: upsertErr } = await supabase
         .from('artigos')
-        .upsert(batch, { onConflict: 'artigo_id' })
+        .upsert(batch, { onConflict: 'artigo_cli' })
         .select();
 
       if (upsertErr) {
@@ -773,8 +783,11 @@ export async function importarMovimentosAction(
           ? `${resolvedSigla}${tipoArmazem}`
           : `ARM${tipoArmazem}`;
 
+                const rawArtigoId = (r.artigo_id || '').trim().toUpperCase();
+        const artigoCli = resolvedSigla ? `${resolvedSigla}-${rawArtigoId}` : rawArtigoId;
+
         return {
-          artigo_id: r.artigo_id.trim(),
+          artigo_cli: artigoCli, // O campo artigo_id na tabela movimentos referencia o artigo_cli na tabela artigos
           client_id: resolvedClientId,
           sigla: resolvedSigla,
           tipo_movimento: r.tipo_movimento || 'es',
@@ -909,7 +922,7 @@ export async function importarDocVendaAction(
 
     const fallbackClientId = defaultClientId || profile?.client_id;
 
-    if (!fallbackClientId && clientMapBySigla.size === 0) {
+    if (!fallbackClientId) { const allRowsHaveClient = rows.every((r) => r.cliente_id || r.sigla_cliente); if (!allRowsHaveClient) { return { success: false, error: 'É obrigatório selecionar um Cliente a Associar para faturas que não tenham cliente definido no ficheiro.' }; } } if (false) {
       return {
         success: false,
         error: 'Nenhum cliente cadastrado no sistema para associar aos documentos.',
@@ -1140,6 +1153,80 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     return { success: true, count: data };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao transferir movimentos';
+    return { success: false, error: msg };
+  }
+}
+// 10. AÇÃO: Criar artigos a partir da tabela plat_movimentos
+export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  try {
+    const { data: client, error: clientErr } = await supabase
+      .from('clients')
+      .select('sigla')
+      .eq('id', clientId)
+      .single();
+
+    if (clientErr || !client) {
+      return { success: false, error: 'Cliente não encontrado.' };
+    }
+
+    const clientSigla = client.sigla.toUpperCase();
+
+    // Buscar artigos distintos da plat_movimentos
+    const { data: movimentos, error: movErr } = await supabase
+      .from('plat_movimentos')
+      .select('artigo, descricao, tipo_artigo')
+      .not('artigo', 'is', null);
+
+    if (movErr || !movimentos) {
+      return { success: false, error: 'Erro ao ler plat_movimentos.' };
+    }
+
+    // Remover duplicados por artigo
+    const artigosMap = new Map<string, any>();
+    movimentos.forEach((m) => {
+      const art = m.artigo.trim().toUpperCase();
+      if (!artigosMap.has(art)) {
+        artigosMap.set(art, m);
+      }
+    });
+
+    const uniqueArtigos = Array.from(artigosMap.values());
+    if (uniqueArtigos.length === 0) {
+      return { success: false, error: 'Nenhum artigo encontrado em plat_movimentos.' };
+    }
+
+    const batch = uniqueArtigos.map((r) => {
+      const art = r.artigo.trim().toUpperCase();
+      return {
+        artigo_id: art,
+        artigo_cli: `${clientSigla}-${art}`,
+        descricao: r.descricao?.trim() || art,
+        tipo_artigo: ['MH', 'MV', 'DM', 'DC', 'SC'].includes(r.tipo_artigo?.trim().toUpperCase()) ? r.tipo_artigo.trim().toUpperCase() : 'MH',
+        tipo_armazenamento: 'TA',
+        ativo: true
+      };
+    });
+
+    // Inserir os artigos, ignorando duplicados
+    const { error: insertErr } = await supabase.from('artigos').upsert(batch, { onConflict: 'artigo_cli' });
+
+    if (insertErr) {
+      console.error('Erro ao inserir artigos de plat_movimentos:', insertErr);
+      return { success: false, error: 'Erro ao inserir artigos: ' + insertErr.message };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/dashboard');
+    return { success: true, count: batch.length };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado ao criar artigos.';
     return { success: false, error: msg };
   }
 }

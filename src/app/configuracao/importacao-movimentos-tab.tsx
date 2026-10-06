@@ -13,8 +13,7 @@ import {
   importarMovimentosAction,
   limparMovimentosAction,
   limparImportacoesStockAction,
-  limparPlatMovimentosAction,
-} from './actions';
+  limparPlatMovimentosAction, criarArtigosAPartirPlatMovimentosAction } from './actions';
 
 export type MovimentoWithDetails = Movimento & {
   cliente_nome?: string;
@@ -92,6 +91,8 @@ export default function ImportacaoMovimentosTab({
   const [confirmClearPlatMovModal, setConfirmClearPlatMovModal] = useState(false);
   const [transferringPlatMov, setTransferringPlatMov] = useState(false);
   const [confirmTransferModal, setConfirmTransferModal] = useState(false);
+  const [creatingArtigosLoading, setCreatingArtigosLoading] = useState(false);
+  const [selectedClientIdForArtigos, setSelectedClientIdForArtigos] = useState('');
 
   // Lista local de Movimentos
   const [movimentosList, setMovimentosList] = useState<MovimentoWithDetails[]>(initialMovimentos);
@@ -152,6 +153,27 @@ export default function ImportacaoMovimentosTab({
     }
   };
 
+
+    const handleCriarArtigosFromPlatMov = async () => {
+    if (!selectedClientIdForArtigos) {
+      setFeedback({ type: 'error', message: 'Selecione um cliente primeiro.' });
+      return;
+    }
+    setCreatingArtigosLoading(true);
+    try {
+      const res = await criarArtigosAPartirPlatMovimentosAction(selectedClientIdForArtigos);
+      if (res.success) {
+        setFeedback({ type: 'success', message: "Foram criados/atualizados " + res.count + " artigos com sucesso!" });
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Erro ao criar artigos.' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao criar artigos';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setCreatingArtigosLoading(false);
+    }
+  };
 
   const handleClearPlatMovimentosTable = async () => {
     setClearingPlatMovLoading(true);
@@ -217,7 +239,7 @@ export default function ImportacaoMovimentosTab({
 
       if (movSearchTerm.trim()) {
         const q = movSearchTerm.toLowerCase();
-        const matchArtigo = m.artigo_id.toLowerCase().includes(q);
+        const matchArtigo = m.artigo_cli.toLowerCase().includes(q);
         const matchDesc = m.artigo_descricao?.toLowerCase().includes(q);
         const matchLote = m.lote?.toLowerCase().includes(q);
         const matchDoc = m.documento_ref?.toLowerCase().includes(q);
@@ -356,9 +378,33 @@ export default function ImportacaoMovimentosTab({
               <div className="flex flex-wrap items-center gap-2.5">
                 {/* Exportar CSV */}
 
-                <button
-                  type="button"
-                  onClick={() => setConfirmTransferModal(true)}
+                                  {/* Criar Artigos */}
+                  <div className="flex items-center gap-2 mr-2">
+                    <select
+                      value={selectedClientIdForArtigos}
+                      onChange={(e) => setSelectedClientIdForArtigos(e.target.value)}
+                      className="px-2 py-1.5 border border-outline/50 rounded-lg text-xs outline-hidden focus:border-primary bg-surface"
+                    >
+                      <option value="">Selecione o Cliente</option>
+                      {clients.map(c => (
+                        <option key={c.id} value={c.id}>{c.sigla} - {c.name}</option>
+                      ))}
+                    </select>
+                    
+                    <button
+                      type="button"
+                      onClick={handleCriarArtigosFromPlatMov}
+                      disabled={creatingArtigosLoading || !selectedClientIdForArtigos}
+                      className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-on-primary text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-sm">add_box</span>
+                      {creatingArtigosLoading ? 'A criar...' : 'Criar Artigos'}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setConfirmTransferModal(true)}
                   disabled={transferringPlatMov}
                   className="px-3 py-1.5 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
                 >
@@ -486,7 +532,7 @@ export default function ImportacaoMovimentosTab({
                           {m.sigla || m.cliente_sigla || '-'}
                         </td>
                         <td className="py-2.5 px-3">{renderTipoMovBadge(m.tipo_movimento)}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-on-surface">{m.artigo_id}</td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-on-surface">{m.artigo_cli}</td>
                         <td className="py-2.5 px-3 truncate max-w-[180px]" title={m.artigo_descricao || ''}>
                           {m.artigo_descricao || '-'}
                         </td>

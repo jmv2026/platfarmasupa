@@ -1374,14 +1374,14 @@ export default function ConfiguracaoTabs({
             </div>
 
             {/* Janela de Importação em Lote de Artigos (TXT / XLSX) */}
-            <ImportacaoArtigosCard
-              onSuccess={(importedArtigos) => {
+            <ImportacaoArtigosCard clients={clients}
+                            onSuccess={(importedArtigos) => {
                 if (importedArtigos && importedArtigos.length > 0) {
                   setArtigosList((prev) => {
                     const map = new Map<string, Artigo>();
-                    prev.forEach((a) => map.set(a.artigo_id, a));
-                    importedArtigos.forEach((a: Artigo) => map.set(a.artigo_id, a));
-                    return Array.from(map.values()).sort((a, b) => a.artigo_id.localeCompare(b.artigo_id));
+                    prev.forEach((a) => map.set(a.artigo_cli || a.artigo_id, a));
+                    importedArtigos.forEach((a: Artigo) => map.set(a.artigo_cli || a.artigo_id, a));
+                    return Array.from(map.values()).sort((a, b) => (a.artigo_cli || a.artigo_id).localeCompare(b.artigo_cli || b.artigo_id));
                   });
                 }
                 router.refresh();

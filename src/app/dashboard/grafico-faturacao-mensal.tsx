@@ -727,28 +727,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
 
         {/* Tooltip Detalhado Flutuante */}
         {activeItem && activePoint && (() => {
-          const xPct = (activePoint.x / svgWidth) * 100;
-          const yPct = (activePoint.y / svgHeight) * 100;
-          const isUpperHalf = yPct < 45;
-
-          let transformX = '-50%';
-          if (xPct < 22) {
-            transformX = '0%';
-          } else if (xPct > 78) {
-            transformX = '-100%';
-          }
-
-          const leftPos = Math.min(Math.max(xPct, 3), 97);
-          const topPos = isUpperHalf ? Math.min(yPct + 8, 55) : Math.max(yPct - 6, 15);
-          const transformY = isUpperHalf ? '0%' : '-100%';
-
           return (
             <div
               className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 min-w-[210px]"
               style={{
-                left: `${leftPos}%`,
-                top: `${topPos}%`,
-                transform: `translate(${transformX}, ${transformY})`,
+                right: '16px',
+                top: '16px',
               }}
             >
               <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1 mb-1">

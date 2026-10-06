@@ -5,6 +5,7 @@ export interface ArtigoImportInput {
   artigo_id: string;
   descricao: string;
   tratamento_serie?: boolean;
+  artigo_cli?: string;
   tratamento_lote?: boolean;
   tipo_artigo?: TipoArtigo;
   tipo_armazenamento?: TipoArmazenamento;
@@ -126,6 +127,17 @@ export function normalizeArtigoHeaderKey(key: string): string {
     clean === 'habilitado'
   ) {
     return 'ativo';
+  }
+
+    // 9. Artigo Cliente / Artigo CLI
+  if (
+    clean === 'artigocli' ||
+    clean === 'artcli' ||
+    clean.includes('artigocli') ||
+    clean.includes('artigocliente') ||
+    clean.includes('sigla')
+  ) {
+    return 'artigo_cli';
   }
 
   // 8. Artigo ID / Código Único do Produto (avaliado por último)

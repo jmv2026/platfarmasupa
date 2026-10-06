@@ -225,10 +225,16 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     }
 
     // Inserir linha do pedido
-    const { error: linhaErr } = await supabase.from('pedido_linhas').insert({
-      pedido_id: pedido.id,
-      client_id: targetClientId,
-      artigo_id: linha.artigo_id,
+          // We must ensure artigo_id is the artigo_cli format (SIGLA-ARTIGO)
+      let finalArtigoId = linha.artigo_id.trim();
+      if (!finalArtigoId.startsWith(client.sigla + '-')) {
+         finalArtigoId = client.sigla + '-' + finalArtigoId;
+      }
+      
+      const { error: linhaErr } = await supabase.from('pedido_linhas').insert({
+        pedido_id: pedido.id,
+        client_id: targetClientId,
+        artigo_id: finalArtigoId,
       artigo_codigo: linha.artigo_codigo,
       descricao: linha.descricao,
       lote: linha.lote,
@@ -243,7 +249,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
 
     // Gerar movimento de saída de stock SS correspondente
     const { error: movErr } = await supabase.from('movimentos').insert({
-      artigo_id: linha.artigo_id,
+      artigo_id: finalArtigoId,
       client_id: targetClientId,
       tipo_movimento: 'ss',
       quantidade: linha.quantidade,
