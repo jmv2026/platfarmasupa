@@ -484,12 +484,7 @@ export default function StocksView({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="badge-sermail-lime shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-sermail-lime-vibrant"></span>
-              Gestão de Stocks
-            </span>
-          </div>
+
         </div>
       </div>
 

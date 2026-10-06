@@ -13,6 +13,7 @@ import {
   importarMovimentosAction,
   limparMovimentosAction,
   limparImportacoesStockAction,
+  limparPlatMovimentosAction,
 } from './actions';
 
 export type MovimentoWithDetails = Movimento & {
@@ -87,6 +88,8 @@ export default function ImportacaoMovimentosTab({
   // Estados para Importação de Movimentos
   const [clearingMovLoading, setClearingMovLoading] = useState(false);
   const [confirmClearMovModal, setConfirmClearMovModal] = useState(false);
+  const [clearingPlatMovLoading, setClearingPlatMovLoading] = useState(false);
+  const [confirmClearPlatMovModal, setConfirmClearPlatMovModal] = useState(false);
   const [transferringPlatMov, setTransferringPlatMov] = useState(false);
   const [confirmTransferModal, setConfirmTransferModal] = useState(false);
 
@@ -149,6 +152,25 @@ export default function ImportacaoMovimentosTab({
     }
   };
 
+
+  const handleClearPlatMovimentosTable = async () => {
+    setClearingPlatMovLoading(true);
+    try {
+      const res = await limparPlatMovimentosAction();
+      if (res.success) {
+        setFeedback({ type: 'success', message: 'Tabela plat_movimentos limpa com sucesso.' });
+        setConfirmClearPlatMovModal(false);
+      } else {
+        setFeedback({ type: 'error', message: res.error || 'Erro ao limpar plat_movimentos.' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao limpar';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setClearingPlatMovLoading(false);
+    }
+  };
+
   const handleClearMovimentosTable = async () => {
     setClearingMovLoading(true);
     try {
@@ -177,10 +199,10 @@ export default function ImportacaoMovimentosTab({
 
   // KPIs dos Movimentos
   const totalMovimentosCount = movimentosList.length;
-  const countES = useMemo(() => movimentosList.filter((m) => m.tipo_movimento === 'es').length, [movimentosList]);
-  const countSS = useMemo(() => movimentosList.filter((m) => m.tipo_movimento === 'ss').length, [movimentosList]);
-  const countET = useMemo(() => movimentosList.filter((m) => m.tipo_movimento === 'et').length, [movimentosList]);
-  const countST = useMemo(() => movimentosList.filter((m) => m.tipo_movimento === 'st').length, [movimentosList]);
+  const countES = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'es').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
+  const countSS = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'ss').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
+  const countET = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'et').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
+  const countST = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'st').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
   const totalVolumeMovimentado = useMemo(
     () => movimentosList.reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
     [movimentosList]
@@ -299,22 +321,22 @@ export default function ImportacaoMovimentosTab({
 
             <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl p-4 shadow-sm">
               <p className="text-[11px] font-medium text-emerald-800">Entradas (ES)</p>
-              <p className="text-xl font-bold font-headline text-emerald-700 mt-0.5">{countES}</p>
+              <p className="text-xl font-bold font-headline text-emerald-700 mt-0.5">{countES.toLocaleString('pt-PT')}</p>
             </div>
 
             <div className="bg-surface-container-lowest border border-rose-200/60 rounded-xl p-4 shadow-sm">
               <p className="text-[11px] font-medium text-rose-800">Saídas (SS)</p>
-              <p className="text-xl font-bold font-headline text-rose-700 mt-0.5">{countSS}</p>
+              <p className="text-xl font-bold font-headline text-rose-700 mt-0.5">{countSS.toLocaleString('pt-PT')}</p>
             </div>
 
             <div className="bg-surface-container-lowest border border-cyan-200/60 rounded-xl p-4 shadow-sm">
               <p className="text-[11px] font-medium text-cyan-800">Entradas Transf. (ET)</p>
-              <p className="text-xl font-bold font-headline text-cyan-700 mt-0.5">{countET}</p>
+              <p className="text-xl font-bold font-headline text-cyan-700 mt-0.5">{countET.toLocaleString('pt-PT')}</p>
             </div>
 
             <div className="bg-surface-container-lowest border border-amber-200/60 rounded-xl p-4 shadow-sm">
               <p className="text-[11px] font-medium text-amber-800">Saídas Transf. (ST)</p>
-              <p className="text-xl font-bold font-headline text-amber-700 mt-0.5">{countST}</p>
+              <p className="text-xl font-bold font-headline text-amber-700 mt-0.5">{countST.toLocaleString('pt-PT')}</p>
             </div>
           </div>
 
@@ -343,6 +365,18 @@ export default function ImportacaoMovimentosTab({
                   <span className="material-symbols-outlined text-sm">move_down</span>
                   Transferir plat_movimentos
                 </button>
+                
+                {/* Limpar Tabela plat_movimentos */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearPlatMovModal(true)}
+                  disabled={clearingPlatMovLoading}
+                  className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                  Limpar plat-movimentos
+                </button>
+
                 {/* Limpar Tabela */}
                 {movimentosList.length > 0 && (
                   <button
@@ -457,7 +491,7 @@ export default function ImportacaoMovimentosTab({
                           {m.artigo_descricao || '-'}
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-on-surface">
-                          {Number(m.quantidade).toLocaleString('pt-PT')}
+                          {Math.round(Number(m.quantidade || 0)).toLocaleString('pt-PT')}
                         </td>
                         <td className="py-2.5 px-3 font-mono">
                           <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
@@ -535,6 +569,46 @@ export default function ImportacaoMovimentosTab({
           </div>
         </div>
       )}
+      
+      {confirmClearPlatMovModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                <span className="material-symbols-outlined text-xl">warning</span>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-on-surface">Limpar Tabela plat_movimentos?</h4>
+                <p className="text-xs text-on-surface-variant mt-0.5">Esta ação não pode ser revertida.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-on-surface leading-relaxed">
+              Tem a certeza de que deseja eliminar permanentemente todos os registos da tabela <code>plat_movimentos</code>?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmClearPlatMovModal(false)}
+                className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:bg-surface-container/60 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleClearPlatMovimentosTable}
+                disabled={clearingPlatMovLoading}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">delete_forever</span>
+                {clearingPlatMovLoading ? 'A eliminar...' : 'Sim, Limpar plat_movimentos'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Limpeza de Movimentos */}
       {confirmClearMovModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">

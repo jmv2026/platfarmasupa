@@ -54,6 +54,51 @@ export default async function DashboardPage() {
     faturacaoQuery,
   ]);
 
+  let finalPedidos = pedidos || [];
+  
+  if (clients && clients.length > 0) {
+    const cfClientIds = clients.filter((c: any) => c.tipo_cliente === 'CF' || c.tipo_cliente === 'cf').map((c: any) => c.id);
+    
+    if (cfClientIds.length > 0) {
+      finalPedidos = finalPedidos.filter(p => !cfClientIds.includes(p.client_id));
+      
+      const { data: cfMovimentos } = await supabase
+        .from('movimentos')
+        .select('documento_ref, client_id, data_movimento, created_at, artigo_id, quantidade')
+        .in('tipo_movimento', ['ss', 'st', 'SS', 'ST'])
+        .in('client_id', cfClientIds);
+        
+      if (cfMovimentos && cfMovimentos.length > 0) {
+        const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
+          const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
+          const key = `${mov.client_id}_${docRef}`;
+          
+          if (!acc[key]) {
+            acc[key] = {
+              id: key,
+              client_id: mov.client_id,
+              data_pedido: mov.data_movimento || mov.created_at,
+              created_at: mov.created_at,
+              pedido_linhas: []
+            };
+          }
+          
+          acc[key].pedido_linhas.push({
+            id: `${key}_${mov.artigo_id}`,
+            artigo_codigo: mov.artigo_id,
+            descricao: mov.artigo_id,
+            quantidade: mov.quantidade || 0
+          });
+          
+          return acc;
+        }, {});
+        
+        const pseudoPedidos = Object.values(grouped);
+        finalPedidos = [...finalPedidos, ...(pseudoPedidos as any)];
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">
       {/* Header com Navegação e Seletor de Idioma */}
@@ -68,7 +113,7 @@ export default async function DashboardPage() {
         clients={clients || []}
         stockAtual={stockAtual || []}
         stockPedidos={stockPedidos || []}
-        pedidos={pedidos || []}
+        pedidos={finalPedidos}
         faturacao={faturacao || []}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}

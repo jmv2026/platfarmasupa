@@ -66,7 +66,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -505,6 +505,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">event_available</span>
             {t.configuracao.tabValidades}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('tempo_entrega');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'tempo_entrega'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">local_shipping</span>
+            Lead Time
           </button>
 
           <button
@@ -2103,7 +2118,22 @@ export default function ConfiguracaoTabs({
         </div>
       )}
       
-    </main>
+    
+        {/* ========================================================================= */}
+        {/* ABA: TEMPO ENTREGA */}
+        {/* ========================================================================= */}
+        {activeTab === 'tempo_entrega' && (
+          <div className="space-y-8">
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+              <h3 className="text-base font-bold font-headline text-on-surface mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">local_shipping</span>
+                Lead Time
+              </h3>
+              <p className="text-sm text-on-surface-variant">Configurações de Lead Time serão disponibilizadas brevemente.</p>
+            </div>
+          </div>
+        )}
+</main>
   );
 }
 
