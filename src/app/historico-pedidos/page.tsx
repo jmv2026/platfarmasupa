@@ -52,22 +52,22 @@ export default async function HistoricoPedidosPage() {
   const { data: pedidos } = await pedidosQuery;
 
   let finalPedidos = pedidos || [];
-  
+
   if (clients && clients.length > 0) {
     if (cfClientIds.length > 0) {
       // O filtro em memória já não é necessário, pois a query excluiu os CF
-      
+
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
         .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
         .in('client_id', cfClientIds)
         .order('created_at', { ascending: false });
-        
+
       if (cfMovimentos && cfMovimentos.length > 0) {
         const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
           const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
           const key = `${mov.client_id}_${docRef}_${mov.tipo_movimento}`;
-          
+
           if (!acc[key]) {
             acc[key] = {
               id: key,
@@ -88,7 +88,7 @@ export default async function HistoricoPedidosPage() {
               pedido_linhas: []
             };
           }
-          
+
           acc[key].pedido_linhas.push({
             id: `${key}_${mov.artigo_cli}`,
             artigo_codigo: mov.artigo_cli,
@@ -97,13 +97,13 @@ export default async function HistoricoPedidosPage() {
             lote: mov.lote || '',
             validade: mov.validade || null
           });
-          
+
           return acc;
         }, {});
-        
+
         const pseudoPedidos = Object.values(grouped);
         finalPedidos = [...finalPedidos, ...(pseudoPedidos as any)];
-        
+
         // Ordenar os pedidos novamente por data decrescente
         finalPedidos.sort((a: any, b: any) => {
           const dateA = new Date(a.created_at || a.data_pedido).getTime();
