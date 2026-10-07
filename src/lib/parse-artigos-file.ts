@@ -130,7 +130,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'ativo';
   }
 
-    // 9. Artigo Cliente / Artigo CLI
+  // 9. Artigo Cliente / Artigo CLI
   if (
     clean === 'artigocli' ||
     clean === 'artcli' ||
