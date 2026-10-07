@@ -151,7 +151,7 @@ export default async function DashboardPage() {
           }, {});
           
         finalFaturacao = finalFaturacao.filter((f: any) => !Object.values(siglaMap).includes(f.sigla_cliente));
-        finalFaturacao = [...finalFaturacao, ...Object.values(fatGrouped)];
+        finalFaturacao = [...finalFaturacao, ...(Object.values(fatGrouped) as any[])];
       }
     }
   }

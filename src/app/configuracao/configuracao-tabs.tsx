@@ -1434,7 +1434,7 @@ export default function ConfiguracaoTabs({
                           <td className="py-3 px-3 font-medium">{a.descricao}</td>
                           <td className="py-3 px-3">
                             <span className="text-[11px] text-on-surface-variant">
-                              {TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[a.id_tipo_artigo] || 'MH']}
+                              {TIPO_ARTIGO_LABELS[a.tipo_artigo] || 'MH'}
                             </span>
                           </td>
                           <td className="py-3 px-3">

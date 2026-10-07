@@ -265,6 +265,8 @@ export interface Translations {
     bannerSubtitle: string;
     searchPlaceholder: string;
     filterClient: string;
+    filterTipoMov: string;
+    allTipoMovs: string;
     filterStatus: string;
     filterDate: string;
     allClients: string;
@@ -1037,6 +1039,8 @@ export const translations: Record<Language, Translations> = {
       bannerSubtitle: 'Consulta y seguimiento de pedidos registrados, estados de expedición y detalle de artículos.',
       searchPlaceholder: 'Buscar por nº pedido, cliente, destino, documento...',
       filterClient: 'Cliente',
+      filterTipoMov: 'Tipo de Movimiento',
+      allTipoMovs: 'Todos los Movimientos',
       filterStatus: 'Estado',
       filterDate: 'Período',
       allClients: 'Todos los Clientes',
@@ -1421,6 +1425,8 @@ export const translations: Record<Language, Translations> = {
       bannerSubtitle: 'Consultation and tracking of registered orders, dispatch status, and item details.',
       searchPlaceholder: 'Search by order no., client, destination, document...',
       filterClient: 'Client',
+      filterTipoMov: 'Movement Type',
+      allTipoMovs: 'All Movements',
       filterStatus: 'Status',
       filterDate: 'Period',
       allClients: 'All Clients',

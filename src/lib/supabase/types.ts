@@ -94,6 +94,24 @@ export const TIPO_ARTIGO_LABELS: Record<TipoArtigo, string> = {
   SA: 'Suplemento alimentar',
 };
 
+export const ID_TIPO_ARTIGO_MAP: Record<string, TipoArtigo> = {
+  '80': 'MH',
+  '81': 'MV',
+  '82': 'DM',
+  '83': 'DC',
+  '84': 'SC',
+  '85': 'SA',
+};
+
+export const TIPO_ARTIGO_ID_MAP: Record<TipoArtigo, string> = {
+  MH: '80',
+  MV: '81',
+  DM: '82',
+  DC: '83',
+  SC: '84',
+  SA: '85',
+};
+
 export type TipoArmazenamento = 'TA' | 'TC' | 'TF';
 
 export const TIPO_ARMAZENAMENTO_LABELS: Record<TipoArmazenamento, string> = {
@@ -307,6 +325,10 @@ export interface PedidoComLinhas extends Pedido {
   clients?: Client;
   destinos?: Destino;
   pedido_linhas?: PedidoLinha[];
+  tipo_movimento?: string;
+  requisicao?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
 }
 
 export interface NovaLinhaPedidoInput {
