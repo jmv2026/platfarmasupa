@@ -71,7 +71,9 @@ export default function HistoricoPedidosView({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
+  const [selectedTipoMov, setSelectedTipoMov] = useState<string>('todos');
   const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterType>('todos');
+  const [selectedModalPedido, setSelectedModalPedido] = useState<PedidoComLinhas | null>(null);
   const [viewMode, setViewMode] = useState<ViewModeType>('tabela');
 
   const isManagerOrAdmin =
@@ -158,6 +160,11 @@ export default function HistoricoPedidosView({
         return false;
       }
 
+      // Filtro Tipo Movimento
+      if (selectedTipoMov !== 'todos' && ped.tipo_movimento?.toLowerCase() !== selectedTipoMov) {
+        return false;
+      }
+
       // Filtro de Estado
       if (selectedStatus !== 'todos' && ped.status !== selectedStatus) {
         return false;
@@ -188,11 +195,11 @@ export default function HistoricoPedidosView({
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
         const matchNr = ped.nr_pedido?.toLowerCase().includes(query);
-        const matchDest = ped.nome_destinatario?.toLowerCase().includes(query);
+        const matchDest = (ped.nome_destinatario || ped.destinos?.nome || '')?.toLowerCase().includes(query);
         const matchMorada = ped.morada?.toLowerCase().includes(query);
         const matchLoc = ped.localidade?.toLowerCase().includes(query);
         const matchCP = ped.codigo_postal?.toLowerCase().includes(query);
-        const matchRef = ped.ref_documento?.toLowerCase().includes(query);
+        const matchRef = (ped.requisicao || ped.ref_documento)?.toLowerCase().includes(query);
         const matchObs = ped.observacoes?.toLowerCase().includes(query);
         const matchCli =
           ped.clients?.sigla?.toLowerCase().includes(query) ||
@@ -243,7 +250,7 @@ export default function HistoricoPedidosView({
     filteredPedidos.forEach((ped) => {
       const statusLabel = getStatusLabel(ped.status);
       const classif = ped.classifica_destino || ped.destinos?.classifica_destino || '';
-      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${ped.nome_destinatario.replace(/"/g, '""')}","${classif}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
+      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${(ped.nome_destinatario || ped.destinos?.nome || '').replace(/"/g, '""')}","${classif}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.requisicao || ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
 
       if (ped.pedido_linhas && ped.pedido_linhas.length > 0) {
         ped.pedido_linhas.forEach((l) => {
@@ -273,6 +280,7 @@ export default function HistoricoPedidosView({
     setSearchTerm('');
     setSelectedClientId('todos');
     setSelectedStatus('todos');
+    setSelectedTipoMov('todos');
     setSelectedDateFilter('todos');
   };
 
@@ -403,10 +411,10 @@ export default function HistoricoPedidosView({
         </div>
 
         {/* Linha de Filtros Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
           {/* Filtro Cliente (Apenas se Admin/Gestor) */}
           {isManagerOrAdmin ? (
-            <div>
+            <div className="lg:col-span-2">
               <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.historico.filterClient}
               </label>
@@ -424,7 +432,7 @@ export default function HistoricoPedidosView({
               </select>
             </div>
           ) : (
-            <div>
+            <div className="lg:col-span-2">
               <label className="block text-xs font-bold text-slate-600 mb-1">
                 {t.historico.filterClient}
               </label>
@@ -433,6 +441,24 @@ export default function HistoricoPedidosView({
               </div>
             </div>
           )}
+
+          {/* Filtro Tipo Movimento */}
+          <div>
+            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              Movimento
+            </label>
+            <select
+              value={selectedTipoMov}
+              onChange={(e) => setSelectedTipoMov(e.target.value)}
+              className="w-full px-3 py-2 bg-surface border border-outline-variant/30 rounded-xl text-xs font-medium text-on-surface shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all hover:bg-surface-container/30"
+            >
+              <option value="todos">Todos</option>
+              <option value="es">Entrada Stock (ES)</option>
+              <option value="et">Entrada Transf. (ET)</option>
+              <option value="ss">Saída Stock (SS)</option>
+              <option value="st">Saída Transf. (ST)</option>
+            </select>
+          </div>
 
           {/* Filtro Estado */}
           <div>
@@ -508,15 +534,23 @@ export default function HistoricoPedidosView({
                 return (
                   <div
                     key={ped.id}
-                    className="border border-outline-variant/30 rounded-xl p-5 bg-surface hover:bg-surface-container/20 transition-all space-y-4 shadow-sm"
+                    className="border border-outline-variant/30 rounded-xl p-5 bg-surface transition-all space-y-4 shadow-sm"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span className="inline-block px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-mono font-bold text-xs shadow-sm">
+                        <span 
+                          className="inline-block px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-mono font-bold text-xs shadow-sm cursor-pointer hover:bg-secondary/80"
+                          onClick={() => setSelectedModalPedido(ped)}
+                        >
                           {ped.nr_pedido}
                         </span>
+                        {ped.tipo_movimento && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary text-on-primary uppercase shadow-sm">
+                            {ped.tipo_movimento}
+                          </span>
+                        )}
                         <span className="font-semibold text-sm text-on-surface">
-                          {ped.nome_destinatario}
+                          {(ped.nome_destinatario || ped.destinos?.nome || '')}
                         </span>
                         {(ped.classifica_destino || ped.destinos?.classifica_destino) && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
@@ -593,7 +627,7 @@ export default function HistoricoPedidosView({
                           {t.pedidos.docRef}
                         </span>
                         <span className="text-on-surface font-mono font-medium">
-                          {ped.ref_documento || 'N/A'}
+                          {(ped.requisicao || ped.ref_documento) || 'N/A'}
                         </span>
                       </div>
                       <div>
@@ -621,7 +655,7 @@ export default function HistoricoPedidosView({
                           </thead>
                           <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                             {ped.pedido_linhas.map((linha, lIdx) => (
-                              <tr key={lIdx} className="hover:bg-surface-container/20">
+                              <tr key={lIdx} className="hover:bg-emerald-100/70 transition-colors">
                                 <td className="py-2 px-3 font-mono font-medium">
                                   {linha.artigo_codigo}
                                 </td>
@@ -633,7 +667,7 @@ export default function HistoricoPedidosView({
                                   {formatDate(linha.validade)}
                                 </td>
                                 <td className="py-2 px-3 text-right font-mono font-bold text-rose-700">
-                                  -{Number(linha.quantidade).toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')}{' '}
+                                  {Math.abs(Number(linha.quantidade)).toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')}{' '}
                                   <span className="text-[10px] font-normal text-on-surface-variant">
                                     un
                                   </span>
@@ -669,11 +703,14 @@ export default function HistoricoPedidosView({
                 <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                   <tr>
                     <th className="py-2.5 px-3 rounded-l-lg">{t.historico.colOrderNumber}</th>
+                    <th className="py-2.5 px-3 text-center">{t.historico.colTipoMovimento || 'Movimento'}</th>
                     <th className="py-2.5 px-3">{t.historico.colDate}</th>
-                    <th className="py-2.5 px-3">{t.historico.colClient}</th>
+
                     <th className="py-2.5 px-3">{t.historico.colDestination}</th>
-                    <th className="py-2.5 px-3">{t.pedidos.city}</th>
-                    <th className="py-2.5 px-3">{t.historico.colDocRef}</th>
+                    <th className="py-2.5 px-3">Morada</th>
+                    <th className="py-2.5 px-3">Cod_Postal</th>
+                    <th className="py-2.5 px-3">Localidade</th>
+                    <th className="py-2.5 px-3">Requisição</th>
                     <th className="py-2.5 px-3 text-center">{t.historico.colLines}</th>
                     <th className="py-2.5 px-3 text-right">{t.historico.colTotalQty}</th>
                     <th className="py-2.5 px-3 text-center rounded-r-lg">{t.historico.colStatus}</th>
@@ -689,29 +726,44 @@ export default function HistoricoPedidosView({
                     const isUpdating = updatingPedidoId === ped.id;
 
                     return (
-                      <tr key={ped.id} className="hover:bg-surface-container/30 transition-colors">
+                      <tr key={ped.id} className="hover:bg-emerald-50 transition-colors">
                         <td className="py-3 px-3 font-mono font-bold text-secondary">
-                          {ped.nr_pedido}
+                          <button 
+                            onClick={() => setSelectedModalPedido(ped)} 
+                            className="hover:underline cursor-pointer focus:outline-none"
+                            title="Ver detalhes do documento"
+                          >
+                            {ped.nr_pedido}
+                          </button>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {ped.tipo_movimento ? (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-primary text-on-primary uppercase shadow-sm">
+                              {ped.tipo_movimento}
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-outline-variant/30 text-on-surface-variant uppercase shadow-sm">
+                              -
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-3 font-mono text-on-surface-variant">
                           {formatDate(ped.data_pedido)}
                         </td>
-                        <td className="py-3 px-3">
-                          <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
-                            {ped.clients?.sigla || '-'}
-                          </span>
-                        </td>
+
                         <td className="py-3 px-3 font-medium">
-                          <div>{ped.nome_destinatario}</div>
+                          <div>{(ped.nome_destinatario || ped.destinos?.nome || '')}</div>
                           {(ped.classifica_destino || ped.destinos?.classifica_destino) && (
                             <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-primary/10 text-primary">
                               {ped.classifica_destino || ped.destinos?.classifica_destino}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-on-surface-variant">{ped.localidade}</td>
+                        <td className="py-3 px-3 text-on-surface-variant max-w-[200px] truncate" title={ped.morada || '-'}>{ped.morada || '-'}</td>
+                        <td className="py-3 px-3 text-on-surface-variant font-mono">{ped.cod_postal || ped.codigo_postal || '-'}</td>
+                        <td className="py-3 px-3 text-on-surface-variant">{ped.cod_postal_localidade || ped.localidade || '-'}</td>
                         <td className="py-3 px-3 font-mono text-on-surface-variant">
-                          {ped.ref_documento || '-'}
+                          {(ped.requisicao || ped.ref_documento) || '-'}
                         </td>
                         <td className="py-3 px-3 text-center font-mono font-semibold">
                           {ped.pedido_linhas?.length || 0}
@@ -772,6 +824,163 @@ export default function HistoricoPedidosView({
           </div>
         )}
       </div>
+
+      {selectedModalPedido && (() => {
+        const ped = selectedModalPedido;
+        const totalQtd = ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
+        const statusKey = (ped.status as StatusPedido) || 'pendente';
+        const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
+        const isUpdating = updatingPedidoId === ped.id;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedModalPedido(null)}>
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-surface rounded-xl shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setSelectedModalPedido(null)} className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface bg-surface-container hover:bg-surface-container-high rounded-full p-1.5 z-10 transition-colors flex items-center justify-center">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+              <div className="p-6 md:p-8 space-y-5">
+                {/* Header do Card */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-block px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-mono font-bold text-xs shadow-sm">
+                      {ped.nr_pedido}
+                    </span>
+                    {ped.tipo_movimento && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary text-on-primary uppercase shadow-sm">
+                        {ped.tipo_movimento}
+                      </span>
+                    )}
+                    <span className="font-semibold text-sm text-on-surface">
+                      {(ped.nome_destinatario || ped.destinos?.nome || '')}
+                    </span>
+                    {(ped.classifica_destino || ped.destinos?.classifica_destino) && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                        {ped.classifica_destino || ped.destinos?.classifica_destino}
+                      </span>
+                    )}
+                    {ped.clients?.sigla && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                        {ped.clients.sigla}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {isManagerOrAdmin ? (
+                      <div className="relative flex items-center">
+                        {isUpdating ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container border border-outline-variant/30 text-on-surface-variant">
+                            <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
+                            {t.common.loading}
+                          </span>
+                        ) : (
+                          <div className="relative">
+                            <select
+                              value={statusKey}
+                              onChange={(e) => handleStatusChange(ped.id, e.target.value as StatusPedido)}
+                              className={`appearance-none cursor-pointer pl-3 pr-8 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-secondary/40 ${statusCfg.bg}`}
+                              title={t.historico.changeStatus}
+                            >
+                              <option value="pendente">{t.historico.statusPendente}</option>
+                              <option value="confirmado">{t.historico.statusConfirmado}</option>
+                              <option value="em_preparacao">{t.historico.statusPreparacao}</option>
+                              <option value="expedido">{t.historico.statusExpedido}</option>
+                              <option value="entregue">{t.historico.statusEntregue}</option>
+                              <option value="cancelado">{t.historico.statusCancelado}</option>
+                            </select>
+                            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-70">
+                              arrow_drop_down
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.bg}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
+                        {getStatusLabel(statusKey)}
+                      </span>
+                    )}
+                    <span className="text-xs text-on-surface-variant font-mono">
+                      {formatDate(ped.data_pedido)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Destino & Info */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs bg-surface-container/40 p-4 rounded-lg border border-outline-variant/20">
+                  <div>
+                    <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
+                      {t.pedidos.address}
+                    </span>
+                    <span className="text-on-surface font-medium">
+                      {ped.morada}, {ped.codigo_postal} {ped.localidade} ({ped.pais || 'Portugal'})
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
+                      {t.pedidos.docRef}
+                    </span>
+                    <span className="text-on-surface font-mono font-medium">
+                      {(ped.requisicao || ped.ref_documento) || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant block text-[10px] uppercase font-semibold">
+                      {t.pedidos.deliveryDate}
+                    </span>
+                    <span className="text-on-surface font-mono font-medium">
+                      {ped.data_entrega ? formatDate(ped.data_entrega) : (language === 'pt' ? 'Imediata' : language === 'es' ? 'Inmediata' : 'Immediate')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Linhas do Pedido */}
+                {ped.pedido_linhas && ped.pedido_linhas.length > 0 && (
+                  <div className="overflow-x-auto overflow-y-auto max-h-[40vh] border border-outline-variant/20 rounded-lg custom-scrollbar">
+                    <table className="w-full text-left text-xs relative">
+                      <thead className="text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold bg-surface-container/95 backdrop-blur sticky top-0 z-10 shadow-sm">
+                        <tr>
+                          <th className="py-2.5 px-3 rounded-tl-lg">{t.pedidos.tableArticle}</th>
+                          <th className="py-2.5 px-3">{t.common.description}</th>
+                          <th className="py-2.5 px-3">{t.pedidos.tableBatch}</th>
+                          <th className="py-2.5 px-3">{t.pedidos.tableExpiry}</th>
+                          <th className="py-2.5 px-3 text-right rounded-tr-lg">{t.pedidos.tableQty}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                        {ped.pedido_linhas.map((linha, lIdx) => (
+                          <tr key={lIdx} className="hover:bg-emerald-100/70 transition-colors">
+                            <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_codigo}</td>
+                            <td className="py-2.5 px-3 font-medium">{linha.descricao}</td>
+                            <td className="py-2.5 px-3 font-mono font-semibold text-secondary">{linha.lote}</td>
+                            <td className="py-2.5 px-3 font-mono text-on-surface-variant">{formatDate(linha.validade)}</td>
+                            <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-700">
+                              {Math.abs(Number(linha.quantidade)).toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')}{' '}
+                              <span className="text-[10px] font-normal text-on-surface-variant">un</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-xs text-on-surface-variant pt-3 border-t border-outline-variant/10">
+                  <span>
+                    {ped.observacoes ? `${t.pedidos.notes}: ${ped.observacoes}` : (language === 'pt' ? 'Sem observações adicionais' : language === 'es' ? 'Sin observaciones adicionales' : 'No additional notes')}
+                  </span>
+                  <span className="font-semibold text-on-surface">
+                    {t.historico.colTotalQty}:{' '}
+                    <strong className="text-secondary font-mono text-sm">
+                      {totalQtd.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un
+                    </strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </main>
   );
 }

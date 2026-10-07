@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
+  ID_TIPO_ARTIGO_MAP,
 } from '@/lib/supabase/types';
 import {
   ArtigoImportInput,
@@ -187,9 +188,10 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
     parsedRows.forEach((r) => {
       if (r.tratamento_lote) comLote++;
       if (r.tratamento_serie) comSerie++;
-      if (r.tipo_artigo === 'MH' || r.tipo_artigo === 'MV') mhCount++;
-      if (r.tipo_artigo === 'DM') dmCount++;
-      if (r.tipo_artigo === 'DC') dcCount++;
+      const tipo = r.id_tipo_artigo ? ID_TIPO_ARTIGO_MAP[r.id_tipo_artigo] : 'MH';
+      if (tipo === 'MH' || tipo === 'MV') mhCount++;
+      if (tipo === 'DM') dmCount++;
+      if (tipo === 'DC') dcCount++;
       if (r.tipo_armazenamento === 'TF' || r.tipo_armazenamento === 'TC') frioCount++;
     });
 
@@ -204,7 +206,7 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
       (r) =>
         r.artigo_id.toLowerCase().includes(term) ||
         r.descricao.toLowerCase().includes(term) ||
-        (r.tipo_artigo && r.tipo_artigo.toLowerCase().includes(term))
+        (r.id_tipo_artigo && (ID_TIPO_ARTIGO_MAP[r.id_tipo_artigo] || '').toLowerCase().includes(term))
     );
   }, [parsedRows, searchTerm]);
 
@@ -273,8 +275,13 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
               <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                 <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">artigo_id</td>
-                  <td className="py-2 px-2.5">Código único identificador do artigo (Obrigatório)</td>
+                  <td className="py-2 px-2.5">Código base ou interno identificador do artigo (Obrigatório)</td>
                   <td className="py-2 px-2.5 font-mono text-on-surface-variant">A024273070, 00 1275627</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">artigo_cli</td>
+                  <td className="py-2 px-2.5">Código identificador de cliente (Opcional, gera automático se vazio)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">SERM-A024273070</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">Descricao</td>
@@ -292,9 +299,9 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
                   <td className="py-2 px-2.5 font-mono text-on-surface-variant">1 (Sim), 0 (Não)</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">tipo_artigo</td>
-                  <td className="py-2 px-2.5">Classificação regulamentar (MH, MV, DM, DC, SC ou MED)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">MH (Medicamento Humano), DM, DC</td>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">id_tipo_artigo</td>
+                  <td className="py-2 px-2.5">ID da Classificação regulamentar na base de dados (80 a 85)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">80 (Medicamento Humano), 82 (Dispositivo Médico), 83 (Dermo/Cosmético)</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">tipo_armazenamento</td>
@@ -318,11 +325,10 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
       {/* Feedback Banner */}
       {feedback && (
         <div
-          className={`p-4 rounded-xl flex items-center gap-3 text-xs font-semibold ${
-            feedback.type === 'success'
+          className={`p-4 rounded-xl flex items-center gap-3 text-xs font-semibold ${feedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               : 'bg-rose-50 text-rose-800 border border-rose-200'
-          }`}
+            }`}
         >
           <span className="material-symbols-outlined text-base">
             {feedback.type === 'success' ? 'check_circle' : 'error'}
@@ -473,18 +479,17 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
                     </td>
                     <td className="py-2.5 px-3">
                       <span className="text-[11px] text-on-surface-variant">
-                        {TIPO_ARTIGO_LABELS[row.tipo_artigo || 'MH'] || row.tipo_artigo}
+                        {TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[row.id_tipo_artigo || '80'] || 'MH']}
                       </span>
                     </td>
                     <td className="py-2.5 px-3">
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          row.tipo_armazenamento === 'TF'
-                             ? 'bg-cyan-100 text-cyan-800'
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${row.tipo_armazenamento === 'TF'
+                            ? 'bg-cyan-100 text-cyan-800'
                             : row.tipo_armazenamento === 'TC'
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-slate-100 text-slate-800'
-                        }`}
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-800'
+                          }`}
                       >
                         <span className="material-symbols-outlined text-[12px]">
                           {row.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}

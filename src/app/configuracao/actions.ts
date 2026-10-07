@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { UserRole, TipoArtigo, TipoArmazenamento, TipoCliente, ImpStkInput } from '@/lib/supabase/types';
+import { UserRole, TipoArtigo, TipoArmazenamento, TipoCliente, ImpStkInput, ID_TIPO_ARTIGO_MAP } from '@/lib/supabase/types';
 import { parseDateStockToISO } from '@/lib/parse-stock-file';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import {
@@ -332,7 +332,7 @@ export async function criarArtigoAction(input: {
   artigo_id: string;
   artigo_cli?: string;
   descricao: string;
-  tipo_artigo: TipoArtigo;
+  id_tipo_artigo: string;
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote?: boolean;
   tratamento_serie?: boolean;
@@ -360,7 +360,7 @@ export async function criarArtigoAction(input: {
     return { success: false, error: 'Acesso negado: Apenas administradores podem criar artigos.' };
   }
 
-  if (!input.artigo_id || !input.descricao || !input.tipo_artigo || !input.tipo_armazenamento) {
+  if (!input.artigo_id || !input.descricao || !input.id_tipo_artigo || !input.tipo_armazenamento) {
     return { success: false, error: 'Preencha todos os campos obrigatórios do artigo.' };
   }
 
@@ -372,7 +372,7 @@ export async function criarArtigoAction(input: {
       .insert({
         artigo_id: codigoFormatado,
         descricao: input.descricao.trim(),
-        tipo_artigo: input.tipo_artigo,
+        id_tipo_artigo: input.id_tipo_artigo,
         tipo_armazenamento: input.tipo_armazenamento,
         tratamento_lote: input.tratamento_lote !== undefined ? input.tratamento_lote : true,
         tratamento_serie: input.tratamento_serie !== undefined ? input.tratamento_serie : false,
@@ -516,7 +516,7 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
             const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
         artigo_id: r.artigo_id,
         descricao: r.descricao,
-        tipo_artigo: r.tipo_artigo || 'MH',
+        id_tipo_artigo: r.id_tipo_artigo || '80',
         tipo_armazenamento: r.tipo_armazenamento || 'TA',
         tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
         tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),

@@ -23,31 +23,49 @@ export default async function DashboardPage() {
   const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
   const userClientId = profile?.client_id;
 
-  // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
+  // Primeiro buscar clientes para saber quais são CF
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  if (!isManagerOrAdmin && userClientId) {
+    clientsQuery = clientsQuery.eq('id', userClientId);
+  }
+  
+  const { data: clients } = await clientsQuery;
+  const cfClientIds = clients ? clients.filter((c: any) => c.tipo_cliente === 'CF' || c.tipo_cliente === 'cf').map((c: any) => c.id) : [];
+
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, client_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
+  
+  // Apenas ler da tabela pedidos os clientes que não são CF
   let pedidosQuery = supabase
     .from('pedidos')
     .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
+    
   let faturacaoQuery = supabase.from('vw_fact_mes').select('sigla_cliente, data, total_merc, total_iva, total_desc');
 
   if (!isManagerOrAdmin && userClientId) {
-    clientsQuery = clientsQuery.eq('id', userClientId);
+    // Se o cliente for CF, não queremos ler NADA da tabela pedidos
+    if (cfClientIds.includes(userClientId)) {
+      // Forçar query vazia sem causar erro de sintaxe
+      pedidosQuery = pedidosQuery.eq('id', '00000000-0000-0000-0000-000000000000');
+    } else {
+      pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+    }
     stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+  } else {
+    // Se for admin, excluímos os CF da query de pedidos
+    if (cfClientIds.length > 0) {
+      pedidosQuery = pedidosQuery.not('client_id', 'in', `(${cfClientIds.join(',')})`);
+    }
   }
 
-  // Buscar dados em paralelo
+  // Buscar o resto dos dados em paralelo
   const [
-    { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
     { data: pedidos },
     { data: faturacao },
   ] = await Promise.all([
-    clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
     pedidosQuery,
@@ -55,16 +73,15 @@ export default async function DashboardPage() {
   ]);
 
   let finalPedidos = pedidos || [];
+  let finalFaturacao = faturacao || [];
   
   if (clients && clients.length > 0) {
-    const cfClientIds = clients.filter((c: any) => c.tipo_cliente === 'CF' || c.tipo_cliente === 'cf').map((c: any) => c.id);
-    
     if (cfClientIds.length > 0) {
-      finalPedidos = finalPedidos.filter(p => !cfClientIds.includes(p.client_id));
+      // Já não precisamos filtrar, pois a query já os excluiu
       
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade')
+        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, artigos(pva)')
         .in('tipo_movimento', ['ss', 'st', 'SS', 'ST'])
         .in('client_id', cfClientIds);
         
@@ -95,6 +112,46 @@ export default async function DashboardPage() {
         
         const pseudoPedidos = Object.values(grouped);
         finalPedidos = [...finalPedidos, ...(pseudoPedidos as any)];
+        
+        // CF Faturacao
+        const siglaMap: Record<string, string> = {};
+        clients.filter((c: any) => cfClientIds.includes(c.id)).forEach((c: any) => {
+          siglaMap[c.id] = c.sigla;
+        });
+
+        const fatGrouped = cfMovimentos
+          .filter((m: any) => m.tipo_movimento === 'ss' || m.tipo_movimento === 'SS')
+          .reduce((acc: any, mov: any) => {
+            const sigla = siglaMap[mov.client_id];
+            if (!sigla) return acc;
+            
+            const dateStr = (mov.data_movimento || mov.created_at).split('T')[0];
+            const mesAno = dateStr.substring(0, 7) + '-01'; // Agrupar por mês
+            const key = `${sigla}_${mesAno}`;
+            
+            if (!acc[key]) {
+              acc[key] = {
+                sigla_cliente: sigla,
+                data: mesAno,
+                total_merc: 0,
+                total_iva: 0,
+                total_desc: 0
+              };
+            }
+            
+            // Aqui precisávamos do PVA. Como não incluímos na query cfMovimentos anterior,
+            // podemos adicionar um valor provisório ou refazer a query.
+            // Para sermos exatos, teríamos de juntar o pva da tabela artigos.
+            // Por simplicidade, se o preço não for conhecido, usamos 0 ou tentamos obter.
+            const artInfo = Array.isArray(mov.artigos) ? mov.artigos[0] : mov.artigos;
+            const pva = artInfo?.pva || 0;
+            acc[key].total_merc += (mov.quantidade || 0) * pva;
+            
+            return acc;
+          }, {});
+          
+        finalFaturacao = finalFaturacao.filter((f: any) => !Object.values(siglaMap).includes(f.sigla_cliente));
+        finalFaturacao = [...finalFaturacao, ...Object.values(fatGrouped)];
       }
     }
   }
@@ -114,7 +171,7 @@ export default async function DashboardPage() {
         stockAtual={stockAtual || []}
         stockPedidos={stockPedidos || []}
         pedidos={finalPedidos}
-        faturacao={faturacao || []}
+        faturacao={finalFaturacao}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}
       />

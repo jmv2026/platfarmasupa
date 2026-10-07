@@ -7,7 +7,7 @@ export interface ArtigoImportInput {
   tratamento_serie?: boolean;
   artigo_cli?: string;
   tratamento_lote?: boolean;
-  tipo_artigo?: TipoArtigo;
+  id_tipo_artigo?: string;
   tipo_armazenamento?: TipoArmazenamento;
   pva?: number;
   pvp?: number;
@@ -75,6 +75,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
   if (
     clean.includes('tipoartigo') ||
     clean.includes('tipodeartigo') ||
+    clean.includes('idtipoartigo') ||
     clean === 'tipoart' ||
     clean === 'tipo' ||
     clean === 'classificacao' ||
@@ -82,7 +83,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     clean === 'familia' ||
     clean === 'subfamilia'
   ) {
-    return 'tipo_artigo';
+    return 'id_tipo_artigo';
   }
 
   // 5. Tipo de Armazenamento / Condição de Conservação Térmica
@@ -260,26 +261,29 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
 /**
  * Normaliza o Tipo de Artigo para valores válidos na base de dados ('MH' | 'MV' | 'DM' | 'DC' | 'SC')
  */
-export function normalizeTipoArtigo(val: unknown): TipoArtigo {
-  if (!val) return 'MH';
+export function normalizeTipoArtigo(val: unknown): string {
+  if (!val) return '80'; // MH
   const clean = extractExcelCellValue(val).toUpperCase();
 
   if (
+    clean === '80' ||
     clean === 'MH' ||
     clean.includes('HUMAN') ||
     clean.includes('MEDICAMENTO') ||
     clean === 'MED' ||
     clean === 'M'
   ) {
-    return 'MH';
+    return '80';
   }
-  if (clean === 'MV' || clean.includes('VET')) {
-    return 'MV';
+  if (clean === '81' || clean === 'MV' || clean.includes('VET')) {
+    return '81';
   }
-  if (clean === 'DM' || clean.includes('DISP') || clean.includes('DISPOSITIVO')) {
-    return 'DM';
+  if (clean === '82' || clean === 'DM' || clean.includes('DISP') || clean.includes('DISPOSITIVO')) {
+    return '82';
   }
   if (
+    clean === '83' ||
+    clean === '84' ||
     clean === 'DC' ||
     clean.includes('DERMO') ||
     clean.includes('COSM') ||
@@ -287,18 +291,20 @@ export function normalizeTipoArtigo(val: unknown): TipoArtigo {
     clean.includes('SUPL') ||
     clean === 'SA'
   ) {
-    return 'DC';
+    if (clean === '84' || clean.includes('SUPL') || clean === 'SA') return '84';
+    return '83';
   }
   if (
+    clean === '85' ||
     clean === 'SC' ||
     clean.includes('CONTROL') ||
     clean.includes('ESTUPEFACIENTE') ||
     clean.includes('PSICO')
   ) {
-    return 'SC';
+    return '85';
   }
 
-  return 'MH';
+  return '80';
 }
 
 /**
@@ -402,7 +408,7 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
           descricao,
           tratamento_serie: parseArtigoBoolean(tratamento_serie, false),
           tratamento_lote: parseArtigoBoolean(tratamento_lote, true),
-          tipo_artigo: normalizeTipoArtigo(tipo_artigo),
+          id_tipo_artigo: normalizeTipoArtigo(tipo_artigo),
           tipo_armazenamento: normalizeTipoArmazenamento(tipo_armazenamento),
           ativo: true,
         });
@@ -426,10 +432,11 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
 
     rows.push({
       artigo_id,
+      artigo_cli: rowObj.artigo_cli?.trim() || undefined,
       descricao: descricao || artigo_id,
       tratamento_serie: parseArtigoBoolean(rowObj.tratamento_serie, false),
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
-      tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
+      id_tipo_artigo: normalizeTipoArtigo(rowObj.id_tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
       pva: parseArtigoNumeric(rowObj.pva ?? rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
@@ -529,10 +536,11 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
 
     rows.push({
       artigo_id,
+      artigo_cli: rowObj.artigo_cli?.trim() || undefined,
       descricao: descricao || artigo_id,
       tratamento_serie: parseArtigoBoolean(rowObj.tratamento_serie, false),
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
-      tipo_artigo: normalizeTipoArtigo(rowObj.tipo_artigo),
+      id_tipo_artigo: normalizeTipoArtigo(rowObj.id_tipo_artigo),
       tipo_armazenamento: normalizeTipoArmazenamento(rowObj.tipo_armazenamento),
       pva: parseArtigoNumeric(rowObj.pva ?? rowObj.pvp, 0),
       ativo: parseArtigoBoolean(rowObj.ativo, true),
@@ -556,20 +564,21 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
 export function generateArtigosSampleCSV(): string {
   const headers = [
     'artigo_id',
+    'artigo_cli',
     'Descricao',
     'tratamento_serie',
     'tratamento_lote',
-    'tipo_artigo',
+    'id_tipo_artigo',
     'tipo_armazenamento',
     'pva',
     'ativo',
   ];
 
   const sampleRows = [
-    ['024273070', 'LUVION 200MG + 6F 2ML', '0', '1', 'MH', 'TA', '12.50', '1'],
-    ['00 1275627', 'SELOKEN 1MG/ML SOL INJ', '0', '1', 'MH', 'TC', '8.90', '1'],
-    ['023616055', 'VACINA VETERINÁRIA 2-8 ºC', '1', '1', 'MV', 'TF', '34.20', '1'],
-    ['000155152', 'MULTICATH 16 CM (DISPOSITIVO)', '0', '1', 'DM', 'TA', '4.50', '1'],
+    ['024273070', 'SERM-024273070', 'LUVION 200MG + 6F 2ML', '0', '1', '80', 'TA', '12.50', '1'],
+    ['00 1275627', 'SERM-001275627', 'SELOKEN 1MG/ML SOL INJ', '0', '1', '80', 'TC', '8.90', '1'],
+    ['023616055', 'SERM-023616055', 'VACINA VETERINÁRIA 2-8 ºC', '1', '1', '81', 'TF', '34.20', '1'],
+    ['000155152', 'SERM-000155152', 'MULTICATH 16 CM (DISPOSITIVO)', '0', '1', '82', 'TA', '4.50', '1'],
   ];
 
   const lines = [
@@ -589,10 +598,11 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
 
   worksheet.columns = [
     { header: 'Código do Artigo', key: 'artigo_id', width: 18 },
+    { header: 'Código do Artigo (Cliente)', key: 'artigo_cli', width: 25 },
     { header: 'Descrição Comercial', key: 'descricao', width: 35 },
     { header: 'Tratamento Lote', key: 'tratamento_lote', width: 16 },
     { header: 'Tratamento Série', key: 'tratamento_serie', width: 16 },
-    { header: 'Tipo Artigo', key: 'tipo_artigo', width: 22 },
+    { header: 'Tipo Artigo (ID)', key: 'id_tipo_artigo', width: 22 },
     { header: 'Condição Conservação', key: 'tipo_armazenamento', width: 22 },
     { header: 'PVA (€)', key: 'pva', width: 14 },
     { header: 'Ativo', key: 'ativo', width: 10 },
@@ -609,10 +619,11 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
 
   worksheet.addRow({
     artigo_id: '024273070',
+    artigo_cli: 'SERM-024273070',
     descricao: 'LUVION 200MG + 6F 2ML',
     tratamento_lote: 'Sim',
     tratamento_serie: 'Não',
-    tipo_artigo: 'Medicamento Uso Humano (MH)',
+    id_tipo_artigo: '80', // Medicamento Uso Humano (MH)
     tipo_armazenamento: 'Temperatura Ambiente (TA)',
     pva: 12.50,
     ativo: 'Sim',
@@ -620,10 +631,11 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
 
   worksheet.addRow({
     artigo_id: '00 1275627',
+    artigo_cli: 'SERM-001275627',
     descricao: 'SELOKEN 1MG/ML SOL INJ 5ML',
     tratamento_lote: 'Sim',
     tratamento_serie: 'Não',
-    tipo_artigo: 'Medicamento Uso Humano (MH)',
+    id_tipo_artigo: '80', // Medicamento Uso Humano (MH)
     tipo_armazenamento: 'Temperatura Controlada (TC 15-25ºC)',
     pva: 8.90,
     ativo: 'Sim',
@@ -631,10 +643,11 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
 
   worksheet.addRow({
     artigo_id: '023616055',
+    artigo_cli: 'SERM-023616055',
     descricao: 'VACINA VETERINÁRIA FRASCO 10ML',
     tratamento_lote: 'Sim',
     tratamento_serie: 'Sim',
-    tipo_artigo: 'Medicamento Veterinário (MV)',
+    id_tipo_artigo: '81', // Medicamento Veterinário (MV)
     tipo_armazenamento: 'Frio (TF 2-8ºC)',
     pva: 34.20,
     ativo: 'Sim',
@@ -642,10 +655,11 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
 
   worksheet.addRow({
     artigo_id: '000155152',
+    artigo_cli: 'SERM-000155152',
     descricao: 'MULTICATH 16 CM CATETER',
     tratamento_lote: 'Sim',
     tratamento_serie: 'Não',
-    tipo_artigo: 'Dispositivo Médico (DM)',
+    id_tipo_artigo: '82', // Dispositivo Médico (DM)
     tipo_armazenamento: 'Temperatura Ambiente (TA)',
     pva: 4.50,
     ativo: 'Sim',

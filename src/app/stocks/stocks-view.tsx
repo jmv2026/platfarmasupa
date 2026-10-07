@@ -730,6 +730,7 @@ export default function StocksView({
                 <option value="DM">DM - Dispositivo Médico</option>
                 <option value="DC">DC - Dermo-Cosmético</option>
                 <option value="SC">SC - Substância Controlada</option>
+                <option value="SA">SA - Suplemento Alimentar</option>
               </select>
             </div>
 

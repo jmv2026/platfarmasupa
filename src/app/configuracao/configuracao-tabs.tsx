@@ -18,6 +18,8 @@ import {
   Tempo,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
+  ID_TIPO_ARTIGO_MAP,
+  TIPO_ARTIGO_ID_MAP,
 } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 import {
@@ -331,7 +333,7 @@ export default function ConfiguracaoTabs({
       const res = await criarArtigoAction({
         artigo_id: artigoCodigo,
         descricao: artigoDescricao,
-        tipo_artigo: artigoTipo,
+        id_tipo_artigo: TIPO_ARTIGO_ID_MAP[artigoTipo],
         tipo_armazenamento: artigoArmazenamento,
         tratamento_lote: artigoLote,
         tratamento_serie: artigoSerie,
@@ -1293,6 +1295,7 @@ export default function ConfiguracaoTabs({
                       <option value="DM">[DM] Dispositivo médico</option>
                       <option value="DC">[DC] Dermo-Cosmético</option>
                       <option value="SC">[SC] Substância controlada</option>
+                      <option value="SA">[SA] Suplemento alimentar</option>
                     </select>
                   </div>
 
@@ -1431,7 +1434,7 @@ export default function ConfiguracaoTabs({
                           <td className="py-3 px-3 font-medium">{a.descricao}</td>
                           <td className="py-3 px-3">
                             <span className="text-[11px] text-on-surface-variant">
-                              {TIPO_ARTIGO_LABELS[a.tipo_artigo] || a.tipo_artigo}
+                              {TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[a.id_tipo_artigo] || 'MH']}
                             </span>
                           </td>
                           <td className="py-3 px-3">

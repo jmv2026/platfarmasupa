@@ -283,6 +283,7 @@ export interface Translations {
     statusEntregue: string;
     statusCancelado: string;
     colOrderNumber: string;
+    colTipoMovimento: string;
     colDate: string;
     colClient: string;
     colDestination: string;
@@ -378,7 +379,7 @@ export const translations: Record<Language, Translations> = {
       dashboard: 'Dashboard',
       stocks: 'Stocks',
       criarPedido: 'Criar Pedido',
-      historicoPedidos: 'Histórico Pedidos',
+      historicoPedidos: 'Histórico Movimentos',
       configuracao: 'Configuração',
       terminarSessao: 'Terminar Sessão',
       languageLabel: 'Idioma:',
@@ -646,10 +647,12 @@ export const translations: Record<Language, Translations> = {
       modalSaveDest: 'Guardar Destino',
     },
     historico: {
-      bannerTitle: 'Histórico Pedidos',
+      bannerTitle: 'Histórico Movimentos',
       bannerSubtitle: 'Consulta e rastreio de encomendas registadas, estados de expedição e detalhe de artigos.',
       searchPlaceholder: 'Pesquisar por nº pedido, cliente, destino, documento...',
       filterClient: 'Cliente',
+      filterTipoMov: 'Tipo de Movimento',
+      allTipoMovs: 'Todos os Movimentos',
       filterStatus: 'Estado',
       filterDate: 'Período',
       allClients: 'Todos os Clientes',
@@ -667,7 +670,8 @@ export const translations: Record<Language, Translations> = {
       statusExpedido: 'Expedido',
       statusEntregue: 'Entregue',
       statusCancelado: 'Cancelado',
-      colOrderNumber: 'Nº Pedido',
+      colOrderNumber: 'Documento',
+      colTipoMovimento: 'Movimento',
       colDate: 'Data',
       colClient: 'Cliente',
       colDestination: 'Destino',
@@ -1050,7 +1054,8 @@ export const translations: Record<Language, Translations> = {
       statusExpedido: 'Expedido',
       statusEntregue: 'Entregado',
       statusCancelado: 'Cancelado',
-      colOrderNumber: 'Nº Pedido',
+      colOrderNumber: 'Documento',
+      colTipoMovimento: 'Movimiento',
       colDate: 'Fecha',
       colClient: 'Cliente',
       colDestination: 'Destino',
@@ -1433,7 +1438,8 @@ export const translations: Record<Language, Translations> = {
       statusExpedido: 'Dispatched',
       statusEntregue: 'Delivered',
       statusCancelado: 'Cancelled',
-      colOrderNumber: 'Order #',
+      colOrderNumber: 'Document',
+      colTipoMovimento: 'Movement',
       colDate: 'Date',
       colClient: 'Client',
       colDestination: 'Destination',

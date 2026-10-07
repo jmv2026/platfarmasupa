@@ -163,6 +163,12 @@ export interface Movimento {
   data_movimento: string;
   documento_ref?: string | null;
   observacoes?: string | null;
+  requisicao?: string | null;
+  entidade?: string | null;
+  morada?: string | null;
+  localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -378,4 +384,3 @@ export interface Tempo {
   created_at?: string;
   updated_at?: string;
 }
-
