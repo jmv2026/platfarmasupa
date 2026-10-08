@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Client, UserProfile } from '@/lib/supabase/types';
@@ -75,6 +75,16 @@ export default function DashboardView({
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao'>('pedidos');
   const graficoContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao') {
+        setGraficoAtivo(tab);
+      }
+    }
+  }, []);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
   const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao') => {
