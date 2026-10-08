@@ -38,7 +38,7 @@ export default async function DashboardPage() {
   // Apenas ler da tabela pedidos os clientes que não são CF
   let pedidosQuery = supabase
     .from('pedidos')
-    .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
+    .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_id, artigo_codigo, descricao, quantidade, artigos(descricao, tipos_artigo(tipo_desc)))');
     
   let faturacaoQuery = supabase.from('vw_fact_mes').select('sigla_cliente, data, total_merc, total_iva, total_desc');
 
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const [
     { data: stockAtual },
     { data: stockPedidos },
-    { data: pedidos },
+    { data: pedidosRaw },
     { data: faturacao },
   ] = await Promise.all([
     stockAtualQuery,
@@ -71,6 +71,32 @@ export default async function DashboardPage() {
     pedidosQuery,
     faturacaoQuery,
   ]);
+
+  // Transformar pedidosRaw para incluir tipo_desc
+  let pedidos = pedidosRaw ? pedidosRaw.map((p: any) => ({
+    ...p,
+    pedido_linhas: p.pedido_linhas ? p.pedido_linhas.map((linha: any) => {
+      const artInfo = Array.isArray(linha.artigos) ? linha.artigos[0] : linha.artigos;
+      
+      let finalDescricao = linha.descricao;
+      if (!finalDescricao || finalDescricao === linha.artigo_codigo) {
+        finalDescricao = artInfo?.descricao || linha.artigo_codigo;
+      }
+      
+      const stockMatch = stockAtual?.find((s: any) => s.artigo_codigo === linha.artigo_codigo || s.artigo_id === linha.artigo_id);
+      if (!finalDescricao || finalDescricao === linha.artigo_codigo) {
+        if (stockMatch?.artigo_descricao) {
+          finalDescricao = stockMatch.artigo_descricao;
+        }
+      }
+
+      return {
+        ...linha,
+        descricao: finalDescricao,
+        tipo_desc: artInfo?.tipos_artigo?.tipo_desc || ''
+      };
+    }) : []
+  })) : [];
 
   let finalPedidos = pedidos || [];
   let finalFaturacao = faturacao || [];
@@ -81,7 +107,7 @@ export default async function DashboardPage() {
       
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, artigos(pva)')
+        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, artigos(artigo_id, pva, descricao, tipos_artigo(tipo_desc))')
         .in('tipo_movimento', ['ss', 'st', 'SS', 'ST'])
         .in('client_id', cfClientIds);
         
@@ -100,10 +126,23 @@ export default async function DashboardPage() {
             };
           }
           
+          const artInfo = Array.isArray(mov.artigos) ? mov.artigos[0] : mov.artigos;
+          const linkedArtigoId = artInfo?.artigo_id || mov.artigo_cli;
+          
+          let linkedDescricao = artInfo?.descricao;
+          if (!linkedDescricao || linkedDescricao === mov.artigo_cli) {
+            const stockMatch = stockAtual?.find((s: any) => s.artigo_codigo === mov.artigo_cli || s.artigo_id === linkedArtigoId);
+            linkedDescricao = stockMatch?.artigo_descricao || mov.artigo_cli;
+          }
+          
+          const linkedTipoDesc = artInfo?.tipos_artigo?.tipo_desc || '';
+          
           acc[key].pedido_linhas.push({
             id: `${key}_${mov.artigo_cli}`,
-            artigo_codigo: mov.artigo_cli,
-            descricao: mov.artigo_cli,
+            artigo_id: linkedArtigoId,
+            artigo_codigo: linkedArtigoId,
+            descricao: linkedDescricao,
+            tipo_desc: linkedTipoDesc,
             quantidade: mov.quantidade || 0
           });
           
@@ -150,8 +189,8 @@ export default async function DashboardPage() {
             return acc;
           }, {});
           
-        finalFaturacao = finalFaturacao.filter((f: any) => !Object.values(siglaMap).includes(f.sigla_cliente));
-        finalFaturacao = [...finalFaturacao, ...(Object.values(fatGrouped) as any[])];
+        // finalFaturacao = finalFaturacao.filter((f: any) => !Object.values(siglaMap).includes(f.sigla_cliente));
+        // finalFaturacao = [...finalFaturacao, ...(Object.values(fatGrouped) as any[])];
       }
     }
   }

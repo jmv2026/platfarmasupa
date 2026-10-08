@@ -38,6 +38,7 @@ export interface DashboardPedidoLinhaItem {
   artigo_id?: string;
   artigo_codigo: string;
   descricao: string;
+  tipo_desc?: string;
   quantidade: number;
 }
 

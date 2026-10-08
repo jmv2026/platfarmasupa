@@ -17,6 +17,7 @@ interface ProdutoRanking {
   rank: number;
   codigo: string;
   descricao: string;
+  tipo_desc: string;
   quantidade: number;
   nrPedidos: number;
   percentagemTop: number;
@@ -70,7 +71,7 @@ export default function GraficoTopProdutos({
     // Agrupar linhas por artigo_codigo
     const agrupamento: Record<
       string,
-      { codigo: string; descricao: string; quantidade: number; pedidosSet: Set<string> }
+      { codigo: string; descricao: string; tipo_desc: string; quantidade: number; pedidosSet: Set<string> }
     > = {};
 
     let totalGeralUnidades = 0;
@@ -78,7 +79,7 @@ export default function GraficoTopProdutos({
     pedidosFiltrados.forEach((p) => {
       if (p.pedido_linhas && p.pedido_linhas.length > 0) {
         p.pedido_linhas.forEach((linha) => {
-          const cod = linha.artigo_codigo || 'N/A';
+          const cod = linha.artigo_id || linha.artigo_codigo || 'N/A';
           const qtd = Number(linha.quantidade) || 0;
           totalGeralUnidades += qtd;
 
@@ -86,6 +87,7 @@ export default function GraficoTopProdutos({
             agrupamento[cod] = {
               codigo: cod,
               descricao: linha.descricao || cod,
+              tipo_desc: linha.tipo_desc || '',
               quantidade: 0,
               pedidosSet: new Set(),
             };
@@ -105,6 +107,7 @@ export default function GraficoTopProdutos({
       rank: idx + 1,
       codigo: p.codigo,
       descricao: p.descricao,
+      tipo_desc: p.tipo_desc,
       quantidade: p.quantidade,
       nrPedidos: p.pedidosSet.size,
       percentagemTop: totalTop10 > 0 ? Math.round((p.quantidade / totalTop10) * 100) : 0,
@@ -752,6 +755,7 @@ export default function GraficoTopProdutos({
                   <th className="py-2 px-3 w-16">{t.dashboard.top10ColRank}</th>
                   <th className="py-2 px-3">{t.dashboard.top10ColCode}</th>
                   <th className="py-2 px-3">{t.dashboard.top10ColDesc}</th>
+                  <th className="py-2 px-3">Tipo</th>
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColQty}</th>
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColOrders}</th>
                   <th className="py-2 px-3 text-right">{t.dashboard.top10ColShare}</th>
@@ -786,15 +790,18 @@ export default function GraficoTopProdutos({
                             e.stopPropagation();
                             onSelectProdutoPrevisao?.(p.codigo);
                           }}
-                          className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-lime-100/80 hover:bg-lime-300 text-emerald-950 hover:text-slate-950 border border-lime-300/80 shadow-2xs flex items-center gap-1 transition-all cursor-pointer"
+                          className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-lime-100/80 hover:bg-lime-300 text-emerald-950 hover:text-slate-950 border border-lime-300/80 shadow-2xs flex items-center gap-1 transition-all cursor-pointer"
                           title={`${t.dashboard.top10TooltipClick} - ${p.codigo}`}
                         >
                           <span className="material-symbols-outlined text-xs text-lime-700">trending_up</span>
                           <span>{p.codigo}</span>
                         </button>
                       </td>
-                      <td className="py-2 px-3 text-on-surface font-medium max-w-[280px] truncate">
+                      <td className="py-2 px-3 text-on-surface font-medium max-w-[280px] truncate" title={p.descricao}>
                         {p.descricao}
+                      </td>
+                      <td className="py-2 px-3 text-on-surface font-medium truncate" title={p.tipo_desc}>
+                        {p.tipo_desc}
                       </td>
                       <td className="py-2 px-3 text-right font-bold text-emerald-950">
                         {p.quantidade.toLocaleString(locale)}{' '}
