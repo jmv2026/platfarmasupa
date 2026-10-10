@@ -106,6 +106,10 @@ export default function HistoricoPedidosView({
         return t.historico.statusEntregue;
       case 'cancelado':
         return t.historico.statusCancelado;
+      case 'rececionado':
+        return 'Rececionado';
+      case 'transfer':
+        return 'Transfer';
       default:
         return STATUS_PEDIDO_LABELS[status as StatusPedido] || status;
     }

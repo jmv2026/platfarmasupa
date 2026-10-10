@@ -59,7 +59,7 @@ export default async function HistoricoPedidosPage() {
 
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
+        .select('documento_ref, ref_ser, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
         .in('client_id', cfClientIds)
         .order('created_at', { ascending: false });
 
@@ -75,8 +75,10 @@ export default async function HistoricoPedidosPage() {
               client_id: mov.client_id,
               data_pedido: mov.data_movimento || mov.created_at,
               created_at: mov.created_at,
-              status: mov.tipo_movimento === 'es' ? 'entregue' : 'expedido',
+              status: (mov.tipo_movimento || '').toUpperCase() === 'ES' ? 'rececionado' : 
+                      ((mov.tipo_movimento || '').toUpperCase() === 'ST' || (mov.tipo_movimento || '').toUpperCase() === 'ET') ? 'transfer' : 'em_preparacao',
               tipo_movimento: mov.tipo_movimento,
+              ref_ser: mov.ref_ser,
               clients: clients.find((c: any) => c.id === mov.client_id),
               destinos: { nome: mov.nome }, // mock destino with nome from movimento
               morada: mov.morada,
@@ -121,13 +123,16 @@ export default async function HistoricoPedidosPage() {
         console.log('--- DEBUG --- torrestirStatus sample:', torrestirStatus?.slice(0, 2));
 
         const pseudoPedidos = Object.values(grouped).map((p: any) => {
-          let refStr = (p.nr_pedido || '').trim();
-          if (refStr.includes(' ')) {
-            refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
+          let refStr = p.ref_ser;
+          if (!refStr) {
+            refStr = (p.nr_pedido || '').trim();
+            if (refStr.includes(' ')) {
+              refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
+            }
           }
-          refStr = refStr.replace(/^0+/, ''); // remover zeros à esquerda
+          refStr = (refStr || '').replace(/^0+/, ''); // remover zeros à esquerda
           const matchedStatus = statusMap.get(refStr);
-          p.status = matchedStatus ? (matchedStatus.desc_estado_expedicao || 'Em Preparação') : 'Em Preparação';
+          p.status = matchedStatus ? (matchedStatus.desc_estado_expedicao || p.status) : p.status;
           return p;
         });
         finalPedidos = [...finalPedidos, ...(pseudoPedidos as any)];
