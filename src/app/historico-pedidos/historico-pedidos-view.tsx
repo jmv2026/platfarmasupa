@@ -163,7 +163,7 @@ export default function HistoricoPedidosView({
         prev.map((p) => (p.id === pedidoId ? { ...p, status: statusAnterior } : p))
       );
       setFeedback({
-        type: 'error', comprovativo
+        type: 'error',
         message: res.error || t.common.error,
       });
     }
