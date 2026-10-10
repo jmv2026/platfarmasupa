@@ -834,15 +834,7 @@ export default function HistoricoPedidosView({
                     <span className="font-bold text-[11px] uppercase text-secondary bg-secondary/10 px-2 py-1 rounded-md">
                       {getStatusLabel(ped.status)}
                     </span>
-                    {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
-                      <button
-                        onClick={() => handleViewComprovativo((ped as any).url_comprovativo)}
-                        className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors p-1.5 rounded-lg flex items-center justify-center"
-                        title="Ver Comprovativo"
-                      >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                      </button>
-                    )}
+
                     <span className="text-xs text-on-surface-variant font-mono">
                       {formatDate(ped.data_pedido)}
                     </span>
