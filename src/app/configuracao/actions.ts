@@ -1230,3 +1230,53 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
     return { success: false, error: msg };
   }
 }
+
+// 12. AÇÃO: Importar ficheiro de Transporte (Torrestir) para a tabela torrestir_status
+export async function importarTransporteAction(rows: any[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const userRole = profile?.role || (user.user_metadata?.role as string);
+
+  if (userRole !== 'admin' && userRole !== 'gestor') {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar transporte.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'O ficheiro não contém linhas de transporte válidas para importar.' };
+  }
+
+  try {
+    const BATCH_SIZE = 500;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const { error: insertErr } = await supabase.from('torrestir_status').insert(batch);
+      
+      if (insertErr) {
+        console.error('Erro ao inserir lote em torrestir_status:', insertErr);
+        return { success: false, error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}` };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de transporte';
+    return { success: false, error: msg };
+  }
+}

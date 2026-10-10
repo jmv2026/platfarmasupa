@@ -52,6 +52,28 @@ export default async function ConfiguracaoPage() {
     supabase.from('tempos').select('*').order('sigla'),
   ]);
 
+  // Busca paginada para contornar o limite de 1000 linhas da API do Supabase
+  let trackingList: any[] = [];
+  let fetchMore = true;
+  let from = 0;
+  const step = 999;
+  
+  while (fetchMore) {
+    const { data, error } = await supabase
+      .from('VW_torrestir_last')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(from, from + step);
+      
+    if (data && data.length > 0) {
+      trackingList = trackingList.concat(data);
+      from += step + 1;
+      if (data.length <= step) fetchMore = false;
+    } else {
+      fetchMore = false;
+    }
+  }
+
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
     ...m,
     cliente_nome: m.clients?.name,
@@ -91,6 +113,7 @@ export default async function ConfiguracaoPage() {
         initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
         tempos={(temposList as Tempo[]) || []}
+        trackingData={(trackingList as any[]) || []}
         serverEmailConfig={serverEmailConfig}
       />
     </div>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TIFF Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+</head>
+<body>
+  <div id="container">Loading TIFF...</div>
+  <script>
+    const url = 'https://download.osgeo.org/geotiff/samples/spot/chicago/SP27GTIF.TIF'; // sample public tiff
+    fetch(url)
+      .then(res => res.arrayBuffer())
+      .then(buffer => {
+        var ifds = UTIF.decode(buffer);
+        UTIF.decodeImage(buffer, ifds[0]);
+        var rgba = UTIF.toRGBA8(ifds[0]);
+        var canvas = document.createElement("canvas");
+        canvas.width = ifds[0].width;
+        canvas.height = ifds[0].height;
+        var ctx = canvas.getContext("2d");
+        var imageData = ctx.createImageData(ifds[0].width, ifds[0].height);
+        imageData.data.set(rgba);
+        ctx.putImageData(imageData, 0, 0);
+        document.getElementById('container').innerHTML = '';
+        document.getElementById('container').appendChild(canvas);
+      })
+      .catch(e => {
+        document.getElementById('container').innerHTML = 'Error loading TIFF: ' + e;
+      });
+  </script>
+</body>
+</html>

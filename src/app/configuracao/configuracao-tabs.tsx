@@ -34,6 +34,8 @@ import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 import ImportacaoDocVendaTab from './importacao-doc-venda-tab';
 import ImportacaoErpTab from './importacao-erp-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
+import ImportacaoTransporteTab from './importacao-transporte-tab';
+import ImportacaoComprovativosTab from './importacao-comprovativos-tab';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -53,6 +55,7 @@ interface ConfiguracaoTabsProps {
   armazens?: Armazem[];
   tempos?: Tempo[];
   serverEmailConfig?: ServerEmailConfig;
+  trackingData?: any[];
 }
 
 export default function ConfiguracaoTabs({
@@ -65,10 +68,11 @@ export default function ConfiguracaoTabs({
   armazens = [],
   tempos = [],
   serverEmailConfig,
+  trackingData = [],
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'doc_venda' | 'erp' | 'email'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'doc_venda' | 'erp' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -520,7 +524,7 @@ export default function ConfiguracaoTabs({
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
               }`}
           >
-            <span className="material-symbols-outlined text-base">local_shipping</span>
+            <span className="material-symbols-outlined text-base">factory</span>
             Lead Time
           </button>
 
@@ -565,10 +569,24 @@ export default function ConfiguracaoTabs({
                 : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
               }`}
           >
-            <span className="material-symbols-outlined text-base">dataset</span>
+            <span className="material-symbols-outlined text-base">hub</span>
             ERP
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('transporte');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'transporte'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">local_shipping</span>
+            Transporte
+          </button>
 
           <button
             type="button"
@@ -584,6 +602,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">mail</span>
             {t.configuracao.tabEmail}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('comprovativos');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'comprovativos'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">folder_open</span>
+            Comprovativos
           </button>
         </div>
 
@@ -789,6 +822,20 @@ export default function ConfiguracaoTabs({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA TRANSPORTE */}
+        {/* ========================================================================= */}
+        {activeTab === 'transporte' && (
+          <ImportacaoTransporteTab trackingData={trackingData} />
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA COMPROVATIVOS */}
+        {/* ========================================================================= */}
+        {activeTab === 'comprovativos' && (
+          <ImportacaoComprovativosTab />
         )}
 
         {/* ========================================================================= */}

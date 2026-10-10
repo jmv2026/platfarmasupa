@@ -14,6 +14,7 @@ import {
   TipoArmazenamento,
   TipoArmazem,
   UserProfile,
+  Tempo,
 } from '@/lib/supabase/types';
 
 
@@ -22,6 +23,7 @@ interface StocksViewProps {
   stockPedidos: StockPedido[];
   clients: Client[];
   currentUserProfile: UserProfile | null;
+  tempos: Tempo[];
 }
 
 type TabType = 'pedidos' | 'consolidado' | 'artigos' | 'validade';
@@ -31,6 +33,7 @@ export default function StocksView({
   stockPedidos,
   clients,
   currentUserProfile,
+  tempos,
 }: StocksViewProps) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<TabType>('pedidos');
@@ -215,6 +218,7 @@ export default function StocksView({
         artigo_codigo: string;
         artigo_descricao: string;
         cliente_sigla: string;
+        client_id: string;
         tipo_artigo: TipoArtigo;
         tipo_armazenamento: TipoArmazenamento;
         stockVenda: number;
@@ -233,6 +237,7 @@ export default function StocksView({
           artigo_codigo: item.artigo_codigo,
           artigo_descricao: item.artigo_descricao,
           cliente_sigla: item.cliente_sigla,
+          client_id: item.client_id,
           tipo_artigo: item.tipo_artigo,
           tipo_armazenamento: item.tipo_armazenamento,
           stockVenda: 0,
@@ -865,8 +870,25 @@ export default function StocksView({
                         const isExpired = days !== null && days <= 0;
                         const isWarning = days !== null && days > 0 && days <= 90;
 
+                        let threshold = null;
+                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        if (clientTempo && item.tipo_artigo) {
+                          switch (item.tipo_artigo) {
+                            case 'MH': threshold = clientTempo.VAL_MH; break;
+                            case 'MV': threshold = clientTempo.VAL_MV; break;
+                            case 'DM': threshold = clientTempo.VAL_DM; break;
+                            case 'DC': threshold = clientTempo.VAL_DC; break;
+                            case 'SA': threshold = clientTempo.VAL_SA; break;
+                          }
+                        }
+                        const isBelowThreshold = days !== null && threshold !== null && days <= threshold;
+                        
+                        const rowClass = isBelowThreshold
+                          ? "bg-amber-200/50 hover:bg-amber-200/70 transition-colors"
+                          : "hover:bg-surface-container/30 transition-colors";
+
                         return (
-                          <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                          <tr key={idx} className={rowClass}>
                             <td className="py-3 px-3 font-semibold">
                               <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                                 {item.cliente_sigla}
@@ -970,8 +992,27 @@ export default function StocksView({
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                     {filteredStockAtual.length > 0 ? (
-                      filteredStockAtual.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                      filteredStockAtual.map((item, idx) => {
+                        const days = getDaysUntilExpiry(item.validade);
+                        let threshold = null;
+                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        if (clientTempo && item.tipo_artigo) {
+                          switch (item.tipo_artigo) {
+                            case 'MH': threshold = clientTempo.VAL_MH; break;
+                            case 'MV': threshold = clientTempo.VAL_MV; break;
+                            case 'DM': threshold = clientTempo.VAL_DM; break;
+                            case 'DC': threshold = clientTempo.VAL_DC; break;
+                            case 'SA': threshold = clientTempo.VAL_SA; break;
+                          }
+                        }
+                        const isBelowThreshold = days !== null && threshold !== null && days <= threshold;
+                        
+                        const rowClass = isBelowThreshold
+                          ? "bg-amber-200/50 hover:bg-amber-200/70 transition-colors"
+                          : "hover:bg-surface-container/30 transition-colors";
+
+                        return (
+                        <tr key={idx} className={rowClass}>
                           <td className="py-3 px-3">
                             <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                               {item.cliente_sigla}
@@ -1014,7 +1055,8 @@ export default function StocksView({
                             <span className="text-xs font-normal text-on-surface-variant">un</span>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-on-surface-variant">
@@ -1061,8 +1103,27 @@ export default function StocksView({
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                     {resumoArtigos.length > 0 ? (
-                      resumoArtigos.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                      resumoArtigos.map((item, idx) => {
+                        const days = getDaysUntilExpiry(item.primeiraValidade);
+                        let threshold = null;
+                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        if (clientTempo && item.tipo_artigo) {
+                          switch (item.tipo_artigo) {
+                            case 'MH': threshold = clientTempo.VAL_MH; break;
+                            case 'MV': threshold = clientTempo.VAL_MV; break;
+                            case 'DM': threshold = clientTempo.VAL_DM; break;
+                            case 'DC': threshold = clientTempo.VAL_DC; break;
+                            case 'SA': threshold = clientTempo.VAL_SA; break;
+                          }
+                        }
+                        const isBelowThreshold = days !== null && threshold !== null && days <= threshold;
+                        
+                        const rowClass = isBelowThreshold
+                          ? "bg-amber-200/50 hover:bg-amber-200/70 transition-colors"
+                          : "hover:bg-surface-container/30 transition-colors";
+
+                        return (
+                        <tr key={idx} className={rowClass}>
                           <td className="py-3 px-3">
                             <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                               {item.cliente_sigla}
@@ -1111,7 +1172,8 @@ export default function StocksView({
                             <span className="text-xs font-normal text-on-surface-variant">un</span>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={9} className="py-8 text-center text-on-surface-variant">
@@ -1161,8 +1223,25 @@ export default function StocksView({
                         const isCritical = days !== null && days > 0 && days <= 30;
                         const isWarning = days !== null && days > 30 && days <= 90;
 
+                        let threshold = null;
+                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        if (clientTempo && item.tipo_artigo) {
+                          switch (item.tipo_artigo) {
+                            case 'MH': threshold = clientTempo.VAL_MH; break;
+                            case 'MV': threshold = clientTempo.VAL_MV; break;
+                            case 'DM': threshold = clientTempo.VAL_DM; break;
+                            case 'DC': threshold = clientTempo.VAL_DC; break;
+                            case 'SA': threshold = clientTempo.VAL_SA; break;
+                          }
+                        }
+                        const isBelowThreshold = days !== null && threshold !== null && days <= threshold;
+                        
+                        const rowClass = isBelowThreshold
+                          ? "bg-amber-200/50 hover:bg-amber-200/70 transition-colors"
+                          : "hover:bg-surface-container/30 transition-colors";
+
                         return (
-                          <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
+                          <tr key={idx} className={rowClass}>
                             <td className="py-3 px-3">
                               {isExpired ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">

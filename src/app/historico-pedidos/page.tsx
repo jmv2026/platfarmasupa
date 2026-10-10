@@ -101,8 +101,51 @@ export default async function HistoricoPedidosPage() {
           return acc;
         }, {});
 
-        const pseudoPedidos = Object.values(grouped);
+        const { data: torrestirStatus } = await supabase
+          .from('VW_torrestir_last')
+          .select('ref_ser, desc_estado_expedicao, url_comprovativo');
+
+        const statusMap = new Map<string, any>();
+        if (torrestirStatus) {
+          for (const st of torrestirStatus) {
+            if (st.ref_ser) {
+              const rawRef = st.ref_ser.toString().trim();
+              const numRef = rawRef.replace(/^0+/, ''); // strip leading zeros
+              if (!statusMap.has(rawRef)) statusMap.set(rawRef, st);
+              if (!statusMap.has(numRef)) statusMap.set(numRef, st);
+            }
+          }
+        }
+
+        console.log('--- DEBUG --- torrestirStatus length:', torrestirStatus?.length);
+        console.log('--- DEBUG --- torrestirStatus sample:', torrestirStatus?.slice(0, 2));
+
+        const pseudoPedidos = Object.values(grouped).map((p: any) => {
+          let refStr = (p.nr_pedido || '').trim();
+          if (refStr.includes(' ')) {
+            refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
+          }
+          refStr = refStr.replace(/^0+/, ''); // remover zeros à esquerda
+          const matchedStatus = statusMap.get(refStr);
+          p.status = matchedStatus ? (matchedStatus.desc_estado_expedicao || 'Em Preparação') : 'Em Preparação';
+          return p;
+        });
         finalPedidos = [...finalPedidos, ...(pseudoPedidos as any)];
+
+        // Map status and url_comprovativo to ALL orders (including real ones)
+        finalPedidos = finalPedidos.map((p: any) => {
+          let refStr = (p.nr_pedido || p.requisicao || p.ref_documento || '').trim();
+          if (refStr.includes(' ')) {
+            refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
+          }
+          refStr = refStr.replace(/^0+/, ''); // strip leading zeros
+          
+          const matchedStatus = statusMap.get(refStr);
+          if (matchedStatus) {
+            p.status = matchedStatus.desc_estado_expedicao || p.status;
+          }
+          return p;
+        });
 
         // Ordenar os pedidos novamente por data decrescente
         finalPedidos.sort((a: any, b: any) => {

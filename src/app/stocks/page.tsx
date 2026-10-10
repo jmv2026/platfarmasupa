@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import StocksView from './stocks-view';
-import { Client, StockAtual, StockPedido, UserProfile } from '@/lib/supabase/types';
+import { Client, StockAtual, StockPedido, UserProfile, Tempo } from '@/lib/supabase/types';
 
 export default async function StocksPage() {
   const supabase = await createClient();
@@ -26,11 +26,13 @@ export default async function StocksPage() {
   let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let temposQuery = supabase.from('tempos').select('*');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
+    temposQuery = temposQuery.eq('id_cliente', userClientId);
   }
 
   // Buscar dados em paralelo
@@ -38,10 +40,12 @@ export default async function StocksPage() {
     { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
+    { data: tempos },
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
+    temposQuery,
   ]);
 
   return (
@@ -59,6 +63,7 @@ export default async function StocksPage() {
         stockPedidos={(stockPedidos as StockPedido[]) || []}
         clients={(clients as Client[]) || []}
         currentUserProfile={(profile as UserProfile) || null}
+        tempos={(tempos as Tempo[]) || []}
       />
     </div>
   );

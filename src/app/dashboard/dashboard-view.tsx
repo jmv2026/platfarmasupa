@@ -83,6 +83,10 @@ export default function DashboardView({
       if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao') {
         setGraficoAtivo(tab);
       }
+      const clienteParam = params.get('cliente');
+      if (clienteParam) {
+        setSelectedClientId(clienteParam);
+      }
     }
   }, []);
 

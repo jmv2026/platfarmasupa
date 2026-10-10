@@ -10,6 +10,7 @@ import {
 } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import { atualizarEstadoPedido } from './actions';
+import { createClient } from '@/lib/supabase/client';
 
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
@@ -83,6 +84,14 @@ export default function HistoricoPedidosView({
     setPedidosList(pedidos);
   }, [pedidos]);
 
+  const getRefStr = (nr_pedido: string | undefined | null) => {
+    let refStr = (nr_pedido || '').trim();
+    if (refStr.includes(' ')) {
+      refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
+    }
+    return refStr.replace(/^0+/, '');
+  };
+
   const getStatusLabel = (status: StatusPedido | string) => {
     switch (status) {
       case 'pendente':
@@ -148,6 +157,19 @@ export default function HistoricoPedidosView({
       });
     }
   };
+
+
+
+  // Estados disponíveis para filtro (únicos e em ordem alfabética)
+  const availableStatuses = useMemo(() => {
+    const statuses = new Set<string>();
+    pedidosList.forEach((ped) => {
+      if (ped.status) {
+        statuses.add(ped.status);
+      }
+    });
+    return Array.from(statuses).sort();
+  }, [pedidosList]);
 
   // Filtragem
   const filteredPedidos = useMemo(() => {
@@ -230,7 +252,7 @@ export default function HistoricoPedidosView({
 
       return true;
     });
-  }, [pedidosList, selectedClientId, selectedStatus, selectedDateFilter, searchTerm]);
+  }, [pedidosList, selectedClientId, selectedStatus, selectedDateFilter, searchTerm, selectedTipoMov]);
 
   // Total de unidades filtradas
   const totalUnidadesFiltradas = useMemo(() => {
@@ -274,6 +296,7 @@ export default function HistoricoPedidosView({
     searchTerm !== '' ||
     selectedClientId !== 'todos' ||
     selectedStatus !== 'todos' ||
+    selectedTipoMov !== 'todos' ||
     selectedDateFilter !== 'todos';
 
   const handleClearFilters = () => {
@@ -471,12 +494,11 @@ export default function HistoricoPedidosView({
               className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary"
             >
               <option value="todos">{t.historico.allStatuses}</option>
-              <option value="pendente">{t.historico.statusPendente}</option>
-              <option value="confirmado">{t.historico.statusConfirmado}</option>
-              <option value="em_preparacao">{t.historico.statusPreparacao}</option>
-              <option value="expedido">{t.historico.statusExpedido}</option>
-              <option value="entregue">{t.historico.statusEntregue}</option>
-              <option value="cancelado">{t.historico.statusCancelado}</option>
+              {availableStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {getStatusLabel(status)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -566,44 +588,11 @@ export default function HistoricoPedidosView({
 
                       <div className="flex items-center gap-3">
                         {/* Gestão de Estado */}
-                        {isManagerOrAdmin ? (
-                          <div className="relative flex items-center">
-                            {isUpdating ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container border border-outline-variant/30 text-on-surface-variant">
-                                <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                                {t.common.loading}
-                              </span>
-                            ) : (
-                              <div className="relative">
-                                <select
-                                  value={statusKey}
-                                  onChange={(e) =>
-                                    handleStatusChange(ped.id, e.target.value as StatusPedido)
-                                  }
-                                  className={`appearance-none cursor-pointer pl-3 pr-8 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-secondary/40 ${statusCfg.bg}`}
-                                  title={t.historico.changeStatus}
-                                >
-                                  <option value="pendente">{t.historico.statusPendente}</option>
-                                  <option value="confirmado">{t.historico.statusConfirmado}</option>
-                                  <option value="em_preparacao">{t.historico.statusPreparacao}</option>
-                                  <option value="expedido">{t.historico.statusExpedido}</option>
-                                  <option value="entregue">{t.historico.statusEntregue}</option>
-                                  <option value="cancelado">{t.historico.statusCancelado}</option>
-                                </select>
-                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-70">
-                                  arrow_drop_down
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.bg}`}
-                          >
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
-                            {getStatusLabel(statusKey)}
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-[11px] uppercase text-secondary bg-secondary/10 px-2 py-1 rounded-md">
+                            {getStatusLabel(ped.status)}
                           </span>
-                        )}
+                        </div>
 
                         <span className="text-xs text-on-surface-variant font-mono">
                           {formatDate(ped.data_pedido)}
@@ -713,7 +702,8 @@ export default function HistoricoPedidosView({
                     <th className="py-2.5 px-3">Requisição</th>
                     <th className="py-2.5 px-3 text-center">{t.historico.colLines}</th>
                     <th className="py-2.5 px-3 text-right">{t.historico.colTotalQty}</th>
-                    <th className="py-2.5 px-3 text-center rounded-r-lg">{t.historico.colStatus}</th>
+                    <th className="py-2.5 px-3 text-center">{t.historico.colStatus}</th>
+                    <th className="py-2.5 px-3 text-center rounded-r-lg">Comprovativo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -727,6 +717,7 @@ export default function HistoricoPedidosView({
 
                     return (
                       <tr key={ped.id} className="hover:bg-emerald-50 transition-colors">
+                        {/* {console.log(`Pedido ${ped.nr_pedido} status: ${ped.status} url: ${(ped as any).url_comprovativo}`)} */}
                         <td className="py-3 px-3 font-mono font-bold text-secondary">
                           <button 
                             onClick={() => setSelectedModalPedido(ped)} 
@@ -772,41 +763,11 @@ export default function HistoricoPedidosView({
                           {totalQtd.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un
                         </td>
                         <td className="py-3 px-3 text-center">
-                          {isManagerOrAdmin ? (
-                            isUpdating ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-surface-container text-on-surface-variant font-medium">
-                                <span className="w-2.5 h-2.5 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                                {t.common.loading}
-                              </span>
-                            ) : (
-                              <div className="relative inline-block">
-                                <select
-                                  value={statusKey}
-                                  onChange={(e) =>
-                                    handleStatusChange(ped.id, e.target.value as StatusPedido)
-                                  }
-                                  className={`appearance-none cursor-pointer pl-2.5 pr-6 py-1 rounded-md text-[11px] font-bold border transition-all shadow-xs focus:outline-none focus:ring-1 focus:ring-secondary ${statusCfg.bg}`}
-                                  title={t.historico.changeStatus}
-                                >
-                                  <option value="pendente">{t.historico.statusPendente}</option>
-                                  <option value="confirmado">{t.historico.statusConfirmado}</option>
-                                  <option value="em_preparacao">{t.historico.statusPreparacao}</option>
-                                  <option value="expedido">{t.historico.statusExpedido}</option>
-                                  <option value="entregue">{t.historico.statusEntregue}</option>
-                                  <option value="cancelado">{t.historico.statusCancelado}</option>
-                                </select>
-                                <span className="material-symbols-outlined absolute right-1 top-1/2 -translate-y-1/2 text-[13px] pointer-events-none opacity-70">
-                                  arrow_drop_down
-                                </span>
-                              </div>
-                            )
-                          ) : (
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${statusCfg.bg}`}
-                            >
-                              {getStatusLabel(statusKey)}
-                            </span>
-                          )}
+                          <span className="font-bold text-[11px] uppercase text-secondary">
+                            {getStatusLabel(ped.status)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
                         </td>
                       </tr>
                     );
@@ -866,39 +827,17 @@ export default function HistoricoPedidosView({
                   </div>
 
                   <div className="flex items-center gap-3">
-                    {isManagerOrAdmin ? (
-                      <div className="relative flex items-center">
-                        {isUpdating ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold bg-surface-container border border-outline-variant/30 text-on-surface-variant">
-                            <span className="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
-                            {t.common.loading}
-                          </span>
-                        ) : (
-                          <div className="relative">
-                            <select
-                              value={statusKey}
-                              onChange={(e) => handleStatusChange(ped.id, e.target.value as StatusPedido)}
-                              className={`appearance-none cursor-pointer pl-3 pr-8 py-1 rounded-lg text-xs font-bold border transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-secondary/40 ${statusCfg.bg}`}
-                              title={t.historico.changeStatus}
-                            >
-                              <option value="pendente">{t.historico.statusPendente}</option>
-                              <option value="confirmado">{t.historico.statusConfirmado}</option>
-                              <option value="em_preparacao">{t.historico.statusPreparacao}</option>
-                              <option value="expedido">{t.historico.statusExpedido}</option>
-                              <option value="entregue">{t.historico.statusEntregue}</option>
-                              <option value="cancelado">{t.historico.statusCancelado}</option>
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-xs pointer-events-none opacity-70">
-                              arrow_drop_down
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.bg}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`}></span>
-                        {getStatusLabel(statusKey)}
-                      </span>
+                    <span className="font-bold text-[11px] uppercase text-secondary bg-secondary/10 px-2 py-1 rounded-md">
+                      {getStatusLabel(ped.status)}
+                    </span>
+                    {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
+                      <button
+                        onClick={() => handleViewComprovativo((ped as any).url_comprovativo)}
+                        className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors p-1.5 rounded-lg flex items-center justify-center"
+                        title="Ver Comprovativo"
+                      >
+                        <span className="material-symbols-outlined text-sm">visibility</span>
+                      </button>
                     )}
                     <span className="text-xs text-on-surface-variant font-mono">
                       {formatDate(ped.data_pedido)}
