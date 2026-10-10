@@ -148,6 +148,7 @@ export default async function HistoricoPedidosPage() {
           const matchedStatus = statusMap.get(refStr);
           if (matchedStatus) {
             p.status = matchedStatus.desc_estado_expedicao || p.status;
+            p.url_comprovativo = matchedStatus.url_comprovativo;
           }
 
           // Override para Movimentos Específicos

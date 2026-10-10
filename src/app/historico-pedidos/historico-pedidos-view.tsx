@@ -11,6 +11,7 @@ import {
 import { useLanguage } from '@/lib/i18n/context';
 import { atualizarEstadoPedido } from './actions';
 import { createClient } from '@/lib/supabase/client';
+import UTIF from 'utif';
 
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
@@ -62,12 +63,18 @@ export default function HistoricoPedidosView({
   clients,
   currentUserProfile,
 }: HistoricoPedidosViewProps) {
+  const supabase = createClient();
   const { t, language } = useLanguage();
   const [pedidosList, setPedidosList] = useState<PedidoComLinhas[]>(pedidos);
   const [updatingPedidoId, setUpdatingPedidoId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  // Estado para o visualizador do comprovativo
+  const [comprovativoImage, setComprovativoImage] = useState<string | null>(null);
+  const [comprovativoName, setComprovativoName] = useState<string>('comprovativo.png');
+  const [isLoadingComprovativo, setIsLoadingComprovativo] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
@@ -156,13 +163,61 @@ export default function HistoricoPedidosView({
         prev.map((p) => (p.id === pedidoId ? { ...p, status: statusAnterior } : p))
       );
       setFeedback({
-        type: 'error',
+        type: 'error', comprovativo
         message: res.error || t.common.error,
       });
     }
   };
 
 
+
+  const handleViewComprovativo = async (url_comprovativo: string, ref_ser: string) => {
+    try {
+      setFeedback(null);
+      setIsLoadingComprovativo(true);
+
+      const safeName = (ref_ser || 'comprovativo').replace(/[^a-z0-9]/gi, '_');
+      setComprovativoName(`${safeName}.png`);
+
+      const { data: signedUrlData, error: signedError } = await supabase.storage
+        .from('comprovativos_ttir')
+        .createSignedUrl(url_comprovativo, 60, { download: false });
+
+      if (signedError || !signedUrlData) {
+        setIsLoadingComprovativo(false);
+        setFeedback({ type: 'error', message: 'Comprovativo não encontrado ou indisponível.' });
+        return;
+      }
+
+      // Buscar o ficheiro como ArrayBuffer
+      const response = await fetch(signedUrlData.signedUrl);
+      if (!response.ok) throw new Error('Falha ao descarregar a imagem');
+      const buffer = await response.arrayBuffer();
+
+      // Processar com UTIF
+      const ifds = UTIF.decode(buffer);
+      UTIF.decodeImage(buffer, ifds[0]);
+      const rgba = UTIF.toRGBA8(ifds[0]);
+
+      // Converter para Canvas e depois para DataURL PNG
+      const canvas = document.createElement('canvas');
+      canvas.width = ifds[0].width;
+      canvas.height = ifds[0].height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
+        imageData.data.set(rgba);
+        ctx.putImageData(imageData, 0, 0);
+        setComprovativoImage(canvas.toDataURL('image/png'));
+      }
+
+      setIsLoadingComprovativo(false);
+    } catch (error) {
+      console.error('Erro ao abrir comprovativo:', error);
+      setIsLoadingComprovativo(false);
+      setFeedback({ type: 'error', message: 'Ocorreu um erro ao tentar processar o comprovativo TIFF.' });
+    }
+  };
 
   // Estados disponíveis para filtro (únicos e em ordem alfabética)
   const availableStatuses = useMemo(() => {
@@ -341,11 +396,10 @@ export default function HistoricoPedidosView({
       {/* Toast Feedback */}
       {feedback && (
         <div
-          className={`p-4 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn ${
-            feedback.type === 'success'
+          className={`p-4 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn ${feedback.type === 'success'
               ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
               : 'bg-rose-50 text-rose-900 border-rose-200'
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-base">
@@ -404,11 +458,10 @@ export default function HistoricoPedidosView({
               <button
                 onClick={() => setViewMode('tabela')}
                 title={t.historico.viewTable}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  viewMode === 'tabela'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'tabela'
                     ? 'bg-sermail-green text-white shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 <span className={`material-symbols-outlined text-sm ${viewMode === 'tabela' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>table_rows</span>
                 <span className="hidden sm:inline">{t.historico.viewTable}</span>
@@ -416,11 +469,10 @@ export default function HistoricoPedidosView({
               <button
                 onClick={() => setViewMode('detalhado')}
                 title={t.historico.viewCards}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  viewMode === 'detalhado'
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'detalhado'
                     ? 'bg-sermail-green text-white shadow-xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 <span className={`material-symbols-outlined text-sm ${viewMode === 'detalhado' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>view_agenda</span>
                 <span className="hidden sm:inline">{t.historico.viewCards}</span>
@@ -564,7 +616,7 @@ export default function HistoricoPedidosView({
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <span 
+                        <span
                           className="inline-block px-2.5 py-1 bg-secondary text-on-secondary rounded-lg font-mono font-bold text-xs shadow-sm cursor-pointer hover:bg-secondary/80"
                           onClick={() => setSelectedModalPedido(ped)}
                         >
@@ -596,6 +648,16 @@ export default function HistoricoPedidosView({
                           <span className="font-bold text-[11px] uppercase text-secondary bg-secondary/10 px-2 py-1 rounded-md">
                             {getStatusLabel(ped.status)}
                           </span>
+                          {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
+                            <button
+                              onClick={() => handleViewComprovativo((ped as any).url_comprovativo, (ped as any).ref_ser || ped.nr_pedido)}
+                              className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                              title="Ver Comprovativo"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">visibility</span>
+                              Ver
+                            </button>
+                          )}
                         </div>
 
                         <span className="text-xs text-on-surface-variant font-mono">
@@ -723,8 +785,8 @@ export default function HistoricoPedidosView({
                       <tr key={ped.id} className="hover:bg-emerald-50 transition-colors">
                         {/* {console.log(`Pedido ${ped.nr_pedido} status: ${ped.status} url: ${(ped as any).url_comprovativo}`)} */}
                         <td className="py-3 px-3 font-mono font-bold text-secondary">
-                          <button 
-                            onClick={() => setSelectedModalPedido(ped)} 
+                          <button
+                            onClick={() => setSelectedModalPedido(ped)}
                             className="hover:underline cursor-pointer focus:outline-none"
                             title="Ver detalhes do documento"
                           >
@@ -772,6 +834,16 @@ export default function HistoricoPedidosView({
                           </span>
                         </td>
                         <td className="py-3 px-3 text-center">
+                          {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
+                            <button
+                              onClick={() => handleViewComprovativo((ped as any).url_comprovativo, (ped as any).ref_ser || ped.nr_pedido)}
+                              className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1 mx-auto"
+                              title="Ver Comprovativo"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">visibility</span>
+                              Ver
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -834,6 +906,16 @@ export default function HistoricoPedidosView({
                     <span className="font-bold text-[11px] uppercase text-secondary bg-secondary/10 px-2 py-1 rounded-md">
                       {getStatusLabel(ped.status)}
                     </span>
+                    {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
+                      <button
+                        onClick={() => handleViewComprovativo((ped as any).url_comprovativo, (ped as any).ref_ser || ped.nr_pedido)}
+                        className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                        title="Ver Comprovativo"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">visibility</span>
+                        Ver
+                      </button>
+                    )}
 
                     <span className="text-xs text-on-surface-variant font-mono">
                       {formatDate(ped.data_pedido)}
@@ -916,6 +998,50 @@ export default function HistoricoPedidosView({
           </div>
         );
       })()}
+
+      {/* Modal Visualizador do Comprovativo TIFF convertido para PNG */}
+      {(isLoadingComprovativo || comprovativoImage) && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => !isLoadingComprovativo && setComprovativoImage(null)}>
+          <div className="relative w-full max-w-5xl max-h-[95vh] bg-surface rounded-xl shadow-2xl flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-outline-variant/20 bg-surface-container">
+              <h3 className="font-bold text-on-surface">Visualizar Comprovativo</h3>
+              <button
+                onClick={() => { setComprovativoImage(null); setIsLoadingComprovativo(false); }}
+                className="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-full p-2 transition-colors flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-surface-container-lowest min-h-[50vh]">
+              {isLoadingComprovativo ? (
+                <div className="flex flex-col items-center justify-center gap-4 text-primary">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                  <p className="font-medium animate-pulse">A processar ficheiro TIFF...</p>
+                </div>
+              ) : comprovativoImage ? (
+                <img
+                  src={comprovativoImage}
+                  alt="Comprovativo"
+                  className="max-w-full max-h-[80vh] object-contain border border-outline-variant/30 rounded shadow-md"
+                />
+              ) : null}
+            </div>
+            {comprovativoImage && (
+              <div className="p-4 border-t border-outline-variant/20 bg-surface flex justify-end">
+                <a
+                  href={comprovativoImage}
+                  download={comprovativoName}
+                  className="bg-primary text-on-primary hover:bg-primary-dark transition-colors px-4 py-2 rounded-lg font-semibold flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  Transferir PNG
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
