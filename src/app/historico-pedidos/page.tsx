@@ -149,6 +149,15 @@ export default async function HistoricoPedidosPage() {
           if (matchedStatus) {
             p.status = matchedStatus.desc_estado_expedicao || p.status;
           }
+
+          // Override para Movimentos Específicos
+          const tm = (p.tipo_movimento || '').toUpperCase();
+          if (tm === 'ES') {
+            p.status = 'rececionado';
+          } else if (tm === 'ST' || tm === 'ET') {
+            p.status = 'transfer';
+          }
+          
           return p;
         });
 
