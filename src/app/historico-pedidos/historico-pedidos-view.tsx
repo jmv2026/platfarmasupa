@@ -397,8 +397,8 @@ export default function HistoricoPedidosView({
       {feedback && (
         <div
           className={`p-4 rounded-xl border text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-sm transition-all animate-fadeIn ${feedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
-              : 'bg-rose-50 text-rose-900 border-rose-200'
+            ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+            : 'bg-rose-50 text-rose-900 border-rose-200'
             }`}
         >
           <div className="flex items-center gap-2">
@@ -459,8 +459,8 @@ export default function HistoricoPedidosView({
                 onClick={() => setViewMode('tabela')}
                 title={t.historico.viewTable}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'tabela'
-                    ? 'bg-sermail-green text-white shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-sermail-green text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
                 <span className={`material-symbols-outlined text-sm ${viewMode === 'tabela' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>table_rows</span>
@@ -470,8 +470,8 @@ export default function HistoricoPedidosView({
                 onClick={() => setViewMode('detalhado')}
                 title={t.historico.viewCards}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'detalhado'
-                    ? 'bg-sermail-green text-white shadow-xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-sermail-green text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
                   }`}
               >
                 <span className={`material-symbols-outlined text-sm ${viewMode === 'detalhado' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>view_agenda</span>
