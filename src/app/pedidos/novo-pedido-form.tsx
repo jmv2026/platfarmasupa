@@ -30,12 +30,16 @@ export default function NovoPedidoForm({
   const { t, language } = useLanguage();
 
   // Permissões RBAC: Admin e Gestor podem selecionar qualquer cliente livremente
-  const isManagerOrAdmin = currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
+  const isManagerOrAdmin =
+    currentUserProfile?.role === 'admin' ||
+    currentUserProfile?.role === 'gestor' ||
+    currentUserProfile?.email === 'admin@sermail.pt';
 
   // Se não for admin nem gestor, o cliente proprietário é automaticamente o associado ao perfil
   const initialClientId = useMemo(() => {
-    if (!isManagerOrAdmin && currentUserProfile?.client_id) {
-      return currentUserProfile.client_id;
+    const userClienteId = currentUserProfile?.cliente_id;
+    if (!isManagerOrAdmin && userClienteId) {
+      return userClienteId;
     }
     return clients[0]?.id || '';
   }, [isManagerOrAdmin, currentUserProfile, clients]);
@@ -101,7 +105,7 @@ export default function NovoPedidoForm({
 
   // Destinos disponíveis para o cliente selecionado
   const clientDestinos = useMemo(() => {
-    return localDestinos.filter((d) => d.client_id === selectedClientId && d.ativo);
+    return localDestinos.filter((d) => d.cliente_id === selectedClientId && d.ativo);
   }, [localDestinos, selectedClientId]);
 
   // Destino atualmente selecionado (objeto)
@@ -111,13 +115,14 @@ export default function NovoPedidoForm({
 
   // Filtrar stock disponível para o cliente selecionado
   const clientStock = useMemo(() => {
-    return stockPedidos.filter((s) => s.client_id === selectedClientId && Number(s.stock) > 0);
+    return stockPedidos.filter((s) => s.cliente_id === selectedClientId && Number(s.stock) > 0);
   }, [stockPedidos, selectedClientId]);
 
   // Cliente associado ao perfil de utilizador (quando não é admin nem gestor)
   const associatedClient = useMemo(() => {
     if (isManagerOrAdmin) return null;
-    return clients.find((c) => c.id === currentUserProfile?.client_id) || null;
+    const userClienteId = currentUserProfile?.cliente_id;
+    return clients.find((c) => c.id === userClienteId) || null;
   }, [isManagerOrAdmin, clients, currentUserProfile]);
 
   // Lista única de artigos disponíveis para o cliente selecionado
@@ -258,7 +263,8 @@ export default function NovoPedidoForm({
 
     try {
       const res = await criarDestinoAction({
-        client_id: selectedClientId,
+        cliente_id: selectedClientId,
+
         nome: novoDestinoForm.nome,
         classifica_destino: novoDestinoForm.classifica_destino || 'Farmácia',
         morada: novoDestinoForm.morada,
@@ -390,8 +396,9 @@ export default function NovoPedidoForm({
   // Submeter Pedido Completo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const userClienteId = currentUserProfile?.cliente_id;
     const finalClientId =
-      !isManagerOrAdmin && currentUserProfile?.client_id ? currentUserProfile.client_id : selectedClientId;
+      !isManagerOrAdmin && userClienteId ? userClienteId : selectedClientId;
 
     if (!finalClientId) {
       setFeedback({
@@ -421,7 +428,8 @@ export default function NovoPedidoForm({
 
     try {
       const res = await criarPedidoAction({
-        client_id: finalClientId,
+        cliente_id: finalClientId,
+
         destino_id: selectedDestinoId || undefined,
         guardar_novo_destino: !selectedDestinoId && guardarNovoDestino,
         classifica_destino: classificaDestino,
@@ -456,8 +464,8 @@ export default function NovoPedidoForm({
         setSelectedArtigoId('');
         setSelectedLote('');
         setGuardarNovoDestino(false);
-        if (!isManagerOrAdmin && currentUserProfile?.client_id) {
-          setSelectedClientId(currentUserProfile.client_id);
+        if (!isManagerOrAdmin && userClienteId) {
+          setSelectedClientId(userClienteId);
         } else {
           setSelectedClientId(clients[0]?.id || '');
         }

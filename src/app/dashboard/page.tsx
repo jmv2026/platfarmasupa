@@ -20,11 +20,15 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single();
 
-  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
-  const userClientId = profile?.client_id;
+  const isManagerOrAdmin =
+    profile?.role === 'admin' ||
+    profile?.role === 'gestor' ||
+    user.email === 'admin@sermail.pt' ||
+    user.user_metadata?.role === 'admin';
+  const userClientId = profile?.cliente_id;
 
   // Primeiro buscar clientes para saber quais são CF
-  let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
   }
@@ -32,13 +36,13 @@ export default async function DashboardPage() {
   const { data: clients } = await clientsQuery;
   const cfClientIds = clients ? clients.filter((c: any) => c.tipo_cliente === 'CF' || c.tipo_cliente === 'cf').map((c: any) => c.id) : [];
 
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, client_id, tipo_artigo');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
   
   // Apenas ler da tabela pedidos os clientes que não são CF
   let pedidosQuery = supabase
     .from('pedidos')
-    .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_id, artigo_codigo, descricao, quantidade, artigos(descricao, tipos_artigo(tipo_desc)))');
+    .select('id, cliente_id, data_pedido, created_at, pedido_linhas(id, artigo_id, artigo_codigo, descricao, quantidade, artigos(descricao, tipos_artigo(tipo_desc)))');
     
   let faturacaoQuery = supabase.from('vw_fact_mes').select('sigla_cliente, data, total_merc, total_iva, total_desc');
 
@@ -48,14 +52,14 @@ export default async function DashboardPage() {
       // Forçar query vazia sem causar erro de sintaxe
       pedidosQuery = pedidosQuery.eq('id', '00000000-0000-0000-0000-000000000000');
     } else {
-      pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+      pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
     }
-    stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
-    stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
+    stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
+    stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
   } else {
     // Se for admin, excluímos os CF da query de pedidos
     if (cfClientIds.length > 0) {
-      pedidosQuery = pedidosQuery.not('client_id', 'in', `(${cfClientIds.join(',')})`);
+      pedidosQuery = pedidosQuery.not('cliente_id', 'in', `(${cfClientIds.join(',')})`);
     }
   }
 
@@ -107,19 +111,20 @@ export default async function DashboardPage() {
       
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, artigos(artigo_id, pva, descricao, tipos_artigo(tipo_desc))')
+        .select('documento_ref, cliente_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, artigos(artigo_id, pva, descricao, tipos_artigo(tipo_desc))')
         .in('tipo_movimento', ['ss', 'st', 'SS', 'ST'])
-        .in('client_id', cfClientIds);
+        .in('cliente_id', cfClientIds);
         
       if (cfMovimentos && cfMovimentos.length > 0) {
         const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
           const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
-          const key = `${mov.client_id}_${docRef}`;
+          const currentClientId = mov.cliente_id;
+          const key = `${currentClientId}_${docRef}`;
           
           if (!acc[key]) {
             acc[key] = {
               id: key,
-              client_id: mov.client_id,
+              cliente_id: currentClientId,
               data_pedido: mov.data_movimento || mov.created_at,
               created_at: mov.created_at,
               pedido_linhas: []
@@ -161,7 +166,7 @@ export default async function DashboardPage() {
         const fatGrouped = cfMovimentos
           .filter((m: any) => m.tipo_movimento === 'ss' || m.tipo_movimento === 'SS')
           .reduce((acc: any, mov: any) => {
-            const sigla = siglaMap[mov.client_id];
+            const sigla = siglaMap[mov.cliente_id];
             if (!sigla) return acc;
             
             const dateStr = (mov.data_movimento || mov.created_at).split('T')[0];

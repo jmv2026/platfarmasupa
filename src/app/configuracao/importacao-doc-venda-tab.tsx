@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '@/lib/supabase/types';
+import { createClient } from '@/lib/supabase/client';
 import { DocVendaImportInput, parseExcelDocVendaFile } from '@/lib/parse-doc-venda-file';
 import { importarDocVendaAction } from './actions';
 
@@ -14,6 +15,24 @@ export default function ImportacaoDocVendaTab({
   clients = [],
   onRefresh,
 }: ImportacaoDocVendaTabProps) {
+  const [clientsList, setClientsList] = useState<Client[]>(clients);
+
+  useEffect(() => {
+    if (clients && clients.length > 0) {
+      setClientsList(clients);
+    } else {
+      const supabase = createClient();
+      supabase
+        .from('clientes')
+        .select('*')
+        .order('name')
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setClientsList(data as Client[]);
+          }
+        });
+    }
+  }, [clients]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<DocVendaImportInput[]>([]);
   const [selectedDefaultClient, setSelectedDefaultClient] = useState<string>('');
@@ -139,7 +158,7 @@ export default function ImportacaoDocVendaTab({
               className="w-full sm:w-1/2 p-2 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             >
               <option value="">-- Automático / Selecione um cliente --</option>
-              {clients.map((c) => (
+              {clientsList.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.sigla} - {c.name}
                 </option>

@@ -22,8 +22,8 @@ export default async function ConfiguracaoPage() {
     .eq('id', user.id)
     .single();
 
-  // CONTROLO DE ACESSO RBAC: Apenas perfil 'admin' pode aceder à página de configuração
-  if (profile?.role !== 'admin') {
+  // CONTROLO DE ACESSO RBAC: Apenas perfil 'admin' ou conta admin@sermail.pt pode aceder à página de configuração
+  if (profile?.role !== 'admin' && user.email !== 'admin@sermail.pt') {
     redirect('/dashboard?error=unauthorized');
   }
 
@@ -39,13 +39,13 @@ export default async function ConfiguracaoPage() {
     { data: temposList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
-    supabase.from('clients').select('*').order('name'),
+    supabase.from('clientes').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
     supabase.from('perfis').select('*').order('codigo'),
     supabase.from('imp_stk').select('*').order('created_at', { ascending: false }).limit(200),
     supabase
       .from('movimentos')
-      .select('*, clients(name, sigla), artigos(descricao)')
+      .select('*, clientes(name, sigla), artigos(descricao)')
       .order('data_movimento', { ascending: false })
       .limit(300),
     supabase.from('armazens').select('*').order('tipo_armazem'),
@@ -76,8 +76,8 @@ export default async function ConfiguracaoPage() {
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
     ...m,
-    cliente_nome: m.clients?.name,
-    cliente_sigla: m.sigla || m.clients?.sigla,
+    cliente_nome: m.clientes?.name || m.clients?.name,
+    cliente_sigla: m.sigla || m.clientes?.sigla || m.clients?.sigla,
     artigo_descricao: m.artigos?.descricao,
   }));
 

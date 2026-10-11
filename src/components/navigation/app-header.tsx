@@ -112,7 +112,7 @@ export default function AppHeader({
               {t.nav.historicoPedidos}
             </Link>
 
-            {userProfile?.role === 'admin' && (
+            {(userProfile?.role === 'admin' || userProfile?.email === 'admin@sermail.pt' || userEmail === 'admin@sermail.pt') && (
               <Link
                 href="/configuracao"
                 prefetch={true}

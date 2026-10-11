@@ -45,7 +45,9 @@ export default function StocksView({
 
 
   const isManagerOrAdmin =
-    currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
+    currentUserProfile?.role === 'admin' ||
+    currentUserProfile?.role === 'gestor' ||
+    currentUserProfile?.email === 'admin@sermail.pt';
 
   // Helper para calcular dias até à validade
   const getDaysUntilExpiry = (dateStr: string | null) => {
@@ -141,7 +143,7 @@ export default function StocksView({
   // Filtragem para Stock de Venda (vw_stock_pedidos)
   const filteredStockPedidos = useMemo(() => {
     return stockPedidos.filter((item) => {
-      if (selectedClientId !== 'todos' && item.client_id !== selectedClientId) {
+      if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
         return false;
       }
       if (
@@ -173,7 +175,7 @@ export default function StocksView({
   // Filtragem para Stock Consolidado (vw_stock_atual)
   const filteredStockAtual = useMemo(() => {
     return stockAtual.filter((item) => {
-      if (selectedClientId !== 'todos' && item.client_id !== selectedClientId) {
+      if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
         return false;
       }
       if (
@@ -218,7 +220,8 @@ export default function StocksView({
         artigo_codigo: string;
         artigo_descricao: string;
         cliente_sigla: string;
-        client_id: string;
+        cliente_id: string;
+
         tipo_artigo: TipoArtigo;
         tipo_armazenamento: TipoArmazenamento;
         stockVenda: number;
@@ -230,14 +233,16 @@ export default function StocksView({
     >();
 
     filteredStockAtual.forEach((item) => {
-      const key = `${item.client_id}_${item.artigo_id}`;
+      const currentClientId = item.cliente_id || '';
+      const key = `${currentClientId}_${item.artigo_id}`;
       if (!map.has(key)) {
         map.set(key, {
           artigo_id: item.artigo_id,
           artigo_codigo: item.artigo_codigo,
           artigo_descricao: item.artigo_descricao,
           cliente_sigla: item.cliente_sigla,
-          client_id: item.client_id,
+          cliente_id: currentClientId,
+
           tipo_artigo: item.tipo_artigo,
           tipo_armazenamento: item.tipo_armazenamento,
           stockVenda: 0,
@@ -871,7 +876,7 @@ export default function StocksView({
                         const isWarning = days !== null && days > 0 && days <= 90;
 
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -995,7 +1000,7 @@ export default function StocksView({
                       filteredStockAtual.map((item, idx) => {
                         const days = getDaysUntilExpiry(item.validade);
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1106,7 +1111,7 @@ export default function StocksView({
                       resumoArtigos.map((item, idx) => {
                         const days = getDaysUntilExpiry(item.primeiraValidade);
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1224,7 +1229,7 @@ export default function StocksView({
                         const isWarning = days !== null && days > 30 && days <= 90;
 
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.client_id);
+                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;

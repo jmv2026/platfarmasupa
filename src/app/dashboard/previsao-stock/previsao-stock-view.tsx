@@ -61,21 +61,21 @@ export default function PrevisaoStockView({
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return stockAtual;
     }
-    return stockAtual.filter((s) => s.client_id === selectedClientId);
+    return stockAtual.filter((s) => s.cliente_id === selectedClientId);
   }, [stockAtual, selectedClientId, isManagerOrAdmin]);
 
   const filteredStockPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return stockPedidos;
     }
-    return stockPedidos.filter((s) => s.client_id === selectedClientId);
+    return stockPedidos.filter((s) => s.cliente_id === selectedClientId);
   }, [stockPedidos, selectedClientId, isManagerOrAdmin]);
 
   const filteredPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return pedidos;
     }
-    return pedidos.filter((p) => p.client_id === selectedClientId);
+    return pedidos.filter((p) => p.cliente_id === selectedClientId);
   }, [pedidos, selectedClientId, isManagerOrAdmin]);
 
   const selectedClientObj = useMemo(() => {

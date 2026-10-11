@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '@/lib/supabase/types';
+import { createClient } from '@/lib/supabase/client';
 import { PlatMovimentoRow, parsePlatMovimentosFile } from '@/lib/parse-erp-file';
 import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './actions';
 
@@ -16,6 +17,25 @@ export default function ImportacaoErpTab({
   initialCount = 0,
   onRefresh,
 }: ImportacaoErpTabProps) {
+  const [clientsList, setClientsList] = useState<Client[]>(clients);
+
+  useEffect(() => {
+    if (clients && clients.length > 0) {
+      setClientsList(clients);
+    } else {
+      const supabase = createClient();
+      supabase
+        .from('clientes')
+        .select('*')
+        .order('name')
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setClientsList(data as Client[]);
+          }
+        });
+    }
+  }, [clients]);
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<PlatMovimentoRow[]>([]);
   const [selectedDefaultClient, setSelectedDefaultClient] = useState<string>('');
@@ -226,7 +246,7 @@ export default function ImportacaoErpTab({
                 className="w-full bg-surface-container-lowest border border-outline-variant/50 rounded-xl px-3 py-2 text-xs font-medium text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 cursor-pointer"
               >
                 <option value="">-- Deteção automática por Sigla / SubFamília --</option>
-                {clients.map((c) => (
+                {clientsList.map((c) => (
                   <option key={c.id} value={c.id}>
                     [{c.sigla}] {c.name}
                   </option>
@@ -413,7 +433,7 @@ export default function ImportacaoErpTab({
             <div><span className="text-indigo-600 font-semibold">Valores:</span> valor_unitario, valor_adicional, valor_abater</div>
             <div><span className="text-indigo-600 font-semibold">Artigo & Lote:</span> artigo, descricao, tipo_artigo, armazem, localizacao, lote, estado_stock</div>
             <div><span className="text-indigo-600 font-semibold">Movimento & Stock:</span> tipo_movimento (ES/SS), quantidade, stock_anterior, stock_actual, stock_lot_actual, stock_arm_actual, stock_loc_actual</div>
-            <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, client_id, sigla</div>
+            <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, cliente_id, sigla</div>
           </div>
         </div>
 
@@ -427,7 +447,7 @@ export default function ImportacaoErpTab({
               Integração direta com a base de dados centralizada no <strong>Supabase</strong>.
             </li>
             <li>
-              Associação inteligente de <strong>client_id</strong> com base na Sigla ou SubFamília.
+              Associação inteligente de <strong>cliente_id</strong> com base na Sigla ou SubFamília.
             </li>
             <li>
               Suporte a <strong>Row Level Security (RLS)</strong> com isolamento por cliente e permissões de administrador.

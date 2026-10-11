@@ -20,10 +20,14 @@ export default async function HistoricoPedidosPage() {
     .eq('id', user.id)
     .single();
 
-  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
-  const userClientId = profile?.client_id;
+  const isManagerOrAdmin =
+    profile?.role === 'admin' ||
+    profile?.role === 'gestor' ||
+    user.email === 'admin@sermail.pt' ||
+    user.user_metadata?.role === 'admin';
+  const userClientId = profile?.cliente_id;
 
-  let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
   }
@@ -33,18 +37,18 @@ export default async function HistoricoPedidosPage() {
 
   let pedidosQuery = supabase
     .from('pedidos')
-    .select('*, clients(id, name, sigla), destinos(id, codigo, nome), pedido_linhas(*)')
+    .select('*, clientes(id, name, sigla), destinos(id, codigo, nome), pedido_linhas(*)')
     .order('created_at', { ascending: false });
 
   if (!isManagerOrAdmin && userClientId) {
     if (cfClientIds.includes(userClientId)) {
       pedidosQuery = pedidosQuery.eq('id', '00000000-0000-0000-0000-000000000000');
     } else {
-      pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+      pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
     }
   } else {
     if (cfClientIds.length > 0) {
-      pedidosQuery = pedidosQuery.not('client_id', 'in', `(${cfClientIds.join(',')})`);
+      pedidosQuery = pedidosQuery.not('cliente_id', 'in', `(${cfClientIds.join(',')})`);
     }
   }
 
@@ -59,27 +63,29 @@ export default async function HistoricoPedidosPage() {
 
       const { data: cfMovimentos } = await supabase
         .from('movimentos')
-        .select('documento_ref, ref_ser, client_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
-        .in('client_id', cfClientIds)
+        .select('documento_ref, ref_ser, cliente_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
+        .in('cliente_id', cfClientIds)
         .order('created_at', { ascending: false });
 
       if (cfMovimentos && cfMovimentos.length > 0) {
         const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
           const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
-          const key = `${mov.client_id}_${docRef}_${mov.tipo_movimento}`;
+          const currentMovClientId = mov.cliente_id;
+          const key = `${currentMovClientId}_${docRef}_${mov.tipo_movimento}`;
 
           if (!acc[key]) {
             acc[key] = {
               id: key,
               nr_pedido: docRef,
-              client_id: mov.client_id,
+              cliente_id: currentMovClientId,
               data_pedido: mov.data_movimento || mov.created_at,
               created_at: mov.created_at,
               status: (mov.tipo_movimento || '').toUpperCase() === 'ES' ? 'rececionado' : 
                       ((mov.tipo_movimento || '').toUpperCase() === 'ST' || (mov.tipo_movimento || '').toUpperCase() === 'ET') ? 'transfer' : 'em_preparacao',
               tipo_movimento: mov.tipo_movimento,
               ref_ser: mov.ref_ser,
-              clients: clients.find((c: any) => c.id === mov.client_id),
+              clientes: clients.find((c: any) => c.id === currentMovClientId),
+              clients: clients.find((c: any) => c.id === currentMovClientId),
               destinos: { nome: mov.nome }, // mock destino with nome from movimento
               morada: mov.morada,
               codigo_postal: mov.cod_postal,
@@ -183,7 +189,11 @@ export default async function HistoricoPedidosPage() {
 
       {/* Main Content */}
       <HistoricoPedidosView
-        pedidos={(finalPedidos as PedidoComLinhas[]) || []}
+        pedidos={(finalPedidos as PedidoComLinhas[] || []).map((p: any) => ({
+          ...p,
+          clients: p.clientes || p.clients,
+          clientes: p.clientes || p.clients,
+        }))}
         clients={(clients as Client[]) || []}
         currentUserProfile={(profile as UserProfile) || null}
       />

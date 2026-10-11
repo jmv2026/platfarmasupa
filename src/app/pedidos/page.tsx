@@ -20,17 +20,21 @@ export default async function PedidosPage() {
     .eq('id', user.id)
     .single();
 
-  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
-  const userClientId = profile?.client_id;
+  const isManagerOrAdmin =
+    profile?.role === 'admin' ||
+    profile?.role === 'gestor' ||
+    user.email === 'admin@sermail.pt' ||
+    user.user_metadata?.role === 'admin';
+  const userClientId = profile?.cliente_id;
 
-  let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
+  let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
   let destinosQuery = supabase.from('destinos').select('*').eq('ativo', true).order('codigo');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
-    stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    destinosQuery = destinosQuery.eq('client_id', userClientId);
+    stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
+    destinosQuery = destinosQuery.eq('cliente_id', userClientId);
   }
 
   // Buscar dados em paralelo

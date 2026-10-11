@@ -234,7 +234,8 @@ export default function ConfiguracaoTabs({
         full_name: userFullName,
         role: userRole,
         empresa: userEmpresa || (userRole === 'admin' || userRole === 'gestor' ? 'Sermail, Logística Integrada Lda' : 'Cliente Farma'),
-        client_id: userRole.startsWith('user') ? userClientId || null : null,
+        cliente_id: userRole.startsWith('user') ? userClientId || null : null,
+
         ativo: userAtivo,
       });
 

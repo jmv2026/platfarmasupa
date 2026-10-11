@@ -13,6 +13,30 @@ import {
 import { DocVendaImportInput } from '@/lib/parse-doc-venda-file';
 import { PlatMovimentoRow } from '@/lib/parse-erp-file';
 
+// Helper para validar de forma resiliente permissões de Admin e Gestor
+function checkUserRole(
+  user: { email?: string | null; user_metadata?: Record<string, any>; app_metadata?: Record<string, any> } | null | undefined,
+  profile?: { role?: string | null } | null
+) {
+  const email = user?.email?.trim().toLowerCase() || '';
+  const isAdmin =
+    email === 'admin@sermail.pt' ||
+    profile?.role === 'admin' ||
+    user?.app_metadata?.role === 'admin' ||
+    user?.user_metadata?.role === 'admin';
+
+  const isGestor =
+    profile?.role === 'gestor' ||
+    user?.app_metadata?.role === 'gestor' ||
+    user?.user_metadata?.role === 'gestor';
+
+  return {
+    isAdmin,
+    isGestor,
+    isManagerOrAdmin: isAdmin || isGestor,
+  };
+}
+
 // 1. AÇÃO: Criar Utilizador (Acesso restrito a Admin)
 export async function criarUtilizadorAction(input: {
   email: string;
@@ -20,7 +44,8 @@ export async function criarUtilizadorAction(input: {
   full_name: string;
   role: UserRole;
   empresa: string;
-  client_id?: string | null;
+  cliente_id?: string | null;
+
   ativo?: boolean;
 }) {
   const supabase = await createClient();
@@ -39,7 +64,8 @@ export async function criarUtilizadorAction(input: {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores podem criar utilizadores.' };
   }
 
@@ -89,7 +115,7 @@ export async function criarUtilizadorAction(input: {
         full_name: input.full_name,
         role: input.role,
         empresa: input.empresa || 'Sermail, Logística Integrada Lda',
-        client_id: input.client_id || null,
+        cliente_id: input.cliente_id ?? null,
         ativo: input.ativo !== undefined ? input.ativo : true,
       });
 
@@ -103,7 +129,7 @@ export async function criarUtilizadorAction(input: {
           full_name: input.full_name,
           role: input.role,
           empresa: input.empresa || 'Sermail, Logística Integrada Lda',
-          client_id: input.client_id || null,
+          cliente_id: input.cliente_id ?? null,
           ativo: input.ativo !== undefined ? input.ativo : true,
         })
         .eq('id', createdUserId);
@@ -163,7 +189,8 @@ export async function criarClienteAction(input: {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores podem criar clientes.' };
   }
 
@@ -181,7 +208,7 @@ export async function criarClienteAction(input: {
 
   try {
     const { data: client, error: clientErr } = await supabase
-      .from('clients')
+      .from('clientes')
       .insert({
         name: input.name.trim(),
         sigla: siglaFormatada,
@@ -269,7 +296,8 @@ export async function atualizarTemposClienteAction(input: {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores ou gestores podem configurar tempos.' };
   }
 
@@ -356,7 +384,8 @@ export async function criarArtigoAction(input: {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores podem criar artigos.' };
   }
 
@@ -376,8 +405,8 @@ export async function criarArtigoAction(input: {
         tipo_armazenamento: input.tipo_armazenamento,
         tratamento_lote: input.tratamento_lote !== undefined ? input.tratamento_lote : true,
         tratamento_serie: input.tratamento_serie !== undefined ? input.tratamento_serie : false,
-        pva: (input.pva !== undefined && input.pva !== null) 
-          ? Number(input.pva) 
+        pva: (input.pva !== undefined && input.pva !== null)
+          ? Number(input.pva)
           : (input.pvp !== undefined && input.pvp !== null ? Number(input.pvp) : 0.00),
         ativo: input.ativo !== undefined ? input.ativo : true,
       })
@@ -419,9 +448,9 @@ export async function limparArtigosAction() {
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar o catálogo de artigos.' };
   }
 
@@ -471,9 +500,9 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar artigos.' };
   }
 
@@ -484,7 +513,7 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
   try {
     // 1. Garantir deduplicação estrita de artigo_id para evitar erro de concorrência do Postgres (código 21000)
     const uniqueMap = new Map<string, ArtigoImportInput>();
-            for (const r of rows) {
+    for (const r of rows) {
       const code = (r.artigo_id || '').trim().toUpperCase();
       if (code) {
         let cli = r.artigo_cli ? r.artigo_cli.trim() : '';
@@ -513,15 +542,15 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
     const allUpsertedData: any[] = [];
 
     for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
-            const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
+      const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
         artigo_id: r.artigo_id,
         descricao: r.descricao,
         id_tipo_artigo: r.id_tipo_artigo || '80',
         tipo_armazenamento: r.tipo_armazenamento || 'TA',
         tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
         tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),
-        pva: r.pva !== undefined && r.pva !== null 
-          ? Number(r.pva) 
+        pva: r.pva !== undefined && r.pva !== null
+          ? Number(r.pva)
           : (r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00),
         ativo: parseArtigoBoolean(r.ativo, true),
         artigo_cli: r.artigo_cli,
@@ -576,19 +605,20 @@ export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) 
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, recipients: [] as string[], error: 'Acesso negado: Apenas administradores podem disparar emails de teste.' };
   }
 
   const { enviarEmailTesteAdmin } = await import('@/lib/email');
 
-  const rawInput = destinatarioCustom?.trim() || profile.email || user.email || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
+  const rawInput = destinatarioCustom?.trim() || profile?.email || user.email || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
   const listaDestinatarios = rawInput.split(/[,;\s]+/).map((e: string) => e.trim()).filter(Boolean);
 
   const result = await enviarEmailTesteAdmin({
     destinatarios: listaDestinatarios,
-    solicitanteNome: profile.full_name || 'Administrador Farma',
-    solicitanteEmail: user.email || profile.email || 'admin@sermail.pt',
+    solicitanteNome: profile?.full_name || 'Administrador Farma',
+    solicitanteEmail: user.email || profile?.email || 'admin@sermail.pt',
   });
 
   return result;
@@ -611,9 +641,9 @@ export async function importarStocksAction(rows: ImpStkInput[]) {
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar stocks.' };
   }
 
@@ -675,9 +705,9 @@ export async function limparImportacoesStockAction() {
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar a tabela imp_stk.' };
   }
 
@@ -718,13 +748,13 @@ export async function importarMovimentosAction(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, client_id')
+    .select('role, cliente_id')
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return {
       success: false,
       error: 'Acesso negado: Apenas administradores e gestores podem importar movimentos.',
@@ -736,8 +766,8 @@ export async function importarMovimentosAction(
   }
 
   try {
-    // 1. Obter mapa de clientes para resolução de sigla -> client_id
-    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    // 1. Obter mapa de clientes para resolução de sigla -> cliente_id
+    const { data: clientsData } = await supabase.from('clientes').select('id, sigla, name');
     const clientMapBySigla = new Map<string, string>();
     const clientMapById = new Map<string, string>();
 
@@ -748,7 +778,7 @@ export async function importarMovimentosAction(
 
     // 2. Obter primeiro cliente disponível caso seja necessário fallback
     const firstClient = clientsData && clientsData.length > 0 ? clientsData[0] : null;
-    const fallbackClientId = defaultClientId || profile?.client_id || firstClient?.id;
+    const fallbackClientId = defaultClientId || profile?.cliente_id || firstClient?.id;
 
     if (!fallbackClientId && clientMapBySigla.size === 0) {
       return {
@@ -762,10 +792,11 @@ export async function importarMovimentosAction(
 
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
-        // Resolver client_id
+        // Resolver cliente_id
         let resolvedClientId = fallbackClientId;
-        if (r.client_id && clientMapById.has(r.client_id)) {
-          resolvedClientId = r.client_id;
+        const candidateId = r.cliente_id;
+        if (candidateId && clientMapById.has(candidateId)) {
+          resolvedClientId = candidateId;
         } else if (r.sigla && clientMapBySigla.has(r.sigla.toUpperCase())) {
           resolvedClientId = clientMapBySigla.get(r.sigla.toUpperCase())!;
         }
@@ -773,22 +804,22 @@ export async function importarMovimentosAction(
         const resolvedSigla = r.sigla
           ? r.sigla.toUpperCase()
           : resolvedClientId
-          ? clientMapById.get(resolvedClientId) || null
-          : null;
+            ? clientMapById.get(resolvedClientId) || null
+            : null;
 
         const tipoArmazem = r.tipo_armazem || '01';
         const armazemLoc = r.armazem_loc
           ? r.armazem_loc.trim().replace(/[-_ ]/g, '')
           : resolvedSigla
-          ? `${resolvedSigla}${tipoArmazem}`
-          : `ARM${tipoArmazem}`;
+            ? `${resolvedSigla}${tipoArmazem}`
+            : `ARM${tipoArmazem}`;
 
-                const rawArtigoId = (r.artigo_id || '').trim().toUpperCase();
+        const rawArtigoId = (r.artigo_id || '').trim().toUpperCase();
         const artigoCli = resolvedSigla ? `${resolvedSigla}-${rawArtigoId}` : rawArtigoId;
 
         return {
           artigo_cli: artigoCli, // O campo artigo_id na tabela movimentos referencia o artigo_cli na tabela artigos
-          client_id: resolvedClientId,
+          cliente_id: resolvedClientId,
           sigla: resolvedSigla,
           tipo_movimento: r.tipo_movimento || 'es',
           quantidade: Number(r.quantidade),
@@ -801,6 +832,7 @@ export async function importarMovimentosAction(
           data_fabrico: parseMovimentoDate(r.data_fabrico),
           data_movimento: parseMovimentoDate(r.data_movimento) || new Date().toISOString(),
           documento_ref: r.documento_ref?.trim() || null,
+          tipo_doc: r.tipo_doc?.trim() || null,
           observacoes: r.observacoes?.trim() || null,
           created_by: user.id,
         };
@@ -847,7 +879,8 @@ export async function limparMovimentosAction() {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return {
       success: false,
       error: 'Acesso negado: Apenas administradores podem limpar a tabela de movimentos.',
@@ -893,13 +926,13 @@ export async function importarDocVendaAction(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, client_id')
+    .select('role, cliente_id')
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return {
       success: false,
       error: 'Acesso negado: Apenas administradores e gestores podem importar documentos.',
@@ -911,7 +944,7 @@ export async function importarDocVendaAction(
   }
 
   try {
-    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    const { data: clientsData } = await supabase.from('clientes').select('id, sigla, name');
     const clientMapBySigla = new Map<string, string>();
     const clientMapById = new Map<string, string>();
 
@@ -920,7 +953,7 @@ export async function importarDocVendaAction(
       if (c.id) clientMapById.set(c.id, c.sigla);
     });
 
-    const fallbackClientId = defaultClientId || profile?.client_id;
+    const fallbackClientId = defaultClientId || profile?.cliente_id;
 
     if (!fallbackClientId) { const allRowsHaveClient = rows.every((r) => r.cliente_id || r.sigla_cliente); if (!allRowsHaveClient) { return { success: false, error: 'É obrigatório selecionar um Cliente a Associar para faturas que não tenham cliente definido no ficheiro.' }; } } if (false) {
       return {
@@ -944,12 +977,12 @@ export async function importarDocVendaAction(
         const resolvedSigla = r.sigla_cliente
           ? r.sigla_cliente.toUpperCase()
           : resolvedClientId
-          ? clientMapById.get(resolvedClientId) || null
-          : null;
+            ? clientMapById.get(resolvedClientId) || null
+            : null;
 
         return {
           ...r,
-          client_id: resolvedClientId,
+          cliente_id: resolvedClientId,
           sigla: resolvedSigla,
         };
       });
@@ -989,11 +1022,12 @@ export async function importarPlatMovimentosAction(
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, client_id')
+    .select('role, cliente_id')
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, error: 'Apenas administradores podem importar movimentos ERP.' };
   }
 
@@ -1002,7 +1036,7 @@ export async function importarPlatMovimentosAction(
   }
 
   try {
-    const { data: clientsData } = await supabase.from('clients').select('id, sigla, name');
+    const { data: clientsData } = await supabase.from('clientes').select('id, sigla, name');
     const clientMapBySigla = new Map<string, string>();
     const clientMapById = new Map<string, string>();
 
@@ -1011,7 +1045,7 @@ export async function importarPlatMovimentosAction(
       if (c.id) clientMapById.set(c.id, c.sigla);
     });
 
-    const fallbackClientId = defaultClientId || profile?.client_id;
+    const fallbackClientId = defaultClientId || profile?.cliente_id;
 
     const BATCH_SIZE = 250;
     let totalInserted = 0;
@@ -1102,7 +1136,8 @@ export async function limparPlatMovimentosAction() {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin') {
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
     return { success: false, error: 'Apenas administradores podem limpar a tabela plat_movimentos.' };
   }
 
@@ -1138,7 +1173,8 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     .eq('id', user.id)
     .single();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'gestor') {
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem executar esta ação.' };
   }
 
@@ -1167,7 +1203,7 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
 
   try {
     const { data: client, error: clientErr } = await supabase
-      .from('clients')
+      .from('clientes')
       .select('sigla')
       .eq('id', clientId)
       .single();
@@ -1248,9 +1284,9 @@ export async function importarTransporteAction(rows: any[]) {
     .eq('id', user.id)
     .single();
 
-  const userRole = profile?.role || (user.user_metadata?.role as string);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (userRole !== 'admin' && userRole !== 'gestor') {
+  if (!isManagerOrAdmin) {
     return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar transporte.' };
   }
 
@@ -1265,7 +1301,7 @@ export async function importarTransporteAction(rows: any[]) {
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const { error: insertErr } = await supabase.from('torrestir_status').insert(batch);
-      
+
       if (insertErr) {
         console.error('Erro ao inserir lote em torrestir_status:', insertErr);
         return { success: false, error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}` };

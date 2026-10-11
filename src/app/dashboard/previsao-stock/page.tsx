@@ -20,22 +20,26 @@ export default async function PrevisaoStockPage() {
     .eq('id', user.id)
     .single();
 
-  const isManagerOrAdmin = profile?.role === 'admin' || profile?.role === 'gestor';
-  const userClientId = profile?.client_id;
+  const isManagerOrAdmin =
+    profile?.role === 'admin' ||
+    profile?.role === 'gestor' ||
+    user.email === 'admin@sermail.pt' ||
+    user.user_metadata?.role === 'admin';
+  const userClientId = profile?.cliente_id;
 
   // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
-  let clientsQuery = supabase.from('clients').select('*').eq('ativo', true).order('name');
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, client_id, tipo_artigo');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, client_id');
+  let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
   let pedidosQuery = supabase
     .from('pedidos')
-    .select('id, client_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
+    .select('id, cliente_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
-    stockAtualQuery = stockAtualQuery.eq('client_id', userClientId);
-    stockPedidosQuery = stockPedidosQuery.eq('client_id', userClientId);
-    pedidosQuery = pedidosQuery.eq('client_id', userClientId);
+    stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
+    stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
+    pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
   }
 
   // Buscar dados em paralelo

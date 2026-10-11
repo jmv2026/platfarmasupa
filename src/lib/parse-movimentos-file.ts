@@ -2,7 +2,8 @@ import ExcelJS from 'exceljs';
 
 export interface MovimentoImportInput {
   artigo_id: string;
-  client_id?: string;
+  cliente_id?: string;
+
   sigla?: string;
   tipo_movimento: 'es' | 'ss' | 'et' | 'st';
   quantidade: number;
@@ -15,6 +16,7 @@ export interface MovimentoImportInput {
   data_fabrico?: string | null;
   data_movimento?: string | null;
   documento_ref?: string | null;
+  tipo_doc?: string | null;
   observacoes?: string | null;
 }
 
@@ -120,6 +122,16 @@ export function normalizeMovimentoHeaderKey(key: string): string {
     clean === 'timestamp'
   ) {
     return 'data_movimento';
+  }
+
+  // 8.1. Tipo de Documento
+  if (
+    clean === 'tipodoc' ||
+    clean === 'tipodocumento' ||
+    clean === 'tipodedoc' ||
+    clean === 'tipodedocumento'
+  ) {
+    return 'tipo_doc';
   }
 
   // 9. Documento de Referência

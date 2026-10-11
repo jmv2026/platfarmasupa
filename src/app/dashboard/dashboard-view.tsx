@@ -24,13 +24,15 @@ export interface DashboardStockItem {
   artigo_descricao?: string | null;
   validade: string | null;
   stock: number;
-  client_id: string;
+  cliente_id?: string;
+
   tipo_artigo?: string | null;
 }
 
 export interface DashboardStockPedidoItem {
   stock: number;
-  client_id: string;
+  cliente_id?: string;
+
 }
 
 export interface DashboardPedidoLinhaItem {
@@ -44,7 +46,8 @@ export interface DashboardPedidoLinhaItem {
 
 export interface DashboardPedidoItem {
   id: string;
-  client_id: string;
+  cliente_id?: string;
+
   data_pedido?: string | null;
   created_at?: string | null;
   pedido_linhas?: DashboardPedidoLinhaItem[];
@@ -125,26 +128,27 @@ export default function DashboardView({
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return stockAtual;
     }
-    return stockAtual.filter((s) => s.client_id === selectedClientId);
+    return stockAtual.filter((s) => s.cliente_id === selectedClientId);
   }, [stockAtual, selectedClientId, isManagerOrAdmin]);
 
   const filteredStockPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return stockPedidos;
     }
-    return stockPedidos.filter((s) => s.client_id === selectedClientId);
+    return stockPedidos.filter((s) => s.cliente_id === selectedClientId);
   }, [stockPedidos, selectedClientId, isManagerOrAdmin]);
 
   const filteredPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return pedidos;
     }
-    return pedidos.filter((p) => p.client_id === selectedClientId);
+    return pedidos.filter((p) => p.cliente_id === selectedClientId);
   }, [pedidos, selectedClientId, isManagerOrAdmin]);
 
   const filteredFaturacao = useMemo(() => {
+    const userClienteId = currentUserProfile?.cliente_id;
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
-      const clientObj = clients.find(c => c.id === (isManagerOrAdmin ? selectedClientId : currentUserProfile?.client_id));
+      const clientObj = clients.find(c => c.id === (isManagerOrAdmin ? selectedClientId : userClienteId));
       if (!clientObj || !clientObj.sigla) return faturacao;
       return faturacao.filter(f => f.sigla_cliente === clientObj.sigla);
     }
@@ -233,7 +237,7 @@ export default function DashboardView({
 
   const effectiveClientObj = isManagerOrAdmin
     ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))
-    : clients.find(c => c.id === currentUserProfile?.client_id);
+    : clients.find(c => c.id === currentUserProfile?.cliente_id);
 
   const showFaturacao = effectiveClientObj?.tipo_cliente === 'CF';
 

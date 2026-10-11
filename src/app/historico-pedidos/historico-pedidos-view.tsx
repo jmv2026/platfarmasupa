@@ -85,7 +85,9 @@ export default function HistoricoPedidosView({
   const [viewMode, setViewMode] = useState<ViewModeType>('tabela');
 
   const isManagerOrAdmin =
-    currentUserProfile?.role === 'admin' || currentUserProfile?.role === 'gestor';
+    currentUserProfile?.role === 'admin' ||
+    currentUserProfile?.role === 'gestor' ||
+    currentUserProfile?.email === 'admin@sermail.pt';
 
   useEffect(() => {
     setPedidosList(pedidos);
@@ -237,7 +239,7 @@ export default function HistoricoPedidosView({
 
     return pedidosList.filter((ped) => {
       // Filtro de Cliente
-      if (selectedClientId !== 'todos' && ped.client_id !== selectedClientId) {
+      if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) {
         return false;
       }
 

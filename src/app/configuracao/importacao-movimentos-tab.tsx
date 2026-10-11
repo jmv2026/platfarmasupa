@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import { Client, Artigo, Armazem, Movimento, TipoMovimento } from '@/lib/supabase/types';
+import { createClient } from '@/lib/supabase/client';
 import {
   MovimentoImportInput,
   parseTextMovimentosFile,
@@ -82,6 +83,24 @@ export default function ImportacaoMovimentosTab({
   armazens = [],
   onRefresh,
 }: ImportacaoMovimentosTabProps) {
+  const [clientsList, setClientsList] = useState<Client[]>(clients);
+
+  useEffect(() => {
+    if (clients && clients.length > 0) {
+      setClientsList(clients);
+    } else {
+      const supabase = createClient();
+      supabase
+        .from('clientes')
+        .select('*')
+        .order('name')
+        .then(({ data }) => {
+          if (data && data.length > 0) {
+            setClientsList(data as Client[]);
+          }
+        });
+    }
+  }, [clients]);
   // Sub-abas dentro da aba Movimentos
 
   // Estados para Importação de Movimentos
@@ -118,12 +137,12 @@ export default function ImportacaoMovimentosTab({
 
   const clientsSiglaMap = useMemo(() => {
     const map = new Map<string, Client>();
-    clients.forEach((c) => {
+    clientsList.forEach((c) => {
       if (c.sigla) map.set(c.sigla.toUpperCase(), c);
       if (c.id) map.set(c.id, c);
     });
     return map;
-  }, [clients]);
+  }, [clientsList]);
 
   // =========================================================================
   // 1. MANIPULAÇÃO DO FICHEIRO DE MOVIMENTOS (.xlsx, .xls, .csv, .txt)
@@ -234,7 +253,7 @@ export default function ImportacaoMovimentosTab({
   const filteredMovimentos = useMemo(() => {
     return movimentosList.filter((m) => {
       if (movFilterTipo !== 'todos' && m.tipo_movimento !== movFilterTipo) return false;
-      if (movFilterClient !== 'todos' && m.client_id !== movFilterClient && m.sigla !== movFilterClient) return false;
+      if (movFilterClient !== 'todos' && m.cliente_id !== movFilterClient && m.sigla !== movFilterClient) return false;
       if (movFilterArmazem !== 'todos' && m.tipo_armazem !== movFilterArmazem) return false;
 
       if (movSearchTerm.trim()) {
@@ -386,7 +405,7 @@ export default function ImportacaoMovimentosTab({
                       className="px-2 py-1.5 border border-outline/50 rounded-lg text-xs outline-hidden focus:border-primary bg-surface"
                     >
                       <option value="">Selecione o Cliente</option>
-                      {clients.map(c => (
+                      {clientsList.map(c => (
                         <option key={c.id} value={c.id}>{c.sigla} - {c.name}</option>
                       ))}
                     </select>
@@ -477,7 +496,7 @@ export default function ImportacaoMovimentosTab({
                   className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
                 >
                   <option value="todos">Todos os Clientes</option>
-                  {clients.map((c) => (
+                  {clientsList.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.sigla} - {c.name}
                     </option>

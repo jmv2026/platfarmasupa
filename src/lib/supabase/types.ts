@@ -53,7 +53,8 @@ export interface UserProfile {
   full_name: string | null;
   role: UserRole;
   empresa: string | null;
-  client_id: string | null;
+  cliente_id: string | null;
+
   ativo: boolean;
   created_at?: string;
   updated_at?: string;
@@ -66,7 +67,7 @@ export const TIPO_CLIENTE_LABELS: Record<TipoCliente, string> = {
   SF: 'Sem Faturação (SF)',
 };
 
-export interface Client {
+export interface Cliente {
   id: string;
   name: string;
   sigla: string;
@@ -82,6 +83,8 @@ export interface Client {
   created_at?: string;
   updated_at?: string;
 }
+
+export type Client = Cliente;
 
 export type TipoArtigo = 'MH' | 'MV' | 'DM' | 'DC' | 'SC' | 'SA';
 
@@ -167,7 +170,8 @@ export const TIPO_MOVIMENTO_LABELS: Record<TipoMovimento, string> = {
 export interface Movimento {
   id: string;
   artigo_cli: string;
-  client_id: string;
+  cliente_id: string;
+
   sigla?: string | null;
   tipo_movimento: TipoMovimento;
   quantidade: number;
@@ -180,6 +184,7 @@ export interface Movimento {
   data_fabrico: string | null;
   data_movimento: string;
   documento_ref?: string | null;
+  tipo_doc?: string | null;
   observacoes?: string | null;
   requisicao?: string | null;
   entidade?: string | null;
@@ -192,8 +197,11 @@ export interface Movimento {
   updated_at?: string;
 }
 
+export type MovimentoSF = Movimento;
+
 export interface StockAtual {
-  client_id: string;
+  cliente_id: string;
+
   cliente_nome: string;
   cliente_sigla: string;
   artigo_id: string;
@@ -212,7 +220,8 @@ export interface StockAtual {
 }
 
 export interface StockPedido {
-  client_id: string;
+  cliente_id: string;
+
   cliente_nome: string;
   cliente_sigla: string;
   artigo_id: string;
@@ -253,7 +262,8 @@ export type ClassificacaoDestino = (typeof CLASSIFICACOES_DESTINO)[number] | str
 
 export interface Destino {
   id: string;
-  client_id: string;
+  cliente_id: string;
+
   codigo: string;
   nome: string;
   cli_primavera?: string | null;
@@ -273,7 +283,8 @@ export interface Destino {
 }
 
 export interface NovoDestinoInput {
-  client_id: string;
+  cliente_id: string;
+
   nome: string;
   cli_primavera?: string;
   classifica_destino?: string;
@@ -291,7 +302,8 @@ export interface Pedido {
   id: string;
   nr_pedido: string;
   ref_documento: string | null;
-  client_id: string;
+  cliente_id: string;
+
   destino_id?: string | null;
   classifica_destino?: string | null;
   nome_destinatario: string;
@@ -311,7 +323,8 @@ export interface Pedido {
 export interface PedidoLinha {
   id: string;
   pedido_id: string;
-  client_id: string;
+  cliente_id: string;
+
   artigo_id: string;
   artigo_codigo: string;
   descricao: string;
@@ -322,6 +335,7 @@ export interface PedidoLinha {
 }
 
 export interface PedidoComLinhas extends Pedido {
+  clientes?: Cliente;
   clients?: Client;
   destinos?: Destino;
   pedido_linhas?: PedidoLinha[];
@@ -343,7 +357,8 @@ export interface NovaLinhaPedidoInput {
 }
 
 export interface NovoPedidoInput {
-  client_id: string;
+  cliente_id: string;
+
   destino_id?: string | null;
   guardar_novo_destino?: boolean;
   cli_primavera?: string;
