@@ -151,6 +151,16 @@ function parseDate(v: any): string | null {
   return null;
 }
 
+function parseBool(v: any, defaultVal = false): boolean {
+  if (v === undefined || v === null || v === '') return defaultVal;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v === 1;
+  const s = String(v).trim().toLowerCase();
+  if (s === 'verdadeiro' || s === 'true' || s === '1' || s === 'sim' || s === 'v' || s === 't') return true;
+  if (s === 'falso' || s === 'false' || s === '0' || s === 'nao' || s === 'f') return false;
+  return defaultVal;
+}
+
 function normalizeHeader(key: string): string {
   if (!key) return '';
   return key
@@ -515,12 +525,14 @@ export interface PlatMovimentoRow {
   id?: number;
   cliente_id?: string | null;
   sigla_cliente?: string | null;
-  num_linha?: number | null;
   data?: string | null;
+  tipo_movimento?: string | null;
   documento?: string | null;
+  num_linha?: number | null;
+  doc_linha?: string | null;
+  num_registo?: number | null;
   chave1?: string | null;
   chave2?: string | null;
-  ativa?: boolean | null;
   valor_unitario?: number | null;
   valor_adicional?: number | null;
   valor_abater?: number | null;
@@ -530,24 +542,51 @@ export interface PlatMovimentoRow {
   armazem?: string | null;
   localizacao?: string | null;
   lote?: string | null;
-  validade?: string | null;
-  datafabrico?: string | null;
-  tipo_movimento?: string | null;
+  estado_stock?: string | null;
   quantidade?: number | null;
   familia?: string | null;
   sub_familia?: string | null;
+  num_chave1?: number | null;
+  num_chave2?: number | null;
+  datafabrico?: string | null;
+  validade?: string | null;
+  sistema?: boolean | null;
+  entidade?: string | null;
+  total_iva?: number | null;
+  total_merc?: number | null;
+  total_outros?: number | null;
+  total_desc?: number | null;
+  requisicao?: string | null;
+  num_contribuinte?: string | null;
+  morada?: string | null;
+  nome?: string | null;
+  localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
+  ativa?: boolean | null;
+  chave_ativa?: boolean | null;
   created_at?: string;
 }
 
+function parseTipoMov(val: unknown): string | null {
+  if (!val) return null;
+  const up = String(val).trim().toUpperCase();
+  if (up === 'E' || up === 'ES') return 'es';
+  if (up === 'S' || up === 'SS') return 'ss';
+  if (up === 'ET') return 'et';
+  if (up === 'ST') return 'st';
+  return String(val).trim().toLowerCase();
+}
+
 export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
 
   let delimiter = ';';
   if (lines[0].includes(';')) delimiter = ';';
   else if (lines[0].includes('\t')) delimiter = '\t';
   else if (lines[0].includes(',')) delimiter = ',';
-  const header = lines[0].split(delimiter).map(c => normalizeHeader(c));
+  const header = lines[0].split(delimiter).map((c) => normalizeHeader(c));
   const rows: PlatMovimentoRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -557,38 +596,50 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
       r[h] = cols[idx] !== undefined ? cols[idx].trim() : '';
     });
 
-    const ativaVal = (r['ativa'] || '').toLowerCase();
-    const ativa = ativaVal === 'verdadeiro' || ativaVal === 'true' || ativaVal === '1';
+    const isRowEmpty = Object.values(r).every((v) => !v);
+    if (isRowEmpty) continue;
 
     rows.push({
-      num_linha: parseNum(r['numlinha'] || r['num_linha']),
       data: parseDate(r['data']),
-      documento: r['documento'] || null,
-      chave1: r['chave1'] || null,
-      chave2: r['chave2'] || null,
-      ativa,
+      tipo_movimento: parseTipoMov(r['tipomovimento'] || r['tipo_movimento']),
+      documento: r['documento'] ? String(r['documento']).trim() : null,
+      num_linha: parseNum(r['numlinha'] || r['num_linha']),
+      doc_linha: r['doclinha'] || r['doc_linha'] ? String(r['doclinha'] || r['doc_linha']).trim() : null,
+      num_registo: parseNum(r['numregisto'] || r['num_registo']),
+      chave1: r['chave1'] ? String(r['chave1']).trim() : null,
+      chave2: r['chave2'] ? String(r['chave2']).trim() : null,
       valor_unitario: parseNum(r['valorunitario'] || r['valor_unitario']),
       valor_adicional: parseNum(r['valoradicional'] || r['valor_adicional']),
       valor_abater: parseNum(r['valorabater'] || r['valor_abater']),
-      artigo: r['artigo'] || null,
-      descricao: r['descricao'] || null,
-      tipo_artigo: r['tipoartigo'] || r['tipo_artigo'] || null,
-      armazem: r['armazem'] || null,
-      localizacao: r['localizacao'] || null,
-      lote: r['lote'] || null,
-      validade: parseDate(r['validade']),
-      datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-      tipo_movimento: (() => {
-        const t = r['tipomovimento'] || r['tipo_movimento'];
-        if (!t) return null;
-        const up = String(t).trim().toUpperCase();
-        if (up === 'E') return 'es';
-        if (up === 'S') return 'ss';
-        return String(t).trim().toLowerCase();
-      })(),
+      artigo: r['artigo'] ? String(r['artigo']).trim() : null,
+      descricao: r['descricao'] ? String(r['descricao']).trim() : null,
+      tipo_artigo: r['tipoartigo'] || r['tipo_artigo'] ? String(r['tipoartigo'] || r['tipo_artigo']).trim() : null,
+      armazem: r['armazem'] ? String(r['armazem']).trim() : null,
+      localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
+      lote: r['lote'] ? String(r['lote']).trim() : null,
+      estado_stock: r['estadostock'] || r['estado_stock'] ? String(r['estadostock'] || r['estado_stock']).trim() : null,
       quantidade: parseNum(r['quantidade']),
-      familia: r['familia'] || null,
-      sub_familia: r['subfamilia'] || r['sub_familia'] || null,
+      familia: r['familia'] ? String(r['familia']).trim() : null,
+      sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
+      num_chave1: parseNum(r['numchave1'] || r['num_chave1']),
+      num_chave2: parseNum(r['numchave2'] || r['num_chave2']),
+      datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
+      validade: parseDate(r['validade']),
+      sistema: parseBool(r['sistema'], false),
+      entidade: r['entidade'] ? String(r['entidade']).trim() : null,
+      total_iva: parseNum(r['totaliva'] || r['total_iva']),
+      total_merc: parseNum(r['totalmerc'] || r['total_merc']),
+      total_outros: parseNum(r['totaloutros'] || r['total_outros']),
+      total_desc: parseNum(r['totaldesc'] || r['total_desc']),
+      requisicao: r['requisicao'] ? String(r['requisicao']).trim() : null,
+      num_contribuinte: r['numcontribuinte'] || r['num_contribuinte'] ? String(r['numcontribuinte'] || r['num_contribuinte']).trim() : null,
+      morada: r['morada'] ? String(r['morada']).trim() : null,
+      nome: r['nome'] ? String(r['nome']).trim() : null,
+      localidade: r['localidade'] ? String(r['localidade']).trim() : null,
+      cod_postal: r['codpostal'] || r['cod_postal'] ? String(r['codpostal'] || r['cod_postal']).trim() : null,
+      cod_postal_localidade: r['codpostallocalidade'] || r['cod_postal_localidade'] ? String(r['codpostallocalidade'] || r['cod_postal_localidade']).trim() : null,
+      ativa: parseBool(r['ativa'], true),
+      chave_ativa: parseBool(r['chaveativa'] || r['chave_ativa'], true),
     });
   }
 
@@ -616,19 +667,18 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         if (h) r[h] = cell.value;
       });
 
-      const isEmpty = Object.values(r).every(v => v === null || v === undefined || v === '');
+      const isEmpty = Object.values(r).every((v) => v === null || v === undefined || v === '');
       if (isEmpty) return;
 
-      const ativaVal = String(r['ativa'] || '').toLowerCase();
-      const ativa = ativaVal === 'verdadeiro' || ativaVal === 'true' || ativaVal === '1' || r['ativa'] === true || r['ativa'] === 1;
-
       rows.push({
-        num_linha: parseNum(r['numlinha'] || r['num_linha']),
         data: parseDate(r['data']),
+        tipo_movimento: parseTipoMov(r['tipomovimento'] || r['tipo_movimento']),
         documento: r['documento'] ? String(r['documento']).trim() : null,
+        num_linha: parseNum(r['numlinha'] || r['num_linha']),
+        doc_linha: r['doclinha'] || r['doc_linha'] ? String(r['doclinha'] || r['doc_linha']).trim() : null,
+        num_registo: parseNum(r['numregisto'] || r['num_registo']),
         chave1: r['chave1'] ? String(r['chave1']).trim() : null,
         chave2: r['chave2'] ? String(r['chave2']).trim() : null,
-        ativa,
         valor_unitario: parseNum(r['valorunitario'] || r['valor_unitario']),
         valor_adicional: parseNum(r['valoradicional'] || r['valor_adicional']),
         valor_abater: parseNum(r['valorabater'] || r['valor_abater']),
@@ -638,19 +688,29 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         armazem: r['armazem'] ? String(r['armazem']).trim() : null,
         localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
         lote: r['lote'] ? String(r['lote']).trim() : null,
-        validade: parseDate(r['validade']),
-        datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-        tipo_movimento: (() => {
-          const t = r['tipomovimento'] || r['tipo_movimento'];
-          if (!t) return null;
-          const up = String(t).trim().toUpperCase();
-          if (up === 'E') return 'es';
-          if (up === 'S') return 'ss';
-          return String(t).trim().toLowerCase();
-        })(),
+        estado_stock: r['estadostock'] || r['estado_stock'] ? String(r['estadostock'] || r['estado_stock']).trim() : null,
         quantidade: parseNum(r['quantidade']),
         familia: r['familia'] ? String(r['familia']).trim() : null,
         sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
+        num_chave1: parseNum(r['numchave1'] || r['num_chave1']),
+        num_chave2: parseNum(r['numchave2'] || r['num_chave2']),
+        datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
+        validade: parseDate(r['validade']),
+        sistema: parseBool(r['sistema'], false),
+        entidade: r['entidade'] ? String(r['entidade']).trim() : null,
+        total_iva: parseNum(r['totaliva'] || r['total_iva']),
+        total_merc: parseNum(r['totalmerc'] || r['total_merc']),
+        total_outros: parseNum(r['totaloutros'] || r['total_outros']),
+        total_desc: parseNum(r['totaldesc'] || r['total_desc']),
+        requisicao: r['requisicao'] ? String(r['requisicao']).trim() : null,
+        num_contribuinte: r['numcontribuinte'] || r['num_contribuinte'] ? String(r['numcontribuinte'] || r['num_contribuinte']).trim() : null,
+        morada: r['morada'] ? String(r['morada']).trim() : null,
+        nome: r['nome'] ? String(r['nome']).trim() : null,
+        localidade: r['localidade'] ? String(r['localidade']).trim() : null,
+        cod_postal: r['codpostal'] || r['cod_postal'] ? String(r['codpostal'] || r['cod_postal']).trim() : null,
+        cod_postal_localidade: r['codpostallocalidade'] || r['cod_postal_localidade'] ? String(r['codpostallocalidade'] || r['cod_postal_localidade']).trim() : null,
+        ativa: parseBool(r['ativa'], true),
+        chave_ativa: parseBool(r['chaveativa'] || r['chave_ativa'], true),
       });
     }
   });
@@ -661,19 +721,81 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
 export async function parsePlatMovimentosFile(file: File): Promise<PlatMovimentoRow[]> {
   const name = file.name.toLowerCase();
   try {
-    if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    if (name.endsWith('.xlsx')) {
       const buffer = await file.arrayBuffer();
       return await parseExcelToPlatMovimentos(buffer);
+    } else if (name.endsWith('.xls')) {
+      try {
+        const buffer = await file.arrayBuffer();
+        return await parseExcelToPlatMovimentos(buffer);
+      } catch {
+        const text = await file.text();
+        const rows = parseCsvTextToPlatMovimentos(text);
+        if (rows.length > 0) return rows;
+        throw new Error('Formato .xls legado incompatível. Por favor guarde o ficheiro no Excel como .xlsx ou .csv.');
+      }
     } else {
       const text = await file.text();
       return parseCsvTextToPlatMovimentos(text);
     }
   } catch (err: unknown) {
-    if (name.endsWith('.xls')) {
-      throw new Error('O ficheiro está em formato .xls (Excel antigo). Por favor abra-o no Excel e guarde como .xlsx ou .csv antes de importar.');
-    }
     const msg = err instanceof Error ? err.message : 'Erro ao processar ficheiro';
     throw new Error(`Falha ao ler ficheiro de movimentos ERP: ${msg}`);
   }
+}
+
+/**
+ * Gera um ficheiro CSV de exemplo/modelo para a tabela plat_movimentos com a estrutura exata do ERP.
+ */
+export function generatePlatMovimentosSampleCSV(): string {
+  const headers = [
+    'Data',
+    'tipo_movimento',
+    'Documento',
+    'NumLinha',
+    'doc_linha',
+    'NumRegisto',
+    'Chave1',
+    'Chave2',
+    'ValorUnitario',
+    'ValorAdicional',
+    'ValorAbater',
+    'Artigo',
+    'Descricao',
+    'TipoArtigo',
+    'Armazem',
+    'Localizacao',
+    'Lote',
+    'EstadoStock',
+    'Quantidade',
+    'Familia',
+    'SubFamilia',
+    'NumChave1',
+    'NumChave2',
+    'DataFabrico',
+    'Validade',
+    'Sistema',
+    'Entidade',
+    'TotalIva',
+    'TotalMerc',
+    'TotalOutros',
+    'TotalDesc',
+    'Requisicao',
+    'NumContribuinte',
+    'Morada',
+    'Nome',
+    'Localidade',
+    'CodPostal',
+    'CodPostalLocalidade',
+    'ativa',
+    'chave_ativa',
+  ];
+
+  const sampleRows = [
+    '28/08/2026;ES;ES 26MAX/1;1;ES 26MAX/1-1;38489;ES;26MAX;0;0;0;5755533;CETRAXAL DUO 10 ML GOTAS AUR. FRSC.;80;MAX01;MAX01.22C14;26037;DISP;50;MED;SER;1;0;;01/04/2028;FALSO;;;;;;;;;;;;;VERDADEIRO;VERDADEIRO',
+    '03/09/2026;ES;ES 26MAX/2;1;ES 26MAX/2-1;39316;ES;26MAX;0;0;0;7764696;MEGALEVURE BANANA 10 STICKS;84;MAX01;MAX01.22B13;J12184;DISP;220;MED;SER;2;0;01/01/1980;30/11/2027;FALSO;;;;;;;;;;;;;VERDADEIRO;VERDADEIRO',
+  ];
+
+  return [headers.join(';'), ...sampleRows].join('\r\n');
 }
 

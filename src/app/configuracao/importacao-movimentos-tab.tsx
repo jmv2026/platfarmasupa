@@ -118,6 +118,7 @@ export default function ImportacaoMovimentosTab({
   const [movSearchTerm, setMovSearchTerm] = useState('');
   const [movFilterTipo, setMovFilterTipo] = useState<string>('todos');
   const [movFilterClient, setMovFilterClient] = useState<string>('todos');
+  const [movFilterArtigo, setMovFilterArtigo] = useState<string>('todos');
   const [movFilterArmazem, setMovFilterArmazem] = useState<string>('todos');
 
   // Estados para imp_stk (Legado / Inventários Brutos)
@@ -249,11 +250,39 @@ export default function ImportacaoMovimentosTab({
     [movimentosList]
   );
 
+  // Lista de artigos únicos disponíveis para filtro
+  const availableArtigos = useMemo(() => {
+    const map = new Map<string, string>();
+    // 1. Extrair artigos dos movimentos existentes (respeitando cliente se selecionado)
+    movimentosList.forEach((m) => {
+      if (movFilterClient !== 'todos' && m.cliente_id !== movFilterClient && m.sigla !== movFilterClient) {
+        return;
+      }
+      if (m.artigo_cli) {
+        map.set(m.artigo_cli, m.artigo_descricao || artigosMap.get(m.artigo_cli) || m.artigo_cli);
+      }
+    });
+
+    // 2. Se nenhum cliente selecionado, complementar com catálogo de artigos
+    if (movFilterClient === 'todos') {
+      artigos.forEach((a) => {
+        if (a.artigo_id && !map.has(a.artigo_id)) {
+          map.set(a.artigo_id, a.descricao || a.artigo_id);
+        }
+      });
+    }
+
+    return Array.from(map.entries())
+      .map(([codigo, descricao]) => ({ codigo, descricao }))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }, [movimentosList, movFilterClient, artigos, artigosMap]);
+
   // Filtragem da Lista de Movimentos
   const filteredMovimentos = useMemo(() => {
     return movimentosList.filter((m) => {
       if (movFilterTipo !== 'todos' && m.tipo_movimento !== movFilterTipo) return false;
       if (movFilterClient !== 'todos' && m.cliente_id !== movFilterClient && m.sigla !== movFilterClient) return false;
+      if (movFilterArtigo !== 'todos' && m.artigo_cli !== movFilterArtigo) return false;
       if (movFilterArmazem !== 'todos' && m.tipo_armazem !== movFilterArmazem) return false;
 
       if (movSearchTerm.trim()) {
@@ -269,7 +298,7 @@ export default function ImportacaoMovimentosTab({
 
       return true;
     });
-  }, [movimentosList, movFilterTipo, movFilterClient, movFilterArmazem, movSearchTerm]);
+  }, [movimentosList, movFilterTipo, movFilterClient, movFilterArtigo, movFilterArmazem, movSearchTerm]);
 
   // =========================================================================
   // 2. MANIPULAÇÃO DO FICHEIRO DE STOCKS BRUTOS (imp_stk)
@@ -458,7 +487,7 @@ export default function ImportacaoMovimentosTab({
             </div>
 
             {/* Linha de Controlos de Filtro */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-outline-variant/10">
               {/* Pesquisa */}
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
@@ -504,6 +533,22 @@ export default function ImportacaoMovimentosTab({
                 </select>
               </div>
 
+              {/* Filtro Artigo */}
+              <div>
+                <select
+                  value={movFilterArtigo}
+                  onChange={(e) => setMovFilterArtigo(e.target.value)}
+                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+                >
+                  <option value="todos">Todos os Artigos ({availableArtigos.length})</option>
+                  {availableArtigos.map((art) => (
+                    <option key={art.codigo} value={art.codigo}>
+                      {art.codigo} - {art.descricao}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Filtro Armazém */}
               <div>
                 <select
@@ -520,6 +565,30 @@ export default function ImportacaoMovimentosTab({
                 </select>
               </div>
             </div>
+
+            {/* Barra de Filtros Ativos / Botão de Limpar */}
+            {(movFilterTipo !== 'todos' || movFilterClient !== 'todos' || movFilterArtigo !== 'todos' || movFilterArmazem !== 'todos' || !!movSearchTerm) && (
+              <div className="flex items-center justify-between text-xs text-on-surface-variant bg-surface-container/40 px-3 py-1.5 rounded-lg border border-outline-variant/20">
+                <span className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-xs text-secondary">filter_alt</span>
+                  <span>Filtros ativos ({filteredMovimentos.length} registos encontrados)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMovFilterTipo('todos');
+                    setMovFilterClient('todos');
+                    setMovFilterArtigo('todos');
+                    setMovFilterArmazem('todos');
+                    setMovSearchTerm('');
+                  }}
+                  className="font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-xs">close</span>
+                  Limpar filtros
+                </button>
+              </div>
+            )}
 
             {/* Tabela de Dados */}
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-outline-variant/20 rounded-xl">

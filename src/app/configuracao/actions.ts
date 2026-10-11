@@ -10,7 +10,6 @@ import {
   normalizeMovimentoPosicao,
   parseMovimentoDate,
 } from '@/lib/parse-movimentos-file';
-import { DocVendaImportInput } from '@/lib/parse-doc-venda-file';
 import { PlatMovimentoRow } from '@/lib/parse-erp-file';
 
 // Helper para validar de forma resiliente permissões de Admin e Gestor
@@ -833,6 +832,9 @@ export async function importarMovimentosAction(
           data_movimento: parseMovimentoDate(r.data_movimento) || new Date().toISOString(),
           documento_ref: r.documento_ref?.trim() || null,
           tipo_doc: r.tipo_doc?.trim() || null,
+          total_iva: r.total_iva ?? 0,
+          total_merc: r.total_merc ?? 0,
+          total_outros: r.total_outros ?? 0,
           observacoes: r.observacoes?.trim() || null,
           created_by: user.id,
         };
@@ -910,101 +912,6 @@ export async function limparMovimentosAction() {
   }
 }
 
-// 9. AÇÃO: Importar Documentos de Venda (doc_venda)
-export async function importarDocVendaAction(
-  rows: DocVendaImportInput[],
-  defaultClientId?: string
-) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
-  }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role, cliente_id')
-    .eq('id', user.id)
-    .single();
-
-  const { isManagerOrAdmin } = checkUserRole(user, profile);
-
-  if (!isManagerOrAdmin) {
-    return {
-      success: false,
-      error: 'Acesso negado: Apenas administradores e gestores podem importar documentos.',
-    };
-  }
-
-  if (!rows || rows.length === 0) {
-    return { success: false, error: 'O ficheiro não contém documentos válidos para importar.' };
-  }
-
-  try {
-    const { data: clientsData } = await supabase.from('clientes').select('id, sigla, name');
-    const clientMapBySigla = new Map<string, string>();
-    const clientMapById = new Map<string, string>();
-
-    (clientsData || []).forEach((c) => {
-      if (c.sigla) clientMapBySigla.set(c.sigla.toUpperCase(), c.id);
-      if (c.id) clientMapById.set(c.id, c.sigla);
-    });
-
-    const fallbackClientId = defaultClientId || profile?.cliente_id;
-
-    if (!fallbackClientId) { const allRowsHaveClient = rows.every((r) => r.cliente_id || r.sigla_cliente); if (!allRowsHaveClient) { return { success: false, error: 'É obrigatório selecionar um Cliente a Associar para faturas que não tenham cliente definido no ficheiro.' }; } } if (false) {
-      return {
-        success: false,
-        error: 'Nenhum cliente cadastrado no sistema para associar aos documentos.',
-      };
-    }
-
-    const BATCH_SIZE = 250;
-    let totalInserted = 0;
-
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
-        let resolvedClientId = fallbackClientId;
-        if (r.cliente_id && clientMapById.has(r.cliente_id)) {
-          resolvedClientId = r.cliente_id;
-        } else if (r.sigla_cliente && clientMapBySigla.has(r.sigla_cliente.toUpperCase())) {
-          resolvedClientId = clientMapBySigla.get(r.sigla_cliente.toUpperCase())!;
-        }
-
-        const resolvedSigla = r.sigla_cliente
-          ? r.sigla_cliente.toUpperCase()
-          : resolvedClientId
-            ? clientMapById.get(resolvedClientId) || null
-            : null;
-
-        return {
-          ...r,
-          cliente_id: resolvedClientId,
-          sigla: resolvedSigla,
-        };
-      });
-
-      const { error: insertErr } = await supabase.from('doc_venda').insert(batch);
-      if (insertErr) {
-        console.error('Erro ao inserir lote em doc_venda:', insertErr);
-        return {
-          success: false,
-          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
-        };
-      }
-      totalInserted += batch.length;
-    }
-
-    revalidatePath('/configuracao');
-    return { success: true, count: totalInserted };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de doc_venda';
-    return { success: false, error: msg };
-  }
-}
 
 // 12. AÇÃO: Importar Movimentos ERP para plat_movimentos
 export async function importarPlatMovimentosAction(
@@ -1076,12 +983,14 @@ export async function importarPlatMovimentosAction(
 
         return {
           sigla: resolvedSigla,
-          num_linha: r.num_linha,
           data: r.data,
+          tipo_movimento: r.tipo_movimento,
           documento: r.documento,
+          num_linha: r.num_linha,
+          doc_linha: r.doc_linha ?? (r.documento && r.num_linha ? `${r.documento}-${r.num_linha}` : null),
+          num_registo: r.num_registo ?? null,
           chave1: r.chave1,
           chave2: r.chave2,
-          ativa: r.ativa ?? true,
           valor_unitario: r.valor_unitario ?? 0,
           valor_adicional: r.valor_adicional ?? 0,
           valor_abater: r.valor_abater ?? 0,
@@ -1091,12 +1000,29 @@ export async function importarPlatMovimentosAction(
           armazem: r.armazem,
           localizacao: r.localizacao,
           lote: r.lote,
-          validade: r.validade,
-          datafabrico: r.datafabrico,
-          tipo_movimento: r.tipo_movimento,
+          estado_stock: r.estado_stock ?? null,
           quantidade: r.quantidade ?? 0,
           familia: r.familia,
           sub_familia: r.sub_familia,
+          num_chave1: r.num_chave1 ?? null,
+          num_chave2: r.num_chave2 ?? null,
+          datafabrico: r.datafabrico,
+          validade: r.validade,
+          sistema: r.sistema ?? false,
+          entidade: r.entidade ?? null,
+          total_iva: r.total_iva ?? 0,
+          total_merc: r.total_merc ?? 0,
+          total_outros: r.total_outros ?? 0,
+          total_desc: r.total_desc ?? 0,
+          requisicao: r.requisicao ?? null,
+          num_contribuinte: r.num_contribuinte ?? null,
+          morada: r.morada ?? null,
+          nome: r.nome ?? null,
+          localidade: r.localidade ?? null,
+          cod_postal: r.cod_postal ?? null,
+          cod_postal_localidade: r.cod_postal_localidade ?? null,
+          ativa: r.ativa ?? true,
+          chave_ativa: r.chave_ativa ?? true,
         };
       });
 

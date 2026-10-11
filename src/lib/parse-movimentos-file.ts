@@ -17,6 +17,9 @@ export interface MovimentoImportInput {
   data_movimento?: string | null;
   documento_ref?: string | null;
   tipo_doc?: string | null;
+  total_iva?: number | null;
+  total_merc?: number | null;
+  total_outros?: number | null;
   observacoes?: string | null;
 }
 
@@ -222,6 +225,17 @@ export function normalizeMovimentoHeaderKey(key: string): string {
     clean.includes('descricao')
   ) {
     return 'observacoes';
+  }
+
+  // 16. Totais Financeiros
+  if (clean === 'totaliva' || clean === 'totaldeiva' || clean === 'iva') {
+    return 'total_iva';
+  }
+  if (clean === 'totalmerc' || clean === 'totalmercadoria' || clean === 'totaldemercadoria') {
+    return 'total_merc';
+  }
+  if (clean === 'totaloutros' || clean === 'outros') {
+    return 'total_outros';
   }
 
   return clean;
@@ -491,6 +505,9 @@ export async function parseExcelMovimentosFile(
         data_fabrico: parseMovimentoDate(rowObj['data_fabrico']),
         data_movimento: parseMovimentoDate(rowObj['data_movimento']) || new Date().toISOString(),
         documento_ref: rowObj['documento_ref'] ? String(rowObj['documento_ref']).trim() : null,
+        total_iva: rowObj['total_iva'] !== undefined && rowObj['total_iva'] !== null && rowObj['total_iva'] !== '' ? Number(rowObj['total_iva']) : null,
+        total_merc: rowObj['total_merc'] !== undefined && rowObj['total_merc'] !== null && rowObj['total_merc'] !== '' ? Number(rowObj['total_merc']) : null,
+        total_outros: rowObj['total_outros'] !== undefined && rowObj['total_outros'] !== null && rowObj['total_outros'] !== '' ? Number(rowObj['total_outros']) : null,
         observacoes: rowObj['observacoes'] ? String(rowObj['observacoes']).trim() : null,
       });
     }
@@ -599,6 +616,9 @@ export function parseTextMovimentosFile(
         data_fabrico: parseMovimentoDate(rowObj['data_fabrico']),
         data_movimento: parseMovimentoDate(rowObj['data_movimento']) || new Date().toISOString(),
         documento_ref: rowObj['documento_ref'] ? rowObj['documento_ref'].trim() : null,
+        total_iva: rowObj['total_iva'] !== undefined && rowObj['total_iva'] !== null && rowObj['total_iva'] !== '' ? Number(rowObj['total_iva']) : null,
+        total_merc: rowObj['total_merc'] !== undefined && rowObj['total_merc'] !== null && rowObj['total_merc'] !== '' ? Number(rowObj['total_merc']) : null,
+        total_outros: rowObj['total_outros'] !== undefined && rowObj['total_outros'] !== null && rowObj['total_outros'] !== '' ? Number(rowObj['total_outros']) : null,
         observacoes: rowObj['observacoes'] ? rowObj['observacoes'].trim() : null,
       });
     }

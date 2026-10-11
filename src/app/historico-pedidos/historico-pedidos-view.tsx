@@ -80,6 +80,7 @@ export default function HistoricoPedidosView({
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [selectedTipoMov, setSelectedTipoMov] = useState<string>('todos');
+  const [selectedArtigo, setSelectedArtigo] = useState<string>('todos');
   const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterType>('todos');
   const [selectedModalPedido, setSelectedModalPedido] = useState<PedidoComLinhas | null>(null);
   const [viewMode, setViewMode] = useState<ViewModeType>('tabela');
@@ -232,6 +233,22 @@ export default function HistoricoPedidosView({
     return Array.from(statuses).sort();
   }, [pedidosList]);
 
+  // Artigos disponíveis para filtro nos pedidos / movimentos
+  const availableArtigos = useMemo(() => {
+    const map = new Map<string, string>();
+    pedidosList.forEach((ped) => {
+      if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) return;
+      ped.pedido_linhas?.forEach((l) => {
+        if (l.artigo_codigo) {
+          map.set(l.artigo_codigo, l.descricao || l.artigo_codigo);
+        }
+      });
+    });
+    return Array.from(map.entries())
+      .map(([codigo, descricao]) => ({ codigo, descricao }))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }, [pedidosList, selectedClientId]);
+
   // Filtragem
   const filteredPedidos = useMemo(() => {
     const now = new Date();
@@ -246,6 +263,12 @@ export default function HistoricoPedidosView({
       // Filtro Tipo Movimento
       if (selectedTipoMov !== 'todos' && ped.tipo_movimento?.toLowerCase() !== selectedTipoMov) {
         return false;
+      }
+
+      // Filtro de Artigo
+      if (selectedArtigo !== 'todos') {
+        const hasArtigo = ped.pedido_linhas?.some((l) => l.artigo_codigo === selectedArtigo);
+        if (!hasArtigo) return false;
       }
 
       // Filtro de Estado
@@ -313,7 +336,7 @@ export default function HistoricoPedidosView({
 
       return true;
     });
-  }, [pedidosList, selectedClientId, selectedStatus, selectedDateFilter, searchTerm, selectedTipoMov]);
+  }, [pedidosList, selectedClientId, selectedStatus, selectedTipoMov, selectedArtigo, selectedDateFilter, searchTerm]);
 
   // Total de unidades filtradas
   const totalUnidadesFiltradas = useMemo(() => {
@@ -358,6 +381,7 @@ export default function HistoricoPedidosView({
     selectedClientId !== 'todos' ||
     selectedStatus !== 'todos' ||
     selectedTipoMov !== 'todos' ||
+    selectedArtigo !== 'todos' ||
     selectedDateFilter !== 'todos';
 
   const handleClearFilters = () => {
@@ -365,6 +389,7 @@ export default function HistoricoPedidosView({
     setSelectedClientId('todos');
     setSelectedStatus('todos');
     setSelectedTipoMov('todos');
+    setSelectedArtigo('todos');
     setSelectedDateFilter('todos');
   };
 
@@ -492,7 +517,7 @@ export default function HistoricoPedidosView({
         </div>
 
         {/* Linha de Filtros Dropdown */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-3 border-t border-slate-100">
           {/* Filtro Cliente (Apenas se Admin/Gestor) */}
           {isManagerOrAdmin ? (
             <div className="lg:col-span-2">
@@ -555,6 +580,25 @@ export default function HistoricoPedidosView({
               {availableStatuses.map((status) => (
                 <option key={status} value={status}>
                   {getStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtro Artigo */}
+          <div>
+            <label className="block text-[11px] font-semibold text-on-surface-variant mb-1">
+              Artigo
+            </label>
+            <select
+              value={selectedArtigo}
+              onChange={(e) => setSelectedArtigo(e.target.value)}
+              className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer"
+            >
+              <option value="todos">Todos os Artigos ({availableArtigos.length})</option>
+              {availableArtigos.map((art) => (
+                <option key={art.codigo} value={art.codigo}>
+                  {art.codigo} - {art.descricao}
                 </option>
               ))}
             </select>

@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
-import { PlatMovimentoRow, parsePlatMovimentosFile } from '@/lib/parse-erp-file';
+import { PlatMovimentoRow, parsePlatMovimentosFile, generatePlatMovimentosSampleCSV } from '@/lib/parse-erp-file';
 import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './actions';
 
 interface ImportacaoErpTabProps {
@@ -136,6 +136,19 @@ export default function ImportacaoErpTab({
     }
   };
 
+  const handleDownloadSample = () => {
+    const csvContent = generatePlatMovimentosSampleCSV();
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'modelo_plat_movimentos.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const filteredPreviewRows = useMemo(() => {
     if (!searchTerm.trim()) return parsedRows.slice(0, 50);
     const q = searchTerm.toLowerCase();
@@ -188,6 +201,15 @@ export default function ImportacaoErpTab({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadSample}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all cursor-pointer"
+              title="Descarregar ficheiro CSV modelo com a estrutura exata do ERP"
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+              Descarregar Modelo (CSV)
+            </button>
             <button
               type="button"
               onClick={() => setShowClearConfirm(true)}
@@ -257,7 +279,7 @@ export default function ImportacaoErpTab({
             {/* Input Ficheiro */}
             <div className="md:col-span-2">
               <label className="block text-xs font-bold text-on-surface mb-1.5">
-                Ficheiro ERP (.csv, .txt, .xlsx):
+                Ficheiro ERP (.csv, .txt, .xlsx, .xls):
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -423,17 +445,32 @@ export default function ImportacaoErpTab({
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
             <span className="material-symbols-outlined text-indigo-600 text-base">tune</span>
-            Campos Mapeados na Tabela plat_movimentos
+            Campos Mapeados na Tabela plat_movimentos (40 Campos)
           </div>
           <p className="text-xs text-on-surface-variant">
-            A tabela suporta todos os 32 campos extraídos dos relatórios de stock e movimentos ERP:
+            A tabela foi totalmente reconfigurada para acolher todos os campos presentes no ficheiro do ERP:
           </p>
-          <div className="text-[11px] font-mono bg-surface-container/40 rounded-xl p-3 text-on-surface space-y-1">
-            <div><span className="text-indigo-600 font-semibold">Cabeçalho & Doc:</span> num_linha, data, documento, chave1, chave2, ativa</div>
-            <div><span className="text-indigo-600 font-semibold">Valores:</span> valor_unitario, valor_adicional, valor_abater</div>
-            <div><span className="text-indigo-600 font-semibold">Artigo & Lote:</span> artigo, descricao, tipo_artigo, armazem, localizacao, lote, estado_stock</div>
-            <div><span className="text-indigo-600 font-semibold">Movimento & Stock:</span> tipo_movimento (ES/SS), quantidade, stock_anterior, stock_actual, stock_lot_actual, stock_arm_actual, stock_loc_actual</div>
-            <div><span className="text-indigo-600 font-semibold">Famílias:</span> familia, sub_familia, cliente_id, sigla</div>
+          <div className="text-[11px] font-mono bg-surface-container/40 rounded-xl p-3.5 text-on-surface space-y-1.5 divide-y divide-outline-variant/15">
+            <div className="pb-1">
+              <span className="text-indigo-600 font-bold">1. Documento & Registo:</span>{' '}
+              <span className="text-on-surface-variant">Data, tipo_movimento, Documento, NumLinha, doc_linha, NumRegisto, Chave1, Chave2, NumChave1, NumChave2</span>
+            </div>
+            <div className="py-1">
+              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade:</span>{' '}
+              <span className="text-on-surface-variant">Artigo, Descricao, TipoArtigo, Armazem, Localizacao, Lote, EstadoStock, Quantidade, Familia, SubFamilia, DataFabrico, Validade</span>
+            </div>
+            <div className="py-1">
+              <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais:</span>{' '}
+              <span className="text-on-surface-variant">ValorUnitario, ValorAdicional, ValorAbater, TotalIva, TotalMerc, TotalOutros, TotalDesc</span>
+            </div>
+            <div className="py-1">
+              <span className="text-indigo-600 font-bold">4. Entidade & Morada de Entrega:</span>{' '}
+              <span className="text-on-surface-variant">Entidade, Requisicao, NumContribuinte, Nome, Morada, Localidade, CodPostal, CodPostalLocalidade</span>
+            </div>
+            <div className="pt-1">
+              <span className="text-indigo-600 font-bold">5. Controlo de Sistema:</span>{' '}
+              <span className="text-on-surface-variant">Sistema, ativa, chave_ativa, sigla, cliente_id</span>
+            </div>
           </div>
         </div>
 

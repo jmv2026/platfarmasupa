@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DashboardFaturacaoItem } from './dashboard-view';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -9,20 +9,23 @@ interface GraficoFaturacaoMensalProps {
   clientName?: string | null;
 }
 
-type PeriodoFiltro = '12m' | '6m' | 'ano-atual' | 'todos';
-type TipoVisualizacao = 'area' | 'barras' | 'combinado';
+type PeriodoFiltro = 'mes-atual' | '3m' | '6m' | '12m' | 'ano-atual' | 'todos';
+type TipoVisualizacao = 'barras' | 'area' | 'combinado';
+type TipoMetrica = 'faturacao' | 'unidades';
 
 interface MesData {
   key: string; // "2026-03"
   year: number;
   month: number; // 0-11
-  label: string; // "Mar 26"
+  label: string; // "Mar '26"
   labelCompleto: string; // "Março 2026"
+  total_quantidade: number;
+  total_docs: number;
   total_merc: number;
   total_iva: number;
   total_desc: number;
-  total_liquido: number;
-  diffAnterior: number | null; // % vs mes anterior
+  total_liquido: number; // total_merc - total_iva - total_desc
+  diffAnterior: number | null; // % vs mes anterior (baseado em total_liquido)
 }
 
 // Extrai ano e mês com segurança
@@ -48,19 +51,34 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
+  // Verifica se existe valor monetário na faturação
+  const hasMonetaryData = useMemo(() => {
+    return faturacao.some((f) => (Number(f.total_merc) || 0) > 0);
+  }, [faturacao]);
+
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('barras');
+  const [tipoMetrica, setTipoMetrica] = useState<TipoMetrica>(hasMonetaryData ? 'faturacao' : 'unidades');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Processamento e agrupamento mensal de faturacao
-  const { dadosMensais, estatisticas } = useMemo(() => {
+  useEffect(() => {
+    if (!hasMonetaryData && tipoMetrica === 'faturacao') {
+      setTipoMetrica('unidades');
+    }
+  }, [hasMonetaryData]);
+
+  // Processamento e agrupamento mensal de faturacao / movimentos
+  const { dadosMensais, estatisticas, maxValor } = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
     // Mapeia todas as contagens por "YYYY-MM"
-    const contagemPorMes: Record<string, {merc: number, iva: number, desc: number}> = {};
+    const contagemPorMes: Record<
+      string,
+      { quantidade: number; docs: number; merc: number; iva: number; desc: number }
+    > = {};
     const todosAnosDisponiveis = new Set<number>();
 
     faturacao.forEach((p) => {
@@ -68,10 +86,14 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       const parsed = extrairAnoMes(dataRaw);
       if (parsed) {
         const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
-        if (!contagemPorMes[key]) contagemPorMes[key] = {merc: 0, iva: 0, desc: 0};
-        contagemPorMes[key].merc += (Number(p.total_merc) || 0);
-        contagemPorMes[key].iva += (Number(p.total_iva) || 0);
-        contagemPorMes[key].desc += (Number(p.total_desc) || 0);
+        if (!contagemPorMes[key]) {
+          contagemPorMes[key] = { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0 };
+        }
+        contagemPorMes[key].quantidade += Number(p.total_quantidade) || 0;
+        contagemPorMes[key].docs += Number(p.total_docs) || 0;
+        contagemPorMes[key].merc += Number(p.total_merc) || 0;
+        contagemPorMes[key].iva += Number(p.total_iva) || 0;
+        contagemPorMes[key].desc += Number(p.total_desc) || 0;
         todosAnosDisponiveis.add(parsed.year);
       }
     });
@@ -81,7 +103,14 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     // Determina o intervalo de meses a gerar baseado no filtro selecionado
     const mesesParaGerar: { year: number; month: number }[] = [];
 
-    if (periodo === '6m') {
+    if (periodo === 'mes-atual') {
+      mesesParaGerar.push({ year: currentYear, month: currentMonth });
+    } else if (periodo === '3m') {
+      for (let i = 2; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonth - i, 1);
+        mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
+      }
+    } else if (periodo === '6m') {
       for (let i = 5; i >= 0; i--) {
         const d = new Date(currentYear, currentMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
@@ -113,28 +142,34 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     const monthsShort = t.dashboard.monthsShort;
 
     // Cria os objetos MesData com cálculo de variação
-    let prevtotal_merc: number | null = null;
+    let prevVal: number | null = null;
     const resultado: MesData[] = mesesParaGerar.map(({ year, month }) => {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const mesData = contagemPorMes[key] || {merc: 0, iva: 0, desc: 0};
+      const mesData = contagemPorMes[key] || { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0 };
+      const total_quantidade = mesData.quantidade;
+      const total_docs = mesData.docs;
       const total_merc = mesData.merc;
       const total_iva = mesData.iva;
       const total_desc = mesData.desc;
-      const total_liquido = total_merc - total_desc - total_iva;
+      // Faturação Líquida = Mercadoria - IVA - Descontos
+      const total_liquido = total_merc - total_iva - total_desc;
+
       const mShort = monthsShort[month] || String(month + 1);
       const mFull = monthsNames[month] || String(month + 1);
       const label = `${mShort} '${String(year).slice(-2)}`;
       const labelCompleto = language === 'pt' ? `${mFull} de ${year}` : `${mFull} ${year}`;
 
+      const valorComparacao = tipoMetrica === 'unidades' ? total_quantidade : total_liquido;
+
       let diffAnterior: number | null = null;
-      if (prevtotal_merc !== null) {
-        if (prevtotal_merc === 0) {
-          diffAnterior = total_liquido > 0 ? 100 : 0;
+      if (prevVal !== null) {
+        if (prevVal === 0) {
+          diffAnterior = valorComparacao > 0 ? 100 : 0;
         } else {
-          diffAnterior = Math.round(((total_liquido - prevtotal_merc) / prevtotal_merc) * 100);
+          diffAnterior = Math.round(((valorComparacao - prevVal) / prevVal) * 100);
         }
       }
-      prevtotal_merc = total_liquido;
+      prevVal = valorComparacao;
 
       return {
         key,
@@ -142,6 +177,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         month,
         label,
         labelCompleto,
+        total_quantidade,
+        total_docs,
         total_merc,
         total_iva,
         total_desc,
@@ -151,11 +188,24 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     });
 
     // Estatísticas resumidas do período
-    const totalfaturacaoPeriodo = resultado.reduce((acc, curr) => acc + curr.total_liquido, 0);
-    const mediaMensal = resultado.length > 0 ? totalfaturacaoPeriodo / resultado.length : 0;
+    const totalLiquidoPeriodo = resultado.reduce((acc, curr) => acc + curr.total_liquido, 0);
+    const totalMercPeriodo = resultado.reduce((acc, curr) => acc + curr.total_merc, 0);
+    const totalDescPeriodo = resultado.reduce((acc, curr) => acc + curr.total_desc, 0);
+    const totalIvaPeriodo = resultado.reduce((acc, curr) => acc + curr.total_iva, 0);
+    const totalQuantidadePeriodo = resultado.reduce((acc, curr) => acc + curr.total_quantidade, 0);
+    const totalDocsPeriodo = resultado.reduce((acc, curr) => acc + curr.total_docs, 0);
+
+    const mediaMensalLiquida = resultado.length > 0 ? totalLiquidoPeriodo / resultado.length : 0;
+    const mediaMensalUnidades = resultado.length > 0 ? totalQuantidadePeriodo / resultado.length : 0;
 
     const mesPico = resultado.reduce<MesData | null>((pico, curr) => {
-      if (!pico || curr.total_liquido > pico.total_liquido) {
+      const valAtual = tipoMetrica === 'unidades' ? curr.total_quantidade : curr.total_liquido;
+      const valPico = pico
+        ? tipoMetrica === 'unidades'
+          ? pico.total_quantidade
+          : pico.total_liquido
+        : -1;
+      if (!pico || valAtual > valPico) {
         return curr;
       }
       return pico;
@@ -165,50 +215,69 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     const ultimoMes = resultado[resultado.length - 1];
     const penultimoMes = resultado.length > 1 ? resultado[resultado.length - 2] : null;
     let variacaoUltimoMes = 0;
-    if (penultimoMes && penultimoMes.total_liquido > 0 && ultimoMes) {
-      variacaoUltimoMes = Math.round(((ultimoMes.total_liquido - penultimoMes.total_liquido) / penultimoMes.total_liquido) * 100);
-    } else if (ultimoMes && ultimoMes.total_liquido > 0 && penultimoMes?.total_liquido === 0) {
+    const valUltimo = tipoMetrica === 'unidades' ? ultimoMes?.total_quantidade || 0 : ultimoMes?.total_liquido || 0;
+    const valPenultimo = tipoMetrica === 'unidades' ? penultimoMes?.total_quantidade || 0 : penultimoMes?.total_liquido || 0;
+
+    if (valPenultimo > 0 && ultimoMes) {
+      variacaoUltimoMes = Math.round(((valUltimo - valPenultimo) / valPenultimo) * 100);
+    } else if (valUltimo > 0 && valPenultimo === 0) {
       variacaoUltimoMes = 100;
     }
 
+    // Escala máxima: no modo faturação, tem em conta tanto a coluna líquida como a coluna de descontos
+    const maxVal = Math.max(
+      ...resultado.map((d) =>
+        tipoMetrica === 'unidades'
+          ? d.total_quantidade
+          : Math.max(d.total_liquido, d.total_desc, d.total_merc)
+      ),
+      0
+    );
+
     return {
       dadosMensais: resultado,
+      maxValor: maxVal,
       estatisticas: {
-        total: totalfaturacaoPeriodo,
-        media: mediaMensal,
-        pico: mesPico && mesPico.total_liquido > 0 ? mesPico : null,
+        totalLiquido: totalLiquidoPeriodo,
+        totalMerc: totalMercPeriodo,
+        totalDesc: totalDescPeriodo,
+        totalIva: totalIvaPeriodo,
+        totalQuantidade: totalQuantidadePeriodo,
+        totalDocs: totalDocsPeriodo,
+        mediaLiquida: mediaMensalLiquida,
+        mediaUnidades: mediaMensalUnidades,
+        pico: mesPico,
         ultimoMes,
         variacaoUltimoMes,
       },
     };
-  }, [faturacao, periodo, t.dashboard.months, t.dashboard.monthsShort, language]);
+  }, [faturacao, periodo, tipoMetrica, t.dashboard.months, t.dashboard.monthsShort, language]);
 
-  // Dimensões do SVG do gráfico otimizadas para visualização na janela
+  // Dimensões do SVG do gráfico
   const svgWidth = 800;
-  const svgHeight = 240;
-  const padding = { top: 25, right: 25, bottom: 38, left: 45 };
+  const svgHeight = 250;
+  const padding = { top: 38, right: 25, bottom: 40, left: 60 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
-  // Escala Y máxima
-  const maxTotalRaw = useMemo(() => {
-    return Math.max(...dadosMensais.map((d) => Math.max(d.total_merc, d.total_liquido)), 0);
-  }, [dadosMensais]);
-
+  // Escala Y máxima adaptativa (com headroom para rótulos no topo das colunas)
   const yMax = useMemo(() => {
-    if (maxTotalRaw === 0) return 5;
-    if (maxTotalRaw <= 5) return 5;
-    if (maxTotalRaw <= 10) return 10;
-    if (maxTotalRaw <= 20) return 20;
-    if (maxTotalRaw <= 50) return Math.ceil(maxTotalRaw / 10) * 10;
-    return Math.ceil(maxTotalRaw / 20) * 20;
-  }, [maxTotalRaw]);
+    const paddedMax = maxValor * 1.12; // 12% de margem no topo para rótulos
+    if (paddedMax <= 0) return 10;
+    if (paddedMax <= 10) return 10;
+    if (paddedMax <= 50) return Math.ceil(paddedMax / 10) * 10;
+    if (paddedMax <= 500) return Math.ceil(paddedMax / 50) * 50;
+    if (paddedMax <= 2000) return Math.ceil(paddedMax / 200) * 200;
+    if (paddedMax <= 10000) return Math.ceil(paddedMax / 1000) * 1000;
+    if (paddedMax <= 50000) return Math.ceil(paddedMax / 5000) * 5000;
+    return Math.ceil(paddedMax / 10000) * 10000;
+  }, [maxValor]);
 
   // Linhas de grelha Y
   const yTicks = [0, Math.round(yMax * 0.25), Math.round(yMax * 0.5), Math.round(yMax * 0.75), yMax];
 
-  // Cálculo das coordenadas dos pontos
+  // Cálculo das coordenadas dos pontos (para o modo área e curva Bézier)
   const points = useMemo(() => {
     const numPoints = dadosMensais.length;
     if (numPoints === 0) return [];
@@ -218,10 +287,11 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         numPoints === 1
           ? padding.left + chartWidth / 2
           : padding.left + (index / (numPoints - 1)) * chartWidth;
-      const y = padding.top + chartHeight - (d.total_liquido / yMax) * chartHeight;
-      return { x, y, data: d, index };
+      const valorGrafico = tipoMetrica === 'unidades' ? d.total_quantidade : d.total_liquido;
+      const y = padding.top + chartHeight - (valorGrafico / yMax) * chartHeight;
+      return { x, y, data: d, index, valorGrafico };
     });
-  }, [dadosMensais, chartWidth, chartHeight, padding, yMax]);
+  }, [dadosMensais, chartWidth, chartHeight, padding, yMax, tipoMetrica]);
 
   // Geração do caminho Spline Bézier Suave
   const { linePath, areaPath } = useMemo(() => {
@@ -257,82 +327,97 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
   const activeItem = hoveredIndex !== null ? dadosMensais[hoveredIndex] : null;
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
+  // Formatador curto para os ticks do eixo Y
+  const formatShortTick = (val: number) => {
+    if (tipoMetrica === 'faturacao') {
+      if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M€`;
+      if (val >= 1000) return `${(val / 1000).toFixed(0)}k€`;
+      return `${val}€`;
+    }
+    if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
+    return String(val);
+  };
+
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
       {/* Header do Gráfico */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
         <div className="flex items-start gap-3.5">
-          {/* Ícone com gradiente Verde Pastel e Lima */}
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200/80 border border-lime-300/60 flex items-center justify-center text-lime-900 shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-2xl text-emerald-800">show_chart</span>
+          {/* Ícone com gradiente Verde Sermail */}
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sermail-green-dark via-sermail-green to-emerald-600 border border-sermail-lime-border/40 flex items-center justify-center text-sermail-lime-border shadow-sm shrink-0">
+            <span className="material-symbols-outlined text-2xl">monitoring</span>
           </div>
 
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                {'Faturação Mensal'}
+                Evolução Mensal de Faturação
               </h2>
               {clientName && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/80 text-emerald-900 border border-emerald-200">
                   {clientName}
                 </span>
               )}
             </div>
             <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              {'Evolução da faturação ao longo dos meses'}
+              Comparativo de Faturação Líquida (Mercadoria − IVA − Descontos) e Total de Descontos por mês
             </p>
           </div>
         </div>
 
         {/* Controlos e Filtros */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Seletor de Tipo de Gráfico */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+          <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setTipoGrafico('barras')}
+              title="Visualização em Colunas Paralelas"
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                tipoGrafico === 'barras'
+                  ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">bar_chart</span>
+            </button>
             <button
               type="button"
               onClick={() => setTipoGrafico('area')}
               title={t.dashboard.viewArea}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                 tipoGrafico === 'area'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span className="material-symbols-outlined text-sm">area_chart</span>
-              <span className="hidden sm:inline">{t.dashboard.viewArea}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setTipoGrafico('barras')}
-              title={t.dashboard.viewBars}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
-                tipoGrafico === 'barras'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">bar_chart</span>
-              <span className="hidden sm:inline">{t.dashboard.viewBars}</span>
             </button>
             <button
               type="button"
               onClick={() => setTipoGrafico('combinado')}
-              title={t.dashboard.viewMixed}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              title="Visualização Combinada (Colunas + Tendência)"
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                 tipoGrafico === 'combinado'
-                  ? 'bg-gradient-to-r from-lime-300 to-emerald-300 text-emerald-950 shadow-xs font-bold'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <span className="material-symbols-outlined text-sm">stacked_line_chart</span>
-              <span className="hidden sm:inline">{t.dashboard.viewMixed}</span>
             </button>
           </div>
 
           {/* Seletor de Período */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+          <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
             {(
               [
+                { id: 'mes-atual', label: language === 'pt' ? 'Mês Atual' : language === 'es' ? 'Mes Actual' : 'Current Month' },
+                { id: '3m', label: t.dashboard.period3m },
                 { id: '6m', label: t.dashboard.period6m },
                 { id: '12m', label: t.dashboard.period12m },
                 { id: 'ano-atual', label: t.dashboard.periodCurrentYear },
@@ -345,8 +430,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 onClick={() => setPeriodo(opt.id)}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   periodo === opt.id
-                    ? 'bg-white text-emerald-900 shadow-xs border border-emerald-200/60 font-bold'
-                    : 'text-on-surface-variant hover:text-on-surface'
+                    ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {opt.label}
@@ -356,79 +441,95 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         </div>
       </div>
 
+      {/* Alerta informativo caso PVA esteja a 0 */}
+      {tipoMetrica === 'faturacao' && !hasMonetaryData && (
+        <div className="mt-3 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-base text-amber-600 shrink-0">info</span>
+            <span>
+              O preço unitário (PVA) dos artigos encontra-se atualmente a 0,00 €. O cálculo da mercadoria avalia a 0,00 €.
+              Pode consultar os dados em <strong>Unidades</strong> ou configurar o PVA na aba Configuração.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTipoMetrica('unidades')}
+            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-950 transition-colors cursor-pointer shrink-0"
+          >
+            Ver Unidades
+          </button>
+        </div>
+      )}
+
       {/* Cartões de Métricas e Destaques */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Total no Período */}
+        {/* 1. Total Faturado Líquido (Mercadoria - IVA - Descontos) */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {'Total Faturado'}
+            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug">
+              {tipoMetrica === 'faturacao' ? 'Faturação Líquida' : 'Total Expedido'}
             </span>
             <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.total.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {estatisticas.total === 1 ? '' : ''}
+                {tipoMetrica === 'faturacao'
+                  ? formatCurrency(estatisticas.totalLiquido)
+                  : `${estatisticas.totalQuantidade.toLocaleString(locale)} un`}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {dadosMensais.length} {t.dashboard.months[0] ? '' : ''}
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight">
+              {tipoMetrica === 'faturacao'
+                ? `Mercadoria: ${formatCurrency(estatisticas.totalMerc)}`
+                : `${estatisticas.totalDocs.toLocaleString(locale)} documentos`}
             </span>
           </div>
         </div>
 
-        {/* 2. Média Mensal */}
+        {/* 2. Total de Descontos (Coluna Paralela) */}
+        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-rose-50/90 to-amber-50/50 border border-rose-200/70 shadow-2xs flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-[10px] sm:text-[11px] font-bold text-rose-900/80 uppercase tracking-wide leading-snug">
+              Total Descontos
+            </span>
+            <span className="w-2 h-2 rounded-full bg-rose-500 ring-4 ring-rose-200/50 shrink-0 mt-0.5"></span>
+          </div>
+          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xl sm:text-2xl font-bold font-headline text-rose-950 leading-none">
+                {formatCurrency(estatisticas.totalDesc)}
+              </span>
+            </div>
+            <span className="text-[10px] text-rose-700/90 font-medium leading-tight">
+              {estatisticas.totalMerc > 0
+                ? `${((estatisticas.totalDesc / estatisticas.totalMerc) * 100).toFixed(1)}% da mercadoria`
+                : 'Coluna paralela'}
+            </span>
+          </div>
+        </div>
+
+        {/* 3. Média Mensal */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.monthlyAverage}
+            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug">
+              Média Mensal
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
           </div>
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.media.toLocaleString(locale, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}
+                {tipoMetrica === 'faturacao'
+                  ? formatCurrency(estatisticas.mediaLiquida)
+                  : `${Math.round(estatisticas.mediaUnidades).toLocaleString(locale)} un`}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {''}/{language === 'en' ? 'mo' : 'mês'}
+                /{language === 'en' ? 'mo' : 'mês'}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {t.dashboard.monthlyAverage}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Mês de Pico / Recorde */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
-              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">military_tech</span>
-              <span>{t.dashboard.monthlyPeakMonth}</span>
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
-              Máx
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.pico ? estatisticas.pico.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {''}
-              </span>
-            </div>
-            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
-              {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
+            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight">
+              {dadosMensais.length} meses analisados
             </span>
           </div>
         </div>
@@ -436,8 +537,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         {/* 4. Mês Mais Recente & Tendência */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.monthlyRecentTrend}
+            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug">
+              Mês Mais Recente
             </span>
             <span
               className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
@@ -456,17 +557,42 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
             <div className="flex items-baseline gap-1">
               <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.ultimoMes ? estatisticas.ultimoMes.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' }) : 0}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {''}
+                {tipoMetrica === 'faturacao'
+                  ? formatCurrency(estatisticas.ultimoMes?.total_liquido || 0)
+                  : `${(estatisticas.ultimoMes?.total_quantidade || 0).toLocaleString(locale)} un`}
               </span>
             </div>
-            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-              {t.dashboard.monthlyVsPrevious}
+            <span className="text-[10px] text-teal-800 font-medium leading-tight">
+              vs. mês anterior
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Legenda Explicativa das Colunas Paralelas */}
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-2 px-1">
+        <div className="flex items-center gap-5 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-lime-400 to-emerald-600 border border-emerald-700/60 shadow-2xs inline-block"></span>
+            <span className="text-slate-800">
+              {tipoMetrica === 'faturacao'
+                ? 'Faturação Líquida (Mercadoria − IVA − Descontos)'
+                : 'Unidades Expedidas'}
+            </span>
+          </div>
+          {tipoMetrica === 'faturacao' && (
+            <div className="flex items-center gap-2">
+              <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-rose-400 to-rose-600 border border-rose-700/60 shadow-2xs inline-block"></span>
+              <span className="text-slate-800">Total Descontos</span>
+            </div>
+          )}
+        </div>
+
+        <span className="text-[11px] text-slate-500 font-medium">
+          {tipoGrafico === 'barras' || tipoGrafico === 'combinado'
+            ? 'Colunas paralelas por mês'
+            : 'Curva de evolução'}
+        </span>
       </div>
 
       {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
@@ -477,32 +603,47 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         <div className="w-full overflow-x-auto">
           <svg
             viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[550px] max-h-[250px] select-none"
+            className="w-full h-auto min-w-[580px] max-h-[260px] select-none"
           >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#84cc16" stopOpacity="0.4" />
-                <stop offset="35%" stopColor="#a3e635" stopOpacity="0.25" />
-                <stop offset="70%" stopColor="#6ee7b7" stopOpacity="0.12" />
+                <stop offset="0%" stopColor="#84cc16" stopOpacity="0.45" />
+                <stop offset="40%" stopColor="#a3e635" stopOpacity="0.25" />
+                <stop offset="75%" stopColor="#6ee7b7" stopOpacity="0.12" />
                 <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.01" />
               </linearGradient>
 
               <linearGradient id="strokeGradientLima" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor="#65a30d" />
-                <stop offset="40%" stopColor="#84cc16" />
-                <stop offset="80%" stopColor="#10b981" />
+                <stop offset="35%" stopColor="#84cc16" />
+                <stop offset="70%" stopColor="#10b981" />
                 <stop offset="100%" stopColor="#059669" />
               </linearGradient>
 
-              <linearGradient id="barGradientLima" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#bef264" />
-                <stop offset="40%" stopColor="#86efac" />
-                <stop offset="100%" stopColor="#6ee7b7" />
+              {/* Gradiente para a Coluna 1: Faturação Líquida */}
+              <linearGradient id="barGradientLiquido" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#84cc16" />
+                <stop offset="40%" stopColor="#22c55e" />
+                <stop offset="100%" stopColor="#059669" />
               </linearGradient>
 
-              <linearGradient id="barGradientLimaHover" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#d9f99d" />
-                <stop offset="100%" stopColor="#a3e635" />
+              <linearGradient id="barGradientLiquidoHover" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#bef264" />
+                <stop offset="40%" stopColor="#4ade80" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+
+              {/* Gradiente para a Coluna 2: Total Descontos */}
+              <linearGradient id="barGradientDescontos" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fb7185" />
+                <stop offset="50%" stopColor="#f43f5e" />
+                <stop offset="100%" stopColor="#e11d48" />
+              </linearGradient>
+
+              <linearGradient id="barGradientDescontosHover" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fda4af" />
+                <stop offset="50%" stopColor="#fb7185" />
+                <stop offset="100%" stopColor="#f43f5e" />
               </linearGradient>
 
               <filter id="glowLima" x="-20%" y="-20%" width="140%" height="140%">
@@ -533,38 +674,44 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                     fontWeight="600"
                     fill="#64748b"
                   >
-                    {val}
+                    {formatShortTick(val)}
                   </text>
                 </g>
               );
             })}
 
-            {/* Barras do Gráfico Agrupado (se modo 'barras' ou 'combinado') */}
+            {/* Colunas Paralelas Agrupadas (se modo 'barras' ou 'combinado') */}
             {(tipoGrafico === 'barras' || tipoGrafico === 'combinado') &&
               points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
                 const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_liquido > 0;
-                
-                const totalBarW = Math.min(chartWidth / points.length, 75);
-                const barW = Math.min(totalBarW / 2.5, 16);
-                const spacing = 2;
-                
-                // Vendas Líquidas (sem IVA e sem descontos)
-                const vendasLiquidas = p.data.total_liquido;
-                const bHeightVendas = ((vendasLiquidas / yMax) * chartHeight) || 0;
-                const bYVendas = padding.top + chartHeight - bHeightVendas;
-                
-                // Descontos
-                const bHeightDesc = ((p.data.total_desc / yMax) * chartHeight) || 0;
-                const bYDesc = padding.top + chartHeight - bHeightDesc;
+
+                const slotWidth = Math.min(chartWidth / points.length, 64);
+                const hasTwoBars = tipoMetrica === 'faturacao';
+                const spacing = 3;
+                const barW = hasTwoBars
+                  ? Math.max(Math.min((slotWidth - 10) / 2, 16), 6)
+                  : Math.max(Math.min(slotWidth * 0.65, 26), 8);
+
+                // Coluna 1: Total Líquido (Mercadoria - IVA - Descontos) ou Unidades
+                const val1 = tipoMetrica === 'unidades' ? p.data.total_quantidade : p.data.total_liquido;
+                const bHeight1 = ((val1 / yMax) * chartHeight) || 0;
+                const bY1 = padding.top + chartHeight - bHeight1;
+                const bX1 = hasTwoBars ? p.x - barW - spacing / 2 : p.x - barW / 2;
+
+                // Coluna 2: Total Descontos (Coluna Paralela)
+                const val2 = p.data.total_desc;
+                const bHeight2 = ((val2 / yMax) * chartHeight) || 0;
+                const bY2 = padding.top + chartHeight - bHeight2;
+                const bX2 = p.x + spacing / 2;
 
                 return (
                   <g key={`bar-group-${i}`}>
-                    {/* Hitbox transparente para hover mais fácil */}
+                    {/* Hitbox transparente que engloba ambas as colunas paralelas */}
                     <rect
-                      x={p.x - totalBarW / 2}
+                      x={p.x - slotWidth / 2}
                       y={padding.top}
-                      width={totalBarW}
+                      width={slotWidth}
                       height={chartHeight}
                       fill="transparent"
                       className="cursor-pointer"
@@ -572,60 +719,76 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       onMouseLeave={() => setHoveredIndex(null)}
                     />
 
-                    {/* Vendas (Sem IVA e Descontos) */}
-                    {bHeightVendas > 0 && (
+                    {/* Coluna 1: Faturação Líquida */}
+                    {bHeight1 > 0 && (
                       <rect
-                        x={p.x - barW - spacing / 2}
-                        y={bYVendas}
+                        x={bX1}
+                        y={bY1}
                         width={barW}
-                        height={bHeightVendas}
+                        height={bHeight1}
                         rx={Math.min(barW / 2, 4)}
                         ry={Math.min(barW / 2, 4)}
-                        fill={isHovered ? 'url(#barGradientLimaHover)' : 'url(#barGradientLima)'}
-                        stroke={isHovered ? '#15803d' : '#86efac'}
-                        strokeWidth={isHovered ? '1.5' : '1'}
-                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
+                        fill={isHovered ? 'url(#barGradientLiquidoHover)' : 'url(#barGradientLiquido)'}
+                        stroke={isHovered ? '#14532d' : '#15803d'}
+                        strokeWidth={isHovered ? '2' : '1'}
+                        opacity={tipoGrafico === 'combinado' ? 0.8 : 0.95}
                         className="transition-all duration-200 cursor-pointer hover:opacity-100"
                         onMouseEnter={() => setHoveredIndex(i)}
                         onMouseLeave={() => setHoveredIndex(null)}
                       />
                     )}
 
-                    {/* Descontos */}
-                    {bHeightDesc > 0 && (
+                    {/* Coluna 2: Total de Descontos (Paralela à Coluna 1) */}
+                    {hasTwoBars && bHeight2 > 0 && (
                       <rect
-                        x={p.x + spacing / 2}
-                        y={bYDesc}
+                        x={bX2}
+                        y={bY2}
                         width={barW}
-                        height={bHeightDesc}
+                        height={bHeight2}
                         rx={Math.min(barW / 2, 4)}
                         ry={Math.min(barW / 2, 4)}
-                        fill={isHovered ? '#fca5a5' : '#fecaca'}
-                        stroke={isHovered ? '#dc2626' : '#fca5a5'}
-                        strokeWidth={isHovered ? '1.5' : '1'}
-                        opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
+                        fill={isHovered ? 'url(#barGradientDescontosHover)' : 'url(#barGradientDescontos)'}
+                        stroke={isHovered ? '#9f1239' : '#be123c'}
+                        strokeWidth={isHovered ? '2' : '1'}
+                        opacity={tipoGrafico === 'combinado' ? 0.8 : 0.95}
                         className="transition-all duration-200 cursor-pointer hover:opacity-100"
                         onMouseEnter={() => setHoveredIndex(i)}
                         onMouseLeave={() => setHoveredIndex(null)}
                       />
                     )}
 
-                    {/* Rótulo de Vendas no topo quando Hover */}
-                    {(isHovered || (tipoGrafico === 'barras' && vendasLiquidas > 0)) && (
-                      <text
-                        x={p.x}
-                        y={Math.min(bYVendas, bYDesc) - 6}
-                        textAnchor="middle"
-                        fontSize="10"
-                        fontWeight="700"
-                        fill={isHovered ? '#14532d' : '#334155'}
-                      >
-                        {vendasLiquidas.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-                      </text>
+                    {/* Rótulo Permanente do Valor Líquido no Topo da Coluna */}
+                    {bHeight1 > 0 && (
+                      <g className="pointer-events-none transition-opacity duration-200">
+                        <text
+                          x={hasTwoBars ? bX1 + barW / 2 : p.x}
+                          y={bY1 - 6}
+                          textAnchor="middle"
+                          fontSize="9.5"
+                          fontWeight={isHovered ? '800' : '700'}
+                          fill={isHovered ? '#14532d' : '#166534'}
+                          className="font-mono tracking-tight"
+                        >
+                          {formatShortTick(val1)}
+                        </text>
+                      </g>
                     )}
 
-                    {isPeak && !isHovered && tipoGrafico === 'barras' && (
-                      <circle cx={p.x} cy={Math.min(bYVendas, bYDesc) - 16} r="3" fill="#65a30d" />
+                    {/* Rótulo de Descontos no Topo ao passar o cursor ou se hovered */}
+                    {hasTwoBars && bHeight2 > 0 && isHovered && (
+                      <g className="pointer-events-none">
+                        <text
+                          x={bX2 + barW / 2}
+                          y={bY2 - 6}
+                          textAnchor="middle"
+                          fontSize="9"
+                          fontWeight="800"
+                          fill="#be123c"
+                          className="font-mono tracking-tight"
+                        >
+                          {formatShortTick(val2)}
+                        </text>
+                      </g>
                     )}
                   </g>
                 );
@@ -654,7 +817,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 {/* Pontos de Dados Interativos */}
                 {points.map((p, i) => {
                   const isHovered = hoveredIndex === i;
-                  const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_liquido > 0;
+                  const isPeak = estatisticas.pico?.key === p.data.key && p.valorGrafico > 0;
 
                   return (
                     <g key={`point-${i}`}>
@@ -674,7 +837,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                         <circle
                           cx={p.x}
                           cy={p.y}
-                          r="13"
+                          r={13}
                           fill="none"
                           stroke="#84cc16"
                           strokeWidth="2"
@@ -726,86 +889,100 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         </div>
 
         {/* Tooltip Detalhado Flutuante */}
-        {activeItem && activePoint && (() => {
-          return (
-            <div
-              className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 min-w-[210px]"
-              style={{
-                right: '16px',
-                top: '16px',
-              }}
-            >
-              <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1 mb-1">
-                <span className="font-bold text-lime-300 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs text-lime-400">event</span>
-                  {activeItem.labelCompleto}
+        {activeItem && activePoint && (
+          <div
+            className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-4 py-3 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 min-w-[240px]"
+            style={{
+              right: '16px',
+              top: '16px',
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1 mb-2">
+              <span className="font-bold text-lime-300 flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs text-lime-400">event</span>
+                {activeItem.labelCompleto}
+              </span>
+              {activeItem.total_liquido === estatisticas.pico?.total_liquido && activeItem.total_liquido > 0 && (
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
+                  Máx
                 </span>
-                {activeItem.total_liquido === estatisticas.pico?.total_liquido && activeItem.total_liquido > 0 && (
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
-                    Máx
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-baseline justify-between gap-4 mt-2">
-                <span className="text-slate-300 font-semibold">Mercadorias:</span>
-                <span className="font-bold text-sm text-lime-400">
-                  {activeItem.total_merc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 mt-1">
-                <span className="text-slate-300 font-semibold">IVA:</span>
-                <span className="font-bold text-sm text-yellow-400">
-                  {activeItem.total_iva.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 mt-1">
-                <span className="text-slate-300 font-semibold">Descontos:</span>
-                <span className="font-bold text-sm text-red-400">
-                  {activeItem.total_desc.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-4 mt-1.5 pt-1.5 border-t border-white/20">
-                <span className="text-white font-bold">Líquido:</span>
-                <span className="font-extrabold text-sm text-blue-300">
-                  {activeItem.total_liquido.toLocaleString(locale, { style: 'currency', currency: 'EUR' })}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px]">
-                <span className="text-slate-400">{t.dashboard.top10ShareOfTotal}:</span>
-                <span className="font-semibold text-emerald-300">
-                  {estatisticas.total > 0
-                    ? Math.round((activeItem.total_liquido / estatisticas.total) * 100)
-                    : 0}
-                  %
-                </span>
-              </div>
-
-              {activeItem.diffAnterior !== null && (
-                <div className="flex items-center justify-between gap-4 mt-0.5 text-[10px] pt-1 border-t border-white/10">
-                  <span className="text-slate-400">{t.dashboard.monthlyVsPrevious}:</span>
-                  <span
-                    className={`font-semibold flex items-center gap-0.5 ${
-                      activeItem.diffAnterior > 0
-                        ? 'text-lime-400'
-                        : activeItem.diffAnterior < 0
-                        ? 'text-rose-400'
-                        : 'text-slate-300'
-                    }`}
-                  >
-                    {activeItem.diffAnterior > 0
-                      ? `+${activeItem.diffAnterior}%`
-                      : `${activeItem.diffAnterior}%`}
-                  </span>
-                </div>
               )}
             </div>
-          );
-        })()}
+
+            {/* Detalhe da Decomposição */}
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-slate-300 font-semibold">Total Mercadorias:</span>
+                <span className="font-bold text-xs text-slate-200">
+                  {formatCurrency(activeItem.total_merc)}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-slate-300 font-semibold">Total IVA:</span>
+                <span className="font-bold text-xs text-amber-300">
+                  {formatCurrency(activeItem.total_iva)}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between gap-4 text-rose-300">
+                <span className="font-bold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                  Coluna 2 (Descontos):
+                </span>
+                <span className="font-bold text-xs">
+                  {formatCurrency(activeItem.total_desc)}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between gap-4 pt-1.5 border-t border-white/20 text-lime-300">
+                <span className="font-bold flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-lime-400 inline-block"></span>
+                  Coluna 1 (Líquido):
+                </span>
+                <span className="font-extrabold text-sm text-lime-300">
+                  {formatCurrency(activeItem.total_liquido)}
+                </span>
+              </div>
+
+              {/* Total de Artigos Vendidos */}
+              <div className="flex items-baseline justify-between gap-4 pt-1.5 border-t border-white/20 text-sky-300">
+                <span className="font-bold flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-xs text-sky-400">inventory_2</span>
+                  Total Artigos Vendidos:
+                </span>
+                <span className="font-bold text-xs text-sky-200">
+                  {activeItem.total_quantidade.toLocaleString(locale)} un
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4 mt-2 pt-1.5 border-t border-white/15 text-[10px] text-slate-300">
+              <span>Documentos: <strong>{activeItem.total_docs}</strong></span>
+              <span className="text-slate-400">Faturação Mensal</span>
+            </div>
+
+            {activeItem.diffAnterior !== null && (
+              <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-white/10 text-[10px]">
+                <span className="text-slate-400">vs. Mês Anterior:</span>
+                <span
+                  className={`font-semibold flex items-center gap-0.5 ${
+                    activeItem.diffAnterior > 0
+                      ? 'text-lime-400'
+                      : activeItem.diffAnterior < 0
+                      ? 'text-rose-400'
+                      : 'text-slate-300'
+                  }`}
+                >
+                  {activeItem.diffAnterior > 0
+                    ? `+${activeItem.diffAnterior}%`
+                    : `${activeItem.diffAnterior}%`}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-

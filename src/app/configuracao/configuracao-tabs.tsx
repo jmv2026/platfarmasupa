@@ -31,7 +31,6 @@ import {
   enviarEmailTesteConfigAction,
 } from './actions';
 import ImportacaoMovimentosTab from './importacao-movimentos-tab';
-import ImportacaoDocVendaTab from './importacao-doc-venda-tab';
 import ImportacaoErpTab from './importacao-erp-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
 import ImportacaoTransporteTab from './importacao-transporte-tab';
@@ -72,7 +71,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'doc_venda' | 'erp' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'erp' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -542,21 +541,6 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">sync_alt</span>
             {t.configuracao.tabMovements}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('doc_venda');
-              setFeedback(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'doc_venda'
-                ? 'bg-secondary text-on-secondary shadow-md'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base">receipt_long</span>
-            Doc. Venda
           </button>
 
           <button
@@ -1763,16 +1747,6 @@ export default function ConfiguracaoTabs({
             clients={clients}
             artigos={artigos}
             armazens={armazens}
-            onRefresh={() => router.refresh()}
-          />
-        )}
-
-        {/* ========================================================================= */}
-        {/* ABA: DOC_VENDA (IMPORTAÇÃO) */}
-        {/* ========================================================================= */}
-        {activeTab === 'doc_venda' && (
-          <ImportacaoDocVendaTab
-            clients={clients}
             onRefresh={() => router.refresh()}
           />
         )}

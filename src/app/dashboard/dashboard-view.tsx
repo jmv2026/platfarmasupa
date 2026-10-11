@@ -11,7 +11,10 @@ import GraficoFaturacaoMensal from './grafico-faturacao-mensal';
 
 export interface DashboardFaturacaoItem {
   sigla_cliente: string | null;
+  cliente_id?: string | null;
   data: string | null;
+  total_docs?: number | null;
+  total_quantidade?: number | null;
   total_merc: number | null;
   total_iva: number | null;
   total_desc: number | null;
@@ -46,11 +49,31 @@ export interface DashboardPedidoLinhaItem {
 
 export interface DashboardPedidoItem {
   id: string;
+  documento_ref?: string | null;
   cliente_id?: string;
-
   data_pedido?: string | null;
   created_at?: string | null;
+  total_linhas?: number;
+  total_quantidade?: number;
+  sigla?: string | null;
+  nome?: string | null;
+  entidade?: string | null;
+  tipo_doc?: string | null;
   pedido_linhas?: DashboardPedidoLinhaItem[];
+}
+
+export interface DashboardSaidaItem {
+  id: string;
+  cliente_id: string;
+  artigo_cli: string;
+  artigo_codigo: string;
+  artigo_descricao: string;
+  tipo_desc?: string;
+  quantidade: number;
+  data_movimento?: string | null;
+  created_at?: string | null;
+  documento_ref?: string | null;
+  lote?: string | null;
 }
 
 interface DashboardViewProps {
@@ -58,6 +81,7 @@ interface DashboardViewProps {
   stockAtual: DashboardStockItem[];
   stockPedidos: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
+  saidas: DashboardSaidaItem[];
   faturacao: DashboardFaturacaoItem[];
   currentUserProfile: UserProfile | null;
   isManagerOrAdmin: boolean;
@@ -68,6 +92,7 @@ export default function DashboardView({
   stockAtual,
   stockPedidos,
   pedidos,
+  saidas = [],
   faturacao,
   currentUserProfile,
   isManagerOrAdmin,
@@ -145,17 +170,19 @@ export default function DashboardView({
     return pedidos.filter((p) => p.cliente_id === selectedClientId);
   }, [pedidos, selectedClientId, isManagerOrAdmin]);
 
-  const filteredFaturacao = useMemo(() => {
-    const userClienteId = currentUserProfile?.cliente_id;
+  const filteredSaidas = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
-      const clientObj = clients.find(c => c.id === (isManagerOrAdmin ? selectedClientId : userClienteId));
-      if (!clientObj || !clientObj.sigla) return faturacao;
-      return faturacao.filter(f => f.sigla_cliente === clientObj.sigla);
+      return saidas;
     }
-    const selectedClient = clients.find(c => c.id === selectedClientId);
-    if (!selectedClient) return faturacao;
-    return faturacao.filter((f) => f.sigla_cliente === selectedClient.sigla);
-  }, [faturacao, selectedClientId, isManagerOrAdmin, clients, currentUserProfile]);
+    return saidas.filter((s) => s.cliente_id === selectedClientId);
+  }, [saidas, selectedClientId, isManagerOrAdmin]);
+
+  const filteredFaturacao = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return faturacao;
+    }
+    return faturacao.filter((f) => f.cliente_id === selectedClientId);
+  }, [faturacao, selectedClientId, isManagerOrAdmin]);
 
   // 1. Stock Venda
   const totalStockVenda = useMemo(() => {
@@ -239,7 +266,13 @@ export default function DashboardView({
     ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))
     : clients.find(c => c.id === currentUserProfile?.cliente_id);
 
-  const showFaturacao = effectiveClientObj?.tipo_cliente === 'CF';
+  const hasClientComFaturacao = useMemo(() => {
+    return clients.some(c => c.tipo_cliente === 'CF');
+  }, [clients]);
+
+  const showFaturacao = isManagerOrAdmin
+    ? (selectedClientId === 'todos' ? hasClientComFaturacao : effectiveClientObj?.tipo_cliente === 'CF')
+    : effectiveClientObj?.tipo_cliente === 'CF';
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
@@ -503,7 +536,7 @@ export default function DashboardView({
           />
         ) : (
           <GraficoTopProdutos
-            pedidos={filteredPedidos}
+            saidas={filteredSaidas}
             clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
             onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
           />

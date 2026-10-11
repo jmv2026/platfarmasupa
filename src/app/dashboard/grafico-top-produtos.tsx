@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useState, useMemo, useRef } from 'react';
-import { DashboardPedidoItem } from './dashboard-view';
+import { DashboardSaidaItem } from './dashboard-view';
 import { useLanguage } from '@/lib/i18n/context';
 
 interface GraficoTopProdutosProps {
-  pedidos: DashboardPedidoItem[];
+  saidas: DashboardSaidaItem[];
   clientName?: string | null;
   onSelectProdutoPrevisao?: (codigo: string) => void;
 }
 
 type PeriodoFiltro = '12m' | '6m' | 'ano-atual' | 'todos';
 type TipoVisualizacao = 'barras' | 'area' | 'combinado';
+type TopLimit = 'top5' | 'top10' | 'todos';
 
 interface ProdutoRanking {
   rank: number;
@@ -32,19 +33,20 @@ function extrairData(dateStr: string | null | undefined): Date | null {
 }
 
 export default function GraficoTopProdutos({
-  pedidos,
+  saidas,
   clientName,
   onSelectProdutoPrevisao,
 }: GraficoTopProdutosProps) {
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
+  const [topLimit, setTopLimit] = useState<TopLimit>('top10');
   const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Agrupamento dos 10 produtos mais pedidos no período
+  // Agrupamento dos 10 produtos com mais saídas no período a partir exclusivamente da view vw_saidas
   const { topProdutos, estatisticas } = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -60,69 +62,74 @@ export default function GraficoTopProdutos({
       dataInicio = new Date(currentYear, 0, 1);
     } // 'todos' => dataInicio = null
 
-    // Filtrar pedidos no período
-    const pedidosFiltrados = pedidos.filter((p) => {
+    // Filtrar saídas no período
+    const saidasFiltradas = (saidas || []).filter((s) => {
       if (!dataInicio) return true;
-      const dataPed = extrairData(p.data_pedido || p.created_at);
-      if (!dataPed) return true;
-      return dataPed >= dataInicio;
+      const dataMov = extrairData(s.data_movimento || s.created_at);
+      if (!dataMov) return true;
+      return dataMov >= dataInicio;
     });
 
-    // Agrupar linhas por artigo_codigo
+    // Agrupar exclusivamente por artigo da view vw_saidas
     const agrupamento: Record<
       string,
-      { codigo: string; descricao: string; tipo_desc: string; quantidade: number; pedidosSet: Set<string> }
+      { codigo: string; descricao: string; tipo_desc: string; quantidade: number; docsSet: Set<string> }
     > = {};
 
     let totalGeralUnidades = 0;
 
-    pedidosFiltrados.forEach((p) => {
-      if (p.pedido_linhas && p.pedido_linhas.length > 0) {
-        p.pedido_linhas.forEach((linha) => {
-          const cod = linha.artigo_id || linha.artigo_codigo || 'N/A';
-          const qtd = Number(linha.quantidade) || 0;
-          totalGeralUnidades += qtd;
+    saidasFiltradas.forEach((s) => {
+      const cod = s.artigo_codigo || s.artigo_cli || 'N/A';
+      const qtd = Number(s.quantidade) || 0;
+      totalGeralUnidades += qtd;
 
-          if (!agrupamento[cod]) {
-            agrupamento[cod] = {
-              codigo: cod,
-              descricao: linha.descricao || cod,
-              tipo_desc: linha.tipo_desc || '',
-              quantidade: 0,
-              pedidosSet: new Set(),
-            };
-          }
-          agrupamento[cod].quantidade += qtd;
-          agrupamento[cod].pedidosSet.add(p.id);
-        });
+      if (!agrupamento[cod]) {
+        agrupamento[cod] = {
+          codigo: cod,
+          descricao: s.artigo_descricao || cod,
+          tipo_desc: s.tipo_desc || '',
+          quantidade: 0,
+          docsSet: new Set(),
+        };
+      }
+      agrupamento[cod].quantidade += qtd;
+      const docRef = s.documento_ref || s.id;
+      if (docRef) {
+        agrupamento[cod].docsSet.add(docRef);
       }
     });
 
-    // Ordenar por maior quantidade e selecionar o Top 10
+    // Ordenar por maior quantidade e selecionar de acordo com o filtro (Top 5, Top 10 ou Todos)
     const ordenados = Object.values(agrupamento).sort((a, b) => b.quantidade - a.quantidade);
-    const top10Raw = ordenados.slice(0, 10);
-    const totalTop10 = top10Raw.reduce((acc, curr) => acc + curr.quantidade, 0);
+    const selecionadosRaw =
+      topLimit === 'top5'
+        ? ordenados.slice(0, 5)
+        : topLimit === 'top10'
+        ? ordenados.slice(0, 10)
+        : ordenados;
 
-    const topProdutos: ProdutoRanking[] = top10Raw.map((p, idx) => ({
+    const totalSelecionados = selecionadosRaw.reduce((acc, curr) => acc + curr.quantidade, 0);
+
+    const topProdutos: ProdutoRanking[] = selecionadosRaw.map((p, idx) => ({
       rank: idx + 1,
       codigo: p.codigo,
       descricao: p.descricao,
       tipo_desc: p.tipo_desc,
       quantidade: p.quantidade,
-      nrPedidos: p.pedidosSet.size,
-      percentagemTop: totalTop10 > 0 ? Math.round((p.quantidade / totalTop10) * 100) : 0,
+      nrPedidos: p.docsSet.size,
+      percentagemTop: totalSelecionados > 0 ? Math.round((p.quantidade / totalSelecionados) * 100) : 0,
     }));
 
     const produtoLider = topProdutos[0] || null;
     const mediaPorProduto =
-      topProdutos.length > 0 ? Math.round(totalTop10 / topProdutos.length) : 0;
+      topProdutos.length > 0 ? Math.round(totalSelecionados / topProdutos.length) : 0;
     const concentracaoGeral =
-      totalGeralUnidades > 0 ? Math.round((totalTop10 / totalGeralUnidades) * 100) : 0;
+      totalGeralUnidades > 0 ? Math.round((totalSelecionados / totalGeralUnidades) * 100) : 0;
 
     return {
       topProdutos,
       estatisticas: {
-        totalTop10,
+        totalTop10: totalSelecionados,
         totalGeralUnidades,
         produtoLider,
         mediaPorProduto,
@@ -130,10 +137,16 @@ export default function GraficoTopProdutos({
         totalProdutosDistintos: Object.keys(agrupamento).length,
       },
     };
-  }, [pedidos, periodo]);
+  }, [saidas, periodo, topLimit]);
 
-  // Dimensões do SVG do gráfico otimizadas para visualização na janela (Top 10)
-  const svgWidth = 850;
+  // Dimensões do SVG do gráfico otimizadas: largura dinâmica se houver muitos produtos no modo 'todos'
+  const svgWidth = useMemo(() => {
+    const count = topProdutos.length;
+    if (count <= 10) return 850;
+    // No modo 'todos', atribui ~70px por artigo para permitir scroll horizontal limpo
+    return Math.max(850, count * 70);
+  }, [topProdutos.length]);
+
   const svgHeight = 240;
   const padding = { top: 25, right: 30, bottom: 42, left: 55 };
 
@@ -233,7 +246,11 @@ export default function GraficoTopProdutos({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                {t.dashboard.chartTop10Title}
+                {topLimit === 'top5'
+                  ? 'Top 5 Produtos Mais Pedidos'
+                  : topLimit === 'top10'
+                  ? 'Top 10 Produtos Mais Pedidos'
+                  : 'Todos os Produtos Expedidos'}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -242,13 +259,41 @@ export default function GraficoTopProdutos({
               )}
             </div>
             <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              {t.dashboard.chartTop10Desc}
+              {topLimit === 'todos'
+                ? 'Lista integral de artigos expedidos e respetivas quantidades'
+                : topLimit === 'top5'
+                ? 'Os 5 artigos líderes com maior volume de saídas'
+                : 'Os 10 artigos com maior quantidade expedida'}
             </p>
           </div>
         </div>
 
         {/* Controlos e Filtros */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Seletor de Escopo: Top 5 / Top 10 / Todos */}
+          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+            {(
+              [
+                { id: 'top5', label: 'Top 5' },
+                { id: 'top10', label: 'Top 10' },
+                { id: 'todos', label: language === 'pt' ? 'Todos' : language === 'es' ? 'Todos' : 'All' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setTopLimit(opt.id)}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  topLimit === opt.id
+                    ? 'bg-sermail-green text-white shadow-xs font-bold'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           {/* Seletor de Tipo de Gráfico */}
           <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             <button
@@ -321,11 +366,11 @@ export default function GraficoTopProdutos({
 
       {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Total Unidades Top 10 */}
+        {/* 1. Total Unidades Selecionadas */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.top10TotalUnits}
+              {topLimit === 'top5' ? 'Total Unidades Top 5' : topLimit === 'top10' ? t.dashboard.top10TotalUnits : 'Total Unidades Expedidas'}
             </span>
             <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
           </div>
@@ -368,11 +413,11 @@ export default function GraficoTopProdutos({
           </div>
         </div>
 
-        {/* 3. Média por Produto Top 10 */}
+        {/* 3. Média por Produto Selecionado */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.top10AveragePerItem}
+              {topLimit === 'top5' ? 'Média por Artigo Top 5' : topLimit === 'top10' ? t.dashboard.top10AveragePerItem : 'Média por Artigo'}
             </span>
             <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
           </div>
@@ -384,16 +429,16 @@ export default function GraficoTopProdutos({
               <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
             </div>
             <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              Top 10
+              {topLimit === 'top5' ? 'Top 5' : topLimit === 'top10' ? 'Top 10' : 'Todos'}
             </span>
           </div>
         </div>
 
-        {/* 4. Concentração no Top 10 */}
+        {/* 4. Concentração */}
         <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
           <div className="flex items-start justify-between gap-1">
             <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.top10ShareOfTotal}
+              {topLimit === 'top5' ? 'Quota Top 5 no Total' : topLimit === 'top10' ? t.dashboard.top10ShareOfTotal : 'Representatividade'}
             </span>
             <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
               {estatisticas.concentracaoGeral}%
@@ -733,18 +778,18 @@ export default function GraficoTopProdutos({
         })()}
       </div>
 
-      {/* Tabela / Lista dos Top 10 Produtos Mais Pedidos com Acesso Direto à Previsão de Stock */}
+      {/* Tabela / Lista dos Produtos com Acesso Direto à Previsão de Stock */}
       {topProdutos.length > 0 && (
         <div className="mt-5 pt-4 border-t border-outline-variant/20">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-emerald-700 text-lg">format_list_numbered</span>
               <h3 className="text-xs sm:text-sm font-bold text-on-surface">
-                {t.dashboard.top10TableTitle}
+                {topLimit === 'top5' ? 'Lista do Top 5 Produtos Mais Pedidos' : topLimit === 'top10' ? t.dashboard.top10TableTitle : 'Lista de Todos os Produtos Expedidos'}
               </h3>
             </div>
             <span className="text-[11px] text-on-surface-variant font-medium">
-              {t.dashboard.top10TableSubtitle}
+              {topLimit === 'todos' ? `A mostrar todos os ${topProdutos.length} artigos com saídas` : t.dashboard.top10TableSubtitle}
             </span>
           </div>
 
