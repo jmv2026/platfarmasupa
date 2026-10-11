@@ -378,11 +378,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               type="button"
               onClick={() => setTipoGrafico('barras')}
               title="Visualização em Colunas Paralelas"
-              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'barras'
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'barras'
                   ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">bar_chart</span>
             </button>
@@ -390,11 +389,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               type="button"
               onClick={() => setTipoGrafico('area')}
               title={t.dashboard.viewArea}
-              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'area'
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'area'
                   ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">area_chart</span>
             </button>
@@ -402,11 +400,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               type="button"
               onClick={() => setTipoGrafico('combinado')}
               title="Visualização Combinada (Colunas + Tendência)"
-              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
-                tipoGrafico === 'combinado'
+              className={`px-2 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${tipoGrafico === 'combinado'
                   ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
             >
               <span className="material-symbols-outlined text-sm">stacked_line_chart</span>
             </button>
@@ -428,11 +425,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 key={opt.id}
                 type="button"
                 onClick={() => setPeriodo(opt.id)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  periodo === opt.id
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${periodo === opt.id
                     ? 'bg-white text-emerald-950 shadow-xs border border-slate-200 font-bold'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 {opt.label}
               </button>
@@ -541,13 +537,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               Mês Mais Recente
             </span>
             <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
-                estatisticas.variacaoUltimoMes > 0
+              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.variacaoUltimoMes > 0
                   ? 'bg-lime-300 text-emerald-950'
                   : estatisticas.variacaoUltimoMes < 0
-                  ? 'bg-rose-200 text-rose-900'
-                  : 'bg-slate-200 text-slate-800'
-              }`}
+                    ? 'bg-rose-200 text-rose-900'
+                    : 'bg-slate-200 text-slate-800'
+                }`}
             >
               {estatisticas.variacaoUltimoMes > 0
                 ? `+${estatisticas.variacaoUltimoMes}%`
@@ -966,13 +961,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-white/10 text-[10px]">
                 <span className="text-slate-400">vs. Mês Anterior:</span>
                 <span
-                  className={`font-semibold flex items-center gap-0.5 ${
-                    activeItem.diffAnterior > 0
+                  className={`font-semibold flex items-center gap-0.5 ${activeItem.diffAnterior > 0
                       ? 'text-lime-400'
                       : activeItem.diffAnterior < 0
-                      ? 'text-rose-400'
-                      : 'text-slate-300'
-                  }`}
+                        ? 'text-rose-400'
+                        : 'text-slate-300'
+                    }`}
                 >
                   {activeItem.diffAnterior > 0
                     ? `+${activeItem.diffAnterior}%`
