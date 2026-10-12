@@ -349,31 +349,90 @@ export default function HistoricoPedidosView({
 
   // Exportar CSV
   const handleExportCSV = () => {
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent +=
-      'Nr Pedido,Data Pedido,Data Entrega,Estado,Cliente,Destinatario,Classificacao Destino,Morada,Codigo Postal,Localidade,Pais,Ref Documento,Observacoes,Codigo Artigo,Descricao Artigo,Lote,Validade,Quantidade\n';
+    try {
+      const headers = [
+        'Nr Pedido',
+        'Data Pedido',
+        'Data Entrega',
+        'Estado',
+        'Cliente',
+        'Destinatario',
+        'Classificacao Destino',
+        'Morada',
+        'Codigo Postal',
+        'Localidade',
+        'Pais',
+        'Ref Documento',
+        'Observacoes',
+        'Codigo Artigo',
+        'Descricao Artigo',
+        'Lote',
+        'Validade',
+        'Quantidade',
+      ];
 
-    filteredPedidos.forEach((ped) => {
-      const statusLabel = getStatusLabel(ped.status);
-      const classif = ped.classifica_destino || ped.destinos?.classifica_destino || '';
-      const baseInfo = `"${ped.nr_pedido}","${ped.data_pedido}","${ped.data_entrega || ''}","${statusLabel}","${ped.clients?.sigla || ''}","${(ped.nome_destinatario || ped.destinos?.nome || '').replace(/"/g, '""')}","${classif}","${ped.morada.replace(/"/g, '""')}","${ped.codigo_postal}","${ped.localidade}","${ped.pais || 'Portugal'}","${ped.requisicao || ped.ref_documento || ''}","${(ped.observacoes || '').replace(/"/g, '""')}"`;
+      const rows: string[] = [headers.join(',')];
 
-      if (ped.pedido_linhas && ped.pedido_linhas.length > 0) {
-        ped.pedido_linhas.forEach((l) => {
-          csvContent += `${baseInfo},"${l.artigo_codigo}","${l.descricao.replace(/"/g, '""')}","${l.lote}","${l.validade || ''}",${l.quantidade}\n`;
-        });
-      } else {
-        csvContent += `${baseInfo},"","","","",0\n`;
-      }
-    });
+      filteredPedidos.forEach((ped) => {
+        const statusLabel = getStatusLabel(ped.status);
+        const classif = ped.classifica_destino || ped.destinos?.classifica_destino || '';
+        const sanitize = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`;
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `historico_pedidos_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+        const baseParts = [
+          sanitize(ped.nr_pedido),
+          sanitize(ped.data_pedido),
+          sanitize(ped.data_entrega || ''),
+          sanitize(statusLabel),
+          sanitize(ped.clients?.sigla || ''),
+          sanitize(ped.nome_destinatario || ped.destinos?.nome || ''),
+          sanitize(classif),
+          sanitize(ped.morada || ''),
+          sanitize(ped.codigo_postal || ped.cod_postal || ''),
+          sanitize(ped.localidade || ped.cod_postal_localidade || ''),
+          sanitize(ped.pais || 'Portugal'),
+          sanitize(ped.requisicao || ped.ref_documento || ''),
+          sanitize(ped.observacoes || ''),
+        ];
+
+        if (ped.pedido_linhas && ped.pedido_linhas.length > 0) {
+          ped.pedido_linhas.forEach((l) => {
+            const linhaParts = [
+              ...baseParts,
+              sanitize(l.artigo_codigo || ''),
+              sanitize(l.descricao || ''),
+              sanitize(l.lote || ''),
+              sanitize(l.validade || ''),
+              Number(l.quantidade || 0),
+            ];
+            rows.push(linhaParts.join(','));
+          });
+        } else {
+          const emptyLinha = [
+            ...baseParts,
+            '""',
+            '""',
+            '""',
+            '""',
+            0,
+          ];
+          rows.push(emptyLinha.join(','));
+        }
+      });
+
+      // Incluir BOM UTF-8 (\uFEFF) para caracteres com acento abrirem corretamente no Excel
+      const csvString = '\uFEFF' + rows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `historico_pedidos_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao exportar CSV:', err);
+    }
   };
 
   const hasActiveFilters =

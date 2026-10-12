@@ -212,6 +212,8 @@ export interface Movimento {
   sistema?: boolean | null;
   ativa?: boolean | null;
   chave_ativa?: boolean | null;
+  tipo_artigo?: string | null;
+  ref_ser?: string | null;
   nome?: string | null;
   num_contribuinte?: string | null;
   created_by?: string | null;

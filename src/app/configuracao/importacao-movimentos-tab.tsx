@@ -14,7 +14,10 @@ import {
   importarMovimentosAction,
   limparMovimentosAction,
   limparImportacoesStockAction,
-  limparPlatMovimentosAction, criarArtigosAPartirPlatMovimentosAction } from './actions';
+  limparPlatMovimentosAction, 
+  criarArtigosAPartirPlatMovimentosAction,
+  transferirPlatMovimentosParaMovimentosAction,
+} from './actions';
 
 export type MovimentoWithDetails = Movimento & {
   cliente_nome?: string;
@@ -156,16 +159,16 @@ export default function ImportacaoMovimentosTab({
   const handleTransferirPlatMov = async () => {
     setTransferringPlatMov(true);
     try {
-      const { transferirPlatMovimentosParaMovimentosAction } = require('./actions');
       const res = await transferirPlatMovimentosParaMovimentosAction();
+      setConfirmTransferModal(false);
       if (res.success) {
         setFeedback({ type: 'success', message: 'Transferência concluída! ' + res.count + ' movimentos inseridos.' });
-        setConfirmTransferModal(false);
         if (onRefresh) onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro na transferência.' });
       }
     } catch (err) {
+      setConfirmTransferModal(false);
       const msg = err instanceof Error ? err.message : 'Erro ao transferir';
       setFeedback({ type: 'error', message: msg });
     } finally {

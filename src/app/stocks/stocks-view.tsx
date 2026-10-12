@@ -287,37 +287,46 @@ export default function StocksView({
 
   // Exportar CSV
   const handleExportCSV = () => {
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    if (activeTab === 'pedidos') {
-      csvContent += 'Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Lote,Validade,Stock Disponivel\n';
-      filteredStockPedidos.forEach((r) => {
-        csvContent += `"${r.cliente_sigla}","${r.artigo_codigo}","${r.artigo_descricao.replace(/"/g, '""')}","${r.tipo_artigo}","${r.tipo_armazenamento}","${r.lote || ''}","${r.validade || ''}",${r.stock}\n`;
-      });
-    } else if (activeTab === 'consolidado') {
-      csvContent += 'Cliente,Codigo Artigo,Descricao,Lote,Validade,Armazem Loc,Tipo Armazem,Descricao Armazem,Stock\n';
-      filteredStockAtual.forEach((r) => {
-        csvContent += `"${r.cliente_sigla}","${r.artigo_codigo}","${r.artigo_descricao.replace(/"/g, '""')}","${r.lote || ''}","${r.validade || ''}","${r.armazem_loc}","${r.tipo_armazem}","${r.armazem_descricao || ''}",${r.stock}\n`;
-      });
-    } else if (activeTab === 'artigos') {
-      csvContent += 'Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Stock Venda,Stock Outros,Stock Total,Lotes\n';
-      resumoArtigos.forEach((r) => {
-        csvContent += `"${r.cliente_sigla}","${r.artigo_codigo}","${r.artigo_descricao.replace(/"/g, '""')}","${r.tipo_artigo}","${r.tipo_armazenamento}",${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}\n`;
-      });
-    } else {
-      csvContent += 'Cliente,Codigo Artigo,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock\n';
-      lotesValidade.forEach((r) => {
-        const days = getDaysUntilExpiry(r.validade);
-        csvContent += `"${r.cliente_sigla}","${r.artigo_codigo}","${r.artigo_descricao.replace(/"/g, '""')}","${r.lote || ''}","${r.validade || ''}",${days ?? ''},"${r.armazem_loc}",${r.stock}\n`;
-      });
-    }
+    try {
+      const sanitize = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+      const rows: string[] = [];
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `stocks_export_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      if (activeTab === 'pedidos') {
+        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Lote,Validade,Stock Disponivel');
+        filteredStockPedidos.forEach((r) => {
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${r.stock}`);
+        });
+      } else if (activeTab === 'consolidado') {
+        rows.push('Cliente,Codigo Artigo,Descricao,Lote,Validade,Armazem Loc,Tipo Armazem,Descricao Armazem,Stock');
+        filteredStockAtual.forEach((r) => {
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${sanitize(r.armazem_loc)},${sanitize(r.tipo_armazem)},${sanitize(r.armazem_descricao || '')},${r.stock}`);
+        });
+      } else if (activeTab === 'artigos') {
+        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Stock Venda,Stock Outros,Stock Total,Lotes');
+        resumoArtigos.forEach((r) => {
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}`);
+        });
+      } else {
+        rows.push('Cliente,Codigo Artigo,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock');
+        lotesValidade.forEach((r) => {
+          const days = getDaysUntilExpiry(r.validade);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${days ?? ''},${sanitize(r.armazem_loc)},${r.stock}`);
+        });
+      }
+
+      const csvString = '\uFEFF' + rows.join('\n');
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `stocks_export_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao exportar CSV:', err);
+    }
   };
 
   // Exportar Excel (.xlsx) com formatação rica via ExcelJS
