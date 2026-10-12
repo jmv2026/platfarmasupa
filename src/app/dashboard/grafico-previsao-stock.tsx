@@ -1187,33 +1187,41 @@ export default function GraficoPrevisaoStock({
 
               {/* Ponto de Encomenda */}
               {pontoEncomenda && (tipoGrafico === 'combinado' || tipoGrafico === 'tendencia') && (
-                <g>
+                <g className="pointer-events-none">
+                  {/* Ponto central */}
                   <circle
                     cx={pontoEncomenda.x}
                     cy={pontoEncomenda.y}
                     r="4.5"
                     fill="#f43f5e"
-                    stroke="#fff"
+                    stroke="#ffffff"
                     strokeWidth="1.5"
                   />
+                  {/* Círculo externo estático a piscar (sem movimento de expansão) */}
                   <circle
                     cx={pontoEncomenda.x}
                     cy={pontoEncomenda.y}
-                    r="10"
+                    r="9.5"
                     fill="none"
-                    stroke="#f43f5e"
-                    strokeWidth="1.5"
-                    strokeOpacity="0.5"
-                    className="animate-ping pointer-events-none"
-                  />
+                    stroke="#e11d48"
+                    strokeWidth="2"
+                    style={{ animationDuration: '0.67s' }}
+                  >
+                    <animate
+                      attributeName="opacity"
+                      values="1;0.12;1"
+                      dur="0.67s"
+                      repeatCount="indefinite"
+                    />
+                  </circle>
                   <text
                     x={pontoEncomenda.x}
-                    y={pontoEncomenda.y - 12}
+                    y={pontoEncomenda.y - 13}
                     textAnchor="middle"
                     fontSize="9.5"
                     fontWeight="700"
                     fill="#e11d48"
-                    className="select-none pointer-events-none drop-shadow-sm"
+                    className="select-none drop-shadow-sm"
                   >
                     {language === 'en' ? 'Reorder Point' : language === 'es' ? 'Punto de Pedido' : 'Ponto Encomenda'}
                   </text>

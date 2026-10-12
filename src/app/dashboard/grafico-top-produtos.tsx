@@ -10,7 +10,7 @@ interface GraficoTopProdutosProps {
   onSelectProdutoPrevisao?: (codigo: string) => void;
 }
 
-type PeriodoFiltro = '12m' | '6m' | 'ano-atual' | 'todos';
+type PeriodoFiltro = 'mes-atual' | '3m' | '6m' | '12m' | 'ano-atual' | 'todos';
 type TipoVisualizacao = 'barras' | 'area' | 'combinado';
 type TopLimit = 'top5' | 'top10' | 'todos';
 
@@ -54,7 +54,11 @@ export default function GraficoTopProdutos({
 
     // Data de corte com base no período
     let dataInicio: Date | null = null;
-    if (periodo === '6m') {
+    if (periodo === 'mes-atual') {
+      dataInicio = new Date(currentYear, currentMonth, 1);
+    } else if (periodo === '3m') {
+      dataInicio = new Date(currentYear, currentMonth - 2, 1);
+    } else if (periodo === '6m') {
       dataInicio = new Date(currentYear, currentMonth - 5, 1);
     } else if (periodo === '12m') {
       dataInicio = new Date(currentYear, currentMonth - 11, 1);
@@ -236,8 +240,8 @@ export default function GraficoTopProdutos({
   return (
     <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
       {/* Header do Gráfico */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
-        <div className="flex items-start gap-3.5">
+      <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3.5 pb-3.5 border-b border-outline-variant/20">
+        <div className="flex items-start gap-3.5 2xl:w-1/3">
           {/* Ícone com gradiente Verde Pastel e Lima */}
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-lime-200 via-emerald-100 to-teal-200/80 border border-lime-300/60 flex items-center justify-center text-lime-900 shadow-sm shrink-0">
             <span className="material-symbols-outlined text-2xl text-emerald-800">leaderboard</span>
@@ -268,10 +272,9 @@ export default function GraficoTopProdutos({
           </div>
         </div>
 
-        {/* Controlos e Filtros */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Seletor de Escopo: Top 5 / Top 10 / Todos */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+        {/* Seletor de Escopo CENTRALIZADO E EVIDENCIADO: Top 5 / Top 10 / Todos */}
+        <div className="flex justify-center items-center my-1.5 2xl:my-0 2xl:w-1/3">
+          <div className="inline-flex items-center p-1.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-lime-50/70 to-emerald-50 border-2 border-emerald-400/90 shadow-sm ring-2 ring-emerald-500/15 gap-1">
             {(
               [
                 { id: 'top5', label: 'Top 5' },
@@ -283,17 +286,20 @@ export default function GraficoTopProdutos({
                 key={opt.id}
                 type="button"
                 onClick={() => setTopLimit(opt.id)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                className={`px-3.5 sm:px-4 py-1.5 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer ${
                   topLimit === opt.id
-                    ? 'bg-sermail-green text-white shadow-xs font-bold'
-                    : 'text-on-surface-variant hover:text-on-surface'
+                    ? 'bg-gradient-to-r from-emerald-700 to-teal-800 text-white shadow-md shadow-emerald-900/30 scale-[1.04] ring-1 ring-white/40'
+                    : 'text-emerald-950/80 hover:text-emerald-950 hover:bg-emerald-200/50'
                 }`}
               >
                 {opt.label}
               </button>
             ))}
           </div>
+        </div>
 
+        {/* Controlos e Filtros (Tipo de Gráfico e Período) */}
+        <div className="flex flex-wrap items-center justify-start 2xl:justify-end gap-2.5 2xl:w-1/3">
           {/* Seletor de Tipo de Gráfico */}
           <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             <button
@@ -341,6 +347,8 @@ export default function GraficoTopProdutos({
           <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             {(
               [
+                { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
+                { id: '3m', label: t.dashboard.period3m },
                 { id: '6m', label: t.dashboard.period6m },
                 { id: '12m', label: t.dashboard.period12m },
                 { id: 'ano-atual', label: t.dashboard.periodCurrentYear },

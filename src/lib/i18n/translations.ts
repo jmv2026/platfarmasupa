@@ -89,6 +89,7 @@ export interface Translations {
     period12m: string;
     period6m: string;
     period3m: string;
+    periodCurrentMonth: string;
     periodCurrentYear: string;
     periodAll: string;
     viewMixed: string;
@@ -477,6 +478,7 @@ export const translations: Record<Language, Translations> = {
       period12m: '12 Meses',
       period6m: '6 Meses',
       period3m: '3 Meses',
+      periodCurrentMonth: 'Mês Atual',
       periodCurrentYear: 'Ano Atual',
       periodAll: 'Todos',
       viewMixed: 'Misto',
@@ -863,6 +865,7 @@ export const translations: Record<Language, Translations> = {
       period12m: '12 Meses',
       period6m: '6 Meses',
       period3m: '3 Meses',
+      periodCurrentMonth: 'Mes Actual',
       periodCurrentYear: 'Año Actual',
       periodAll: 'Todos',
       viewMixed: 'Mixto',
@@ -1249,6 +1252,7 @@ export const translations: Record<Language, Translations> = {
       period12m: '12 Months',
       period6m: '6 Months',
       period3m: '3 Months',
+      periodCurrentMonth: 'Current Month',
       periodCurrentYear: 'Current Year',
       periodAll: 'All',
       viewMixed: 'Mixed',

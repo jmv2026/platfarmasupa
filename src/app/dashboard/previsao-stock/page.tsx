@@ -31,9 +31,10 @@ export default async function PrevisaoStockPage() {
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
+  // Fonte exclusiva para pedidos e consumos no gráfico de previsão: view vw_pedidos
   let pedidosQuery = supabase
-    .from('pedidos')
-    .select('id, cliente_id, data_pedido, created_at, pedido_linhas(id, artigo_codigo, descricao, quantidade)');
+    .from('vw_pedidos')
+    .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc, pedido_linhas');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);

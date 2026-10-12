@@ -413,7 +413,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
             {(
               [
-                { id: 'mes-atual', label: language === 'pt' ? 'Mês Atual' : language === 'es' ? 'Mes Actual' : 'Current Month' },
+                { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
                 { id: '3m', label: t.dashboard.period3m },
                 { id: '6m', label: t.dashboard.period6m },
                 { id: '12m', label: t.dashboard.period12m },

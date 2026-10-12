@@ -9,7 +9,7 @@ interface GraficoPedidosMensalProps {
   clientName?: string | null;
 }
 
-type PeriodoFiltro = '12m' | '6m' | 'ano-atual' | 'todos';
+type PeriodoFiltro = 'mes-atual' | '3m' | '6m' | '12m' | 'ano-atual' | 'todos';
 type TipoVisualizacao = 'area' | 'barras' | 'combinado';
 
 interface MesData {
@@ -75,7 +75,14 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
     // Determina o intervalo de meses a gerar baseado no filtro selecionado
     const mesesParaGerar: { year: number; month: number }[] = [];
 
-    if (periodo === '6m') {
+    if (periodo === 'mes-atual') {
+      mesesParaGerar.push({ year: currentYear, month: currentMonth });
+    } else if (periodo === '3m') {
+      for (let i = 2; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonth - i, 1);
+        mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
+      }
+    } else if (periodo === '6m') {
       for (let i = 5; i >= 0; i--) {
         const d = new Date(currentYear, currentMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
@@ -320,6 +327,8 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
           <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
             {(
               [
+                { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
+                { id: '3m', label: t.dashboard.period3m },
                 { id: '6m', label: t.dashboard.period6m },
                 { id: '12m', label: t.dashboard.period12m },
                 { id: 'ano-atual', label: t.dashboard.periodCurrentYear },
