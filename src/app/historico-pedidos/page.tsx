@@ -28,93 +28,81 @@ export default async function HistoricoPedidosPage() {
   const userClientId = profile?.cliente_id;
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
-  if (!isManagerOrAdmin && userClientId) {
-    clientsQuery = clientsQuery.eq('id', userClientId);
-  }
-
-  const { data: clients } = await clientsQuery;
-  const cfClientIds = clients ? clients.filter((c: any) => c.tipo_cliente === 'CF' || c.tipo_cliente === 'cf').map((c: any) => c.id) : [];
-
   let pedidosQuery = supabase
     .from('pedidos')
     .select('*, clientes(id, name, sigla), destinos(id, codigo, nome), pedido_linhas(*)')
     .order('created_at', { ascending: false });
+  let torrestirQuery = supabase
+    .from('VW_torrestir_last')
+    .select('ref_ser, desc_estado_expedicao, url_comprovativo');
 
   if (!isManagerOrAdmin && userClientId) {
-    if (cfClientIds.includes(userClientId)) {
-      pedidosQuery = pedidosQuery.eq('id', '00000000-0000-0000-0000-000000000000');
-    } else {
-      pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
-    }
-  } else {
-    if (cfClientIds.length > 0) {
-      pedidosQuery = pedidosQuery.not('cliente_id', 'in', `(${cfClientIds.join(',')})`);
-    }
+    clientsQuery = clientsQuery.eq('id', userClientId);
+    pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
   }
 
-  // Buscar pedidos
-  const { data: pedidos } = await pedidosQuery;
+  // Buscar clientes, pedidos e status de expedição em paralelo
+  const [
+    { data: clients },
+    { data: pedidos },
+    { data: torrestirStatus },
+  ] = await Promise.all([
+    clientsQuery,
+    pedidosQuery,
+    torrestirQuery,
+  ]);
 
+  const cfClientIds = clients ? clients.filter((c: any) => (c.tipo_cliente || '').toUpperCase() === 'CF').map((c: any) => c.id) : [];
   let finalPedidos = pedidos || [];
 
-  if (clients && clients.length > 0) {
-    if (cfClientIds.length > 0) {
-      // O filtro em memória já não é necessário, pois a query excluiu os CF
+  if (clients && clients.length > 0 && cfClientIds.length > 0) {
+    const { data: cfMovimentos } = await supabase
+      .from('movimentos')
+      .select('documento_ref, ref_ser, cliente_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
+      .in('cliente_id', cfClientIds)
+    if (cfMovimentos && cfMovimentos.length > 0) {
+      const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
+        const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
+        const currentMovClientId = mov.cliente_id;
+        const key = `${currentMovClientId}_${docRef}_${mov.tipo_movimento}`;
 
-      const { data: cfMovimentos } = await supabase
-        .from('movimentos')
-        .select('documento_ref, ref_ser, cliente_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
-        .in('cliente_id', cfClientIds)
-        .order('created_at', { ascending: false });
+        if (!acc[key]) {
+          acc[key] = {
+            id: key,
+            nr_pedido: docRef,
+            cliente_id: currentMovClientId,
+            data_pedido: mov.data_movimento || mov.created_at,
+            created_at: mov.created_at,
+            status: (mov.tipo_movimento || '').toUpperCase() === 'ES' ? 'rececionado' : 
+                    ((mov.tipo_movimento || '').toUpperCase() === 'ST' || (mov.tipo_movimento || '').toUpperCase() === 'ET') ? 'transfer' : 'em_preparacao',
+            tipo_movimento: mov.tipo_movimento,
+            ref_ser: mov.ref_ser,
+            clientes: clients.find((c: any) => c.id === currentMovClientId),
+            destinos: { nome: mov.nome },
+            morada: mov.morada,
+            codigo_postal: mov.cod_postal,
+            cod_postal: mov.cod_postal,
+            cod_postal_localidade: mov.cod_postal_localidade,
+            localidade: mov.cod_postal_localidade || mov.localidade,
+            requisicao: mov.requisicao,
+            pedido_linhas: []
+          };
+        }
 
-      if (cfMovimentos && cfMovimentos.length > 0) {
-        const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
-          const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
-          const currentMovClientId = mov.cliente_id;
-          const key = `${currentMovClientId}_${docRef}_${mov.tipo_movimento}`;
+        acc[key].pedido_linhas.push({
+          id: `${key}_${mov.artigo_cli}`,
+          artigo_codigo: mov.artigo_cli,
+          descricao: mov.artigo_cli,
+          quantidade: mov.quantidade || 0,
+          lote: mov.lote || '',
+          validade: mov.validade || null
+        });
 
-          if (!acc[key]) {
-            acc[key] = {
-              id: key,
-              nr_pedido: docRef,
-              cliente_id: currentMovClientId,
-              data_pedido: mov.data_movimento || mov.created_at,
-              created_at: mov.created_at,
-              status: (mov.tipo_movimento || '').toUpperCase() === 'ES' ? 'rececionado' : 
-                      ((mov.tipo_movimento || '').toUpperCase() === 'ST' || (mov.tipo_movimento || '').toUpperCase() === 'ET') ? 'transfer' : 'em_preparacao',
-              tipo_movimento: mov.tipo_movimento,
-              ref_ser: mov.ref_ser,
-              clientes: clients.find((c: any) => c.id === currentMovClientId),
-              clients: clients.find((c: any) => c.id === currentMovClientId),
-              destinos: { nome: mov.nome }, // mock destino with nome from movimento
-              morada: mov.morada,
-              codigo_postal: mov.cod_postal,
-              cod_postal: mov.cod_postal,
-              cod_postal_localidade: mov.cod_postal_localidade,
-              localidade: mov.cod_postal_localidade || mov.localidade,
-              requisicao: mov.requisicao,
-              pedido_linhas: []
-            };
-          }
+        return acc;
+      }, {});
 
-          acc[key].pedido_linhas.push({
-            id: `${key}_${mov.artigo_cli}`,
-            artigo_codigo: mov.artigo_cli,
-            descricao: mov.artigo_cli,
-            quantidade: mov.quantidade || 0,
-            lote: mov.lote || '',
-            validade: mov.validade || null
-          });
-
-          return acc;
-        }, {});
-
-        const { data: torrestirStatus } = await supabase
-          .from('VW_torrestir_last')
-          .select('ref_ser, desc_estado_expedicao, url_comprovativo');
-
-        const statusMap = new Map<string, any>();
-        if (torrestirStatus) {
+      const statusMap = new Map<string, any>();
+      if (torrestirStatus) {
           for (const st of torrestirStatus) {
             if (st.ref_ser) {
               const rawRef = st.ref_ser.toString().trim();
@@ -176,7 +164,6 @@ export default async function HistoricoPedidosPage() {
         });
       }
     }
-  }
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">

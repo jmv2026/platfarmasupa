@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/context";
+import NavProgressBar from "@/components/navigation/nav-progress-bar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,6 +36,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-surface text-on-surface min-h-screen antialiased">
+        <Suspense fallback={null}>
+          <NavProgressBar />
+        </Suspense>
         <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>

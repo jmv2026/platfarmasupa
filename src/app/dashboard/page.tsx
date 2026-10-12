@@ -27,14 +27,7 @@ export default async function DashboardPage() {
     user.user_metadata?.role === 'admin';
   const userClientId = profile?.cliente_id;
 
-  // Primeiro buscar clientes para saber quais são CF
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
-  if (!isManagerOrAdmin && userClientId) {
-    clientsQuery = clientsQuery.eq('id', userClientId);
-  }
-  
-  const { data: clients } = await clientsQuery;
-
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
   
@@ -49,6 +42,7 @@ export default async function DashboardPage() {
   let saidasQuery = supabase.from('vw_saidas').select('id, cliente_id, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote');
 
   if (!isManagerOrAdmin && userClientId) {
+    clientsQuery = clientsQuery.eq('id', userClientId);
     pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
@@ -56,14 +50,16 @@ export default async function DashboardPage() {
     faturacaoQuery = faturacaoQuery.eq('cliente_id', userClientId);
   }
 
-  // Buscar os dados em paralelo
+  // Buscar todos os dados em paralelo
   const [
+    { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
     { data: pedidosRaw },
     { data: faturacao },
     { data: saidasRaw },
   ] = await Promise.all([
+    clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
     pedidosQuery,

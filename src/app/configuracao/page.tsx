@@ -27,7 +27,7 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações e Tempos
+  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações, Tempos e Tracking em paralelo
   const [
     { data: usersList },
     { data: clientsList },
@@ -37,6 +37,7 @@ export default async function ConfiguracaoPage() {
     { data: movimentosList },
     { data: armazensList },
     { data: temposList },
+    { data: trackingListRaw },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clientes').select('*').order('name'),
@@ -50,29 +51,14 @@ export default async function ConfiguracaoPage() {
       .limit(300),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
-  ]);
-
-  // Busca paginada para contornar o limite de 1000 linhas da API do Supabase
-  let trackingList: any[] = [];
-  let fetchMore = true;
-  let from = 0;
-  const step = 999;
-  
-  while (fetchMore) {
-    const { data, error } = await supabase
+    supabase
       .from('VW_torrestir_last')
       .select('*')
       .order('created_at', { ascending: false })
-      .range(from, from + step);
-      
-    if (data && data.length > 0) {
-      trackingList = trackingList.concat(data);
-      from += step + 1;
-      if (data.length <= step) fetchMore = false;
-    } else {
-      fetchMore = false;
-    }
-  }
+      .limit(1000),
+  ]);
+
+  const trackingList = trackingListRaw || [];
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
     ...m,
