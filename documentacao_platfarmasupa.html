@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt">
+
 <head>
   <meta charset="UTF-8">
   <title>Documentação Técnica e Funcional - PlatFarma Supa</title>
@@ -9,12 +10,14 @@
     @page {
       size: A4;
       margin: 20mm 15mm 20mm 15mm;
+
       @bottom-right {
         content: counter(page);
         font-family: 'Inter', sans-serif;
         font-size: 8pt;
         color: #64748b;
       }
+
       @bottom-left {
         content: "PlatFarma - Logística Farmacêutica Integrada | Sermail";
         font-family: 'Inter', sans-serif;
@@ -195,7 +198,8 @@
       color: #334155;
     }
 
-    ul, ol {
+    ul,
+    ol {
       margin: 0 0 10px 0;
       padding-left: 20px;
     }
@@ -354,6 +358,7 @@
     }
   </style>
 </head>
+
 <body>
 
   <!-- CAPA -->
@@ -372,7 +377,9 @@
       </div>
 
       <div class="cover-desc">
-        Manual completo de especificação técnica e funcional da plataforma <strong>PlatFarma Supa</strong>, contemplando a descrição detalhada por página, permissões RBAC, server actions, regras de negócio e mapeamento dos modelos de base de dados e campos Supabase (PostgreSQL).
+        Manual completo de especificação técnica e funcional da plataforma <strong>PlatFarma Supa</strong>, contemplando
+        a descrição detalhada por página, permissões RBAC, server actions, regras de negócio e mapeamento dos modelos de
+        base de dados e campos Supabase (PostgreSQL).
       </div>
     </div>
 
@@ -412,7 +419,7 @@
 
   <div class="toc">
     <div class="toc-title">Índice de Módulos e Páginas Documentadas</div>
-    
+
     <div class="toc-item">
       <span class="toc-name">1. Arquitetura Geral & Modelo de Segurança RBAC</span>
       <span class="toc-route">Autenticação, Perfis e RLS</span>
@@ -452,14 +459,20 @@
   </div>
 
   <h2>1. Arquitetura Geral & Segurança (RBAC)</h2>
-  <p>A solução foi desenvolvida com <strong>Next.js 16 (App Router)</strong>, React 19, TypeScript e motor de base de dados relacional <strong>PostgreSQL via Supabase</strong> com isolamento por cliente e <em>Row Level Security (RLS)</em>.</p>
-  
+  <p>A solução foi desenvolvida com <strong>Next.js 16 (App Router)</strong>, React 19, TypeScript e motor de base de
+    dados relacional <strong>PostgreSQL via Supabase</strong> com isolamento por cliente e <em>Row Level Security
+      (RLS)</em>.</p>
+
   <div class="info-card primary">
     <strong>Níveis de Acesso e Perfis (Tabela <code>perfis</code>):</strong>
     <ul>
-      <li><strong>admin:</strong> Acesso irrestrito a todos os dados, clientes, configurações de utilizadores, importações ERP e parametrizações regulamentares.</li>
-      <li><strong>gestor:</strong> Supervisão operacional e logística completa de todos os clientes sem permissão de alteração de credenciais de utilizador.</li>
-      <li><strong>user1, user2, user3:</strong> Utilizadores associados a um cliente proprietário específico (ex: <code>cliente_id</code>). Todas as consultas (stocks, faturacao, pedidos) são filtradas obrigatoriamente pelo seu respetivo cliente.</li>
+      <li><strong>admin:</strong> Acesso irrestrito a todos os dados, clientes, configurações de utilizadores,
+        importações ERP e parametrizações regulamentares.</li>
+      <li><strong>gestor:</strong> Supervisão operacional e logística completa de todos os clientes sem permissão de
+        alteração de credenciais de utilizador.</li>
+      <li><strong>user1, user2, user3:</strong> Utilizadores associados a um cliente proprietário específico (ex:
+        <code>cliente_id</code>). Todas as consultas (stocks, faturacao, pedidos) são filtradas obrigatoriamente pelo
+        seu respetivo cliente.</li>
     </ul>
   </div>
 
@@ -471,7 +484,9 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Ponto de entrada oficial para autenticação segura. Permite autenticação por email e palavra-passe, verificação de conta ativa e seleção de idioma dinâmico (Português, Espanhol, Inglês). Em caso de sucesso, verifica o estado ativo do utilizador na tabela <code>users</code> antes de franquear o acesso ao dashboard.</p>
+  <p>Ponto de entrada oficial para autenticação segura. Permite autenticação por email e palavra-passe, verificação de
+    conta ativa e seleção de idioma dinâmico (Português, Espanhol, Inglês). Em caso de sucesso, verifica o estado ativo
+    do utilizador na tabela <code>users</code> antes de franquear o acesso ao dashboard.</p>
 
   <h2>Funções e Métodos de Execução</h2>
   <table>
@@ -486,12 +501,16 @@
       <tr>
         <td><span class="code-fn">handleLogin(e)</span></td>
         <td><code>(e: React.FormEvent) =&gt; Promise&lt;void&gt;</code></td>
-        <td>Valida preenchimento, invoca <code>supabase.auth.signInWithPassword</code>, consulta o registo do utilizador em <code>users</code> para confirmar se <code>ativo === true</code> e redireciona para <code>/dashboard</code>. Emite mensagem traduzida caso a conta esteja suspensa ou com credenciais inválidas.</td>
+        <td>Valida preenchimento, invoca <code>supabase.auth.signInWithPassword</code>, consulta o registo do utilizador
+          em <code>users</code> para confirmar se <code>ativo === true</code> e redireciona para
+          <code>/dashboard</code>. Emite mensagem traduzida caso a conta esteja suspensa ou com credenciais inválidas.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">setLanguage(lang)</span></td>
         <td><code>(lang: Language) =&gt; void</code></td>
-        <td>Altera dinamicamente o idioma da interface em tempo real através do contexto <code>useLanguage()</code> ('pt', 'es', 'en').</td>
+        <td>Altera dinamicamente o idioma da interface em tempo real através do contexto <code>useLanguage()</code>
+          ('pt', 'es', 'en').</td>
       </tr>
     </tbody>
   </table>
@@ -508,12 +527,15 @@
     <tbody>
       <tr>
         <td><strong>auth.users</strong> (Supabase Auth)</td>
-        <td><span class="type-badge">email</span>, <span class="type-badge">encrypted_password</span>, <span class="type-badge">id</span></td>
+        <td><span class="type-badge">email</span>, <span class="type-badge">encrypted_password</span>, <span
+            class="type-badge">id</span></td>
         <td>Autenticação da sessão e emissão dos tokens JWT seguros com suporte a cookies HTTP-only.</td>
       </tr>
       <tr>
         <td><strong>public.users</strong></td>
-        <td><span class="type-badge">id</span> <span class="key-badge pk-badge">PK</span>, <span class="type-badge">email</span>, <span class="type-badge">ativo</span>, <span class="type-badge">role</span>, <span class="type-badge">cliente_id</span></td>
+        <td><span class="type-badge">id</span> <span class="key-badge pk-badge">PK</span>, <span
+            class="type-badge">email</span>, <span class="type-badge">ativo</span>, <span
+            class="type-badge">role</span>, <span class="type-badge">cliente_id</span></td>
         <td>Validação de estado ativo da conta na organização Sermail e determinação do nível de privilégios.</td>
       </tr>
     </tbody>
@@ -527,12 +549,17 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Centro de controlo executivo da plataforma. Agrega indicadores-chave de desempenho (KPIs), evolução de faturação, contagem de pedidos, volumetria expedida e os produtos com maior rotação. Inclui:</p>
+  <p>Centro de controlo executivo da plataforma. Agrega indicadores-chave de desempenho (KPIs), evolução de faturação,
+    contagem de pedidos, volumetria expedida e os produtos com maior rotação. Inclui:</p>
   <ul>
-    <li><strong>Cartões de Métricas (KPIs):</strong> Total de stock em armazém, quantidade de artigos ativos, volume de faturação líquida do ano e pedidos expedidos.</li>
-    <li><strong>Gráfico de Faturação Mensal:</strong> Visualização de total líquido, mercadoria, IVA e descontos com evolução percentual face ao mês anterior.</li>
-    <li><strong>Gráfico de Pedidos Mensal:</strong> Tendência temporal de número de documentos expedidos e total de unidades.</li>
-    <li><strong>Gráfico Top 10 Produtos:</strong> Ranking dos 10 artigos mais expedidos, respetivas percentagens sobre o total e hiperligação direta para análise de previsão de stock.</li>
+    <li><strong>Cartões de Métricas (KPIs):</strong> Total de stock em armazém, quantidade de artigos ativos, volume de
+      faturação líquida do ano e pedidos expedidos.</li>
+    <li><strong>Gráfico de Faturação Mensal:</strong> Visualização de total líquido, mercadoria, IVA e descontos com
+      evolução percentual face ao mês anterior.</li>
+    <li><strong>Gráfico de Pedidos Mensal:</strong> Tendência temporal de número de documentos expedidos e total de
+      unidades.</li>
+    <li><strong>Gráfico Top 10 Produtos:</strong> Ranking dos 10 artigos mais expedidos, respetivas percentagens sobre o
+      total e hiperligação direta para análise de previsão de stock.</li>
   </ul>
 
   <h2>Componentes e Funções Principais</h2>
@@ -548,27 +575,32 @@
       <tr>
         <td><span class="code-fn">DashboardPage()</span></td>
         <td><code>dashboard/page.tsx</code></td>
-        <td>Server Component: valida sessão, avalia papel RBAC e executa consultas em paralelo via <code>Promise.all</code> com filtragem estrita de <code>cliente_id</code> para utilizadores externos.</td>
+        <td>Server Component: valida sessão, avalia papel RBAC e executa consultas em paralelo via
+          <code>Promise.all</code> com filtragem estrita de <code>cliente_id</code> para utilizadores externos.</td>
       </tr>
       <tr>
         <td><span class="code-fn">DashboardView</span></td>
         <td><code>dashboard-view.tsx</code></td>
-        <td>Client Component: gere seleção de cliente ativo, filtros de ano/mês e distribuição de dados aos gráficos.</td>
+        <td>Client Component: gere seleção de cliente ativo, filtros de ano/mês e distribuição de dados aos gráficos.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">GraficoFaturacaoMensal</span></td>
         <td><code>grafico-faturacao-mensal.tsx</code></td>
-        <td>Renderização SVG da curva de faturação a partir da view <code>vw_fact_mes</code>, calculando <code>total_liquido = total_merc - total_iva - total_desc</code>.</td>
+        <td>Renderização SVG da curva de faturação a partir da view <code>vw_fact_mes</code>, calculando
+          <code>total_liquido = total_merc - total_iva - total_desc</code>.</td>
       </tr>
       <tr>
         <td><span class="code-fn">GraficoPedidosMensal</span></td>
         <td><code>grafico-pedidos-mensal.tsx</code></td>
-        <td>Gráfico de barras e linhas mensais com total de encomendas e unidades expedidas da view <code>vw_pedidos</code>.</td>
+        <td>Gráfico de barras e linhas mensais com total de encomendas e unidades expedidas da view
+          <code>vw_pedidos</code>.</td>
       </tr>
       <tr>
         <td><span class="code-fn">GraficoTopProdutos</span></td>
         <td><code>grafico-top-produtos.tsx</code></td>
-        <td>Agrupamento de saídas por artigo a partir de <code>vw_saidas</code> e tabela comparativa dos 10 maiores produtos.</td>
+        <td>Agrupamento de saídas por artigo a partir de <code>vw_saidas</code> e tabela comparativa dos 10 maiores
+          produtos.</td>
       </tr>
     </tbody>
   </table>
@@ -585,27 +617,41 @@
     <tbody>
       <tr>
         <td><strong>vw_fact_mes</strong> (View)</td>
-        <td><span class="type-badge">sigla_cliente</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">data</span>, <span class="type-badge">total_docs</span>, <span class="type-badge">total_quantidade</span>, <span class="type-badge">total_merc</span>, <span class="type-badge">total_iva</span>, <span class="type-badge">total_desc</span>, <span class="type-badge">total_liquido</span></td>
+        <td><span class="type-badge">sigla_cliente</span>, <span class="type-badge">cliente_id</span>, <span
+            class="type-badge">data</span>, <span class="type-badge">total_docs</span>, <span
+            class="type-badge">total_quantidade</span>, <span class="type-badge">total_merc</span>, <span
+            class="type-badge">total_iva</span>, <span class="type-badge">total_desc</span>, <span
+            class="type-badge">total_liquido</span></td>
         <td>Alimenta o gráfico mensal de faturação e KPI global de faturação líquida acumulada.</td>
       </tr>
       <tr>
         <td><strong>vw_pedidos</strong> (View)</td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">documento_ref</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">data_pedido</span>, <span class="type-badge">total_linhas</span>, <span class="type-badge">total_quantidade</span>, <span class="type-badge">sigla</span>, <span class="type-badge">nome</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">documento_ref</span>, <span
+            class="type-badge">cliente_id</span>, <span class="type-badge">data_pedido</span>, <span
+            class="type-badge">total_linhas</span>, <span class="type-badge">total_quantidade</span>, <span
+            class="type-badge">sigla</span>, <span class="type-badge">nome</span></td>
         <td>Alimenta as métricas de volume de pedidos expedidos e o gráfico de pedidos mensal.</td>
       </tr>
       <tr>
         <td><strong>vw_stock_atual</strong> (View)</td>
-        <td><span class="type-badge">artigo_id</span>, <span class="type-badge">artigo_codigo</span>, <span class="type-badge">artigo_descricao</span>, <span class="type-badge">validade</span>, <span class="type-badge">stock</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">tipo_artigo</span></td>
+        <td><span class="type-badge">artigo_id</span>, <span class="type-badge">artigo_codigo</span>, <span
+            class="type-badge">artigo_descricao</span>, <span class="type-badge">validade</span>, <span
+            class="type-badge">stock</span>, <span class="type-badge">cliente_id</span>, <span
+            class="type-badge">tipo_artigo</span></td>
         <td>Cálculo do stock físico global em armazém e contagem de referências ativas.</td>
       </tr>
       <tr>
         <td><strong>vw_saidas</strong> (View)</td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">artigo_cli</span>, <span class="type-badge">artigo_codigo</span>, <span class="type-badge">quantidade</span>, <span class="type-badge">data_movimento</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">cliente_id</span>, <span
+            class="type-badge">artigo_cli</span>, <span class="type-badge">artigo_codigo</span>, <span
+            class="type-badge">quantidade</span>, <span class="type-badge">data_movimento</span></td>
         <td>Alimenta o cálculo do ranking e percentagens do Gráfico Top 10 Produtos.</td>
       </tr>
       <tr>
         <td><strong>clientes</strong> (Tabela)</td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">name</span>, <span class="type-badge">sigla</span>, <span class="type-badge">ativo</span>, <span class="type-badge">tipo_cliente</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">name</span>, <span
+            class="type-badge">sigla</span>, <span class="type-badge">ativo</span>, <span
+            class="type-badge">tipo_cliente</span></td>
         <td>Lista de clientes disponíveis no filtro seletor da barra superior do dashboard.</td>
       </tr>
     </tbody>
@@ -619,13 +665,19 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Módulo de análise preditiva desenhado para evitar ruturas de stock e desperdício por caducidade de lotes. Permite aos gestores e aos clientes antecipar com precisão matemática a data estimada de esgotamento do inventário e a necessidade de reposição.</p>
+  <p>Módulo de análise preditiva desenhado para evitar ruturas de stock e desperdício por caducidade de lotes. Permite
+    aos gestores e aos clientes antecipar com precisão matemática a data estimada de esgotamento do inventário e a
+    necessidade de reposição.</p>
   <ul>
-    <li><strong>Janela de Run-Rate Configurável:</strong> 3, 6 ou 12 meses para apurar o ritmo médio real de consumo mensal.</li>
+    <li><strong>Janela de Run-Rate Configurável:</strong> 3, 6 ou 12 meses para apurar o ritmo médio real de consumo
+      mensal.</li>
     <li><strong>Horizonte de Projeção:</strong> Simulação a 3, 6 ou 12 meses futuros.</li>
-    <li><strong>Dedução Inteligente de Validades (FEFO):</strong> Identifica todos os lotes que expiram em cada mês futuro e abate essa quantidade do stock disponível, além do consumo regular.</li>
-    <li><strong>Stock de Segurança e Ponto de Encomenda:</strong> Cálculo do limiar de segurança com base nos dias de reposição (Lead Time) e indicação do momento exato de nova encomenda.</li>
-    <li><strong>Tabela Top 10 Comparativa de Rutura:</strong> Indicador de status (Crítico &lt;1m, Alerta &lt;3m, Estável e Sem Consumo) para tomada de decisão imediata.</li>
+    <li><strong>Dedução Inteligente de Validades (FEFO):</strong> Identifica todos os lotes que expiram em cada mês
+      futuro e abate essa quantidade do stock disponível, além do consumo regular.</li>
+    <li><strong>Stock de Segurança e Ponto de Encomenda:</strong> Cálculo do limiar de segurança com base nos dias de
+      reposição (Lead Time) e indicação do momento exato de nova encomenda.</li>
+    <li><strong>Tabela Top 10 Comparativa de Rutura:</strong> Indicador de status (Crítico &lt;1m, Alerta &lt;3m,
+      Estável e Sem Consumo) para tomada de decisão imediata.</li>
   </ul>
 
   <h2>Funções e Fórmulas de Cálculo</h2>
@@ -673,17 +725,23 @@
     <tbody>
       <tr>
         <td><strong>vw_stock_atual</strong></td>
-        <td><span class="type-badge">artigo_id</span>, <span class="type-badge">artigo_codigo</span>, <span class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span class="type-badge">stock</span></td>
+        <td><span class="type-badge">artigo_id</span>, <span class="type-badge">artigo_codigo</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span
+            class="type-badge">stock</span></td>
         <td>Stock físico inicial por lote e apuramento dos lotes a expirar mês a mês.</td>
       </tr>
       <tr>
         <td><strong>vw_pedidos</strong></td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">documento_ref</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">data_pedido</span>, <span class="type-badge">total_quantidade</span>, <span class="type-badge">pedido_linhas (JSONB)</span></td>
-        <td>Fonte consolidada de histórico de encomendas e linhas de consumo reais do ERP (movimentos SS), substituindo a tabela pedidos_linhas para alimentar o Run-Rate.</td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">documento_ref</span>, <span
+            class="type-badge">cliente_id</span>, <span class="type-badge">data_pedido</span>, <span
+            class="type-badge">total_quantidade</span>, <span class="type-badge">pedido_linhas (JSONB)</span></td>
+        <td>Fonte consolidada de histórico de encomendas e linhas de consumo reais do ERP (movimentos SS), substituindo
+          a tabela pedidos_linhas para alimentar o Run-Rate.</td>
       </tr>
       <tr>
         <td><strong>artigos</strong></td>
-        <td><span class="type-badge">artigo_cli</span>, <span class="type-badge">artigo_id</span>, <span class="type-badge">descricao</span></td>
+        <td><span class="type-badge">artigo_cli</span>, <span class="type-badge">artigo_id</span>, <span
+            class="type-badge">descricao</span></td>
         <td>Metadados, referências e descrições dos artigos analisados.</td>
       </tr>
     </tbody>
@@ -697,11 +755,16 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Visão integral do inventário físico e logístico em armazém. Permite acompanhamento rigoroso de lotes farmacêuticos, posições de arrumação e cumprimento dos prazos regulamentares de validade (Good Distribution Practices - GDP).</p>
+  <p>Visão integral do inventário físico e logístico em armazém. Permite acompanhamento rigoroso de lotes farmacêuticos,
+    posições de arrumação e cumprimento dos prazos regulamentares de validade (Good Distribution Practices - GDP).</p>
   <ul>
-    <li><strong>Filtro Multidimensional:</strong> Filtragem por cliente, armazém (01 Venda a 10 MIA), lote, código/descrição de artigo e estado de validade.</li>
-    <li><strong>Regras Regulamentares de Validade (Tabela <code>tempos</code>):</strong> Classificação visual de cada lote com base na sua categoria regulamentar (MH, MV, DM, DC, SA) e parametrizações de Validade (VAL) e Expirado (EXP).</li>
-    <li><strong>Exportação Excel Avançada:</strong> Download instantâneo da listagem completa com estilização e metadados via <code>exceljs</code>.</li>
+    <li><strong>Filtro Multidimensional:</strong> Filtragem por cliente, armazém (01 Venda a 10 MIA), lote,
+      código/descrição de artigo e estado de validade.</li>
+    <li><strong>Regras Regulamentares de Validade (Tabela <code>tempos</code>):</strong> Classificação visual de cada
+      lote com base na sua categoria regulamentar (MH, MV, DM, DC, SA) e parametrizações de Validade (VAL) e Expirado
+      (EXP).</li>
+    <li><strong>Exportação Excel Avançada:</strong> Download instantâneo da listagem completa com estilização e
+      metadados via <code>exceljs</code>.</li>
   </ul>
 
   <h2>Componentes e Funções Principais</h2>
@@ -717,22 +780,26 @@
       <tr>
         <td><span class="code-fn">StocksPage()</span></td>
         <td><code>stocks/page.tsx</code></td>
-        <td>Server component: carrega em simultâneo <code>vw_stock_atual</code>, <code>vw_stock_pedidos</code>, <code>clientes</code> e <code>tempos</code> com segurança RBAC.</td>
+        <td>Server component: carrega em simultâneo <code>vw_stock_atual</code>, <code>vw_stock_pedidos</code>,
+          <code>clientes</code> e <code>tempos</code> com segurança RBAC.</td>
       </tr>
       <tr>
         <td><span class="code-fn">StocksView</span></td>
         <td><code>stocks-view.tsx</code></td>
-        <td>Client component: renderiza a tabela de inventário, pesquisa reativa, paginação e modal de detalhe de lotes.</td>
+        <td>Client component: renderiza a tabela de inventário, pesquisa reativa, paginação e modal de detalhe de lotes.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">calcularEstadoValidade</span></td>
         <td><code>stocks-view.tsx</code></td>
-        <td>Avalia a data de validade face à data atual e aos prazos VAL e EXP parametrizados na tabela <code>tempos</code> para o cliente.</td>
+        <td>Avalia a data de validade face à data atual e aos prazos VAL e EXP parametrizados na tabela
+          <code>tempos</code> para o cliente.</td>
       </tr>
       <tr>
         <td><span class="code-fn">handleExportExcel()</span></td>
         <td><code>stocks-view.tsx</code></td>
-        <td>Gera e descarrega um ficheiro Excel (.xlsx) estruturado com todo o stock filtrado através da biblioteca <code>exceljs</code>.</td>
+        <td>Gera e descarrega um ficheiro Excel (.xlsx) estruturado com todo o stock filtrado através da biblioteca
+          <code>exceljs</code>.</td>
       </tr>
     </tbody>
   </table>
@@ -749,18 +816,32 @@
     <tbody>
       <tr>
         <td><strong>vw_stock_atual</strong> (View)</td>
-        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">cliente_sigla</span>, <span class="type-badge">artigo_codigo</span>, <span class="type-badge">artigo_descricao</span>, <span class="type-badge">tipo_armazem</span>, <span class="type-badge">armazem_descricao</span>, <span class="type-badge">armazem_loc</span>, <span class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span class="type-badge">data_fabrico</span>, <span class="type-badge">stock</span>, <span class="type-badge">tipo_artigo</span>, <span class="type-badge">tipo_armazenamento</span></td>
+        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">cliente_sigla</span>, <span
+            class="type-badge">artigo_codigo</span>, <span class="type-badge">artigo_descricao</span>, <span
+            class="type-badge">tipo_armazem</span>, <span class="type-badge">armazem_descricao</span>, <span
+            class="type-badge">armazem_loc</span>, <span class="type-badge">lote</span>, <span
+            class="type-badge">validade</span>, <span class="type-badge">data_fabrico</span>, <span
+            class="type-badge">stock</span>, <span class="type-badge">tipo_artigo</span>, <span
+            class="type-badge">tipo_armazenamento</span></td>
         <td>Fonte primária de dados para toda a grelha de inventário. Agrupa entradas e saídas de stock físicas.</td>
       </tr>
       <tr>
         <td><strong>armazens</strong> (Tabela)</td>
-        <td><span class="type-badge">tipo_armazem</span> <span class="key-badge pk-badge">PK</span>, <span class="type-badge">descricao</span></td>
-        <td>Identificação dos armazéns: 01 (Venda), 02 (Expirados), 03 (Danificados), 04 (Devoluções), 05 (Quarentena), 07 (Farmacoteca), 09 (Validade), 10 (MIA).</td>
+        <td><span class="type-badge">tipo_armazem</span> <span class="key-badge pk-badge">PK</span>, <span
+            class="type-badge">descricao</span></td>
+        <td>Identificação dos armazéns: 01 (Venda), 02 (Expirados), 03 (Danificados), 04 (Devoluções), 05 (Quarentena),
+          07 (Farmacoteca), 09 (Validade), 10 (MIA).</td>
       </tr>
       <tr>
         <td><strong>tempos</strong> (Tabela)</td>
-        <td><span class="type-badge">id_cliente</span>, <span class="type-badge">VAL_MH</span>, <span class="type-badge">EXP_MH</span>, <span class="type-badge">VAL_MV</span>, <span class="type-badge">EXP_MV</span>, <span class="type-badge">VAL_DM</span>, <span class="type-badge">EXP_DM</span>, <span class="type-badge">VAL_DC</span>, <span class="type-badge">EXP_DC</span>, <span class="type-badge">VAL_SA</span>, <span class="type-badge">EXP_SA</span></td>
-        <td>Fornece os limiares de alerta de validade em dias para cada tipo de produto farmacêutico de cada cliente.</td>
+        <td><span class="type-badge">id_cliente</span>, <span class="type-badge">VAL_MH</span>, <span
+            class="type-badge">EXP_MH</span>, <span class="type-badge">VAL_MV</span>, <span
+            class="type-badge">EXP_MV</span>, <span class="type-badge">VAL_DM</span>, <span
+            class="type-badge">EXP_DM</span>, <span class="type-badge">VAL_DC</span>, <span
+            class="type-badge">EXP_DC</span>, <span class="type-badge">VAL_SA</span>, <span
+            class="type-badge">EXP_SA</span></td>
+        <td>Fornece os limiares de alerta de validade em dias para cada tipo de produto farmacêutico de cada cliente.
+        </td>
       </tr>
     </tbody>
   </table>
@@ -773,12 +854,19 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Formulário operacional para submissão de novas ordens de expedição de mercadoria. Assegura a integridade do inventário farmacêutico através de validações em tempo real:</p>
+  <p>Formulário operacional para submissão de novas ordens de expedição de mercadoria. Assegura a integridade do
+    inventário farmacêutico através de validações em tempo real:</p>
   <ul>
-    <li><strong>Seleção de Destinatário:</strong> Pesquisa e seleção rápida a partir do catálogo de destinos (farmácias, hospitais, distribuidores) ou criação de um novo destino no próprio formulário com geração sequencial de código <code>[SIGLA]-0001</code>.</li>
-    <li><strong>Isolamento de Stock Disponível:</strong> Apenas permite adicionar produtos com stock positivo existente no <strong>Armazém 01 (Venda)</strong> através da view <code>vw_stock_pedidos</code>.</li>
-    <li><strong>Seleção Rigorosa de Lote / FEFO:</strong> Garante que cada linha requisita uma quantidade estritamente menor ou igual ao stock disponível no lote selecionado.</li>
-    <li><strong>Débito Atómico e Notificação por Email:</strong> Cria o pedido em <code>pedidos</code>, regista as linhas em <code>pedido_linhas</code>, cria os movimentos de saída <code>ss</code> em <code>movimentos</code> e dispara email automático formatado com HTML via Resend.</li>
+    <li><strong>Seleção de Destinatário:</strong> Pesquisa e seleção rápida a partir do catálogo de destinos (farmácias,
+      hospitais, distribuidores) ou criação de um novo destino no próprio formulário com geração sequencial de código
+      <code>[SIGLA]-0001</code>.</li>
+    <li><strong>Isolamento de Stock Disponível:</strong> Apenas permite adicionar produtos com stock positivo existente
+      no <strong>Armazém 01 (Venda)</strong> através da view <code>vw_stock_pedidos</code>.</li>
+    <li><strong>Seleção Rigorosa de Lote / FEFO:</strong> Garante que cada linha requisita uma quantidade estritamente
+      menor ou igual ao stock disponível no lote selecionado.</li>
+    <li><strong>Débito Atómico e Notificação por Email:</strong> Cria o pedido em <code>pedidos</code>, regista as
+      linhas em <code>pedido_linhas</code>, cria os movimentos de saída <code>ss</code> em <code>movimentos</code> e
+      dispara email automático formatado com HTML via Resend.</li>
   </ul>
 
   <h2>Server Actions e Funções do Módulo</h2>
@@ -793,7 +881,8 @@
     <tbody>
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">criarPedidoAction</span></td>
-        <td><code>input: NovoPedidoInput</code><br>(cliente_id, nome_destinatario, morada, cod_postal, linhas[], etc.)</td>
+        <td><code>input: NovoPedidoInput</code><br>(cliente_id, nome_destinatario, morada, cod_postal, linhas[], etc.)
+        </td>
         <td>
           1. Insere registo mestre em <code>pedidos</code> com status 'pendente'.<br>
           2. Insere cada artigo em <code>pedido_linhas</code>.<br>
@@ -805,12 +894,14 @@
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">criarDestinoAction</span></td>
         <td><code>input: NovoDestinoInput</code><br>(cliente_id, nome, morada, codigo_postal, localidade, etc.)</td>
-        <td>Insere registo em <code>destinos</code>. O trigger do PostgreSQL atribui automaticamente o código sequencial sequencial do cliente.</td>
+        <td>Insere registo em <code>destinos</code>. O trigger do PostgreSQL atribui automaticamente o código sequencial
+          sequencial do cliente.</td>
       </tr>
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">obterDestinosPorCliente</span></td>
         <td><code>clientId: string</code></td>
-        <td>Retorna todos os destinos ativos da tabela <code>destinos</code> ordenados pelo código para popular o dropdown.</td>
+        <td>Retorna todos os destinos ativos da tabela <code>destinos</code> ordenados pelo código para popular o
+          dropdown.</td>
       </tr>
     </tbody>
   </table>
@@ -827,22 +918,37 @@
     <tbody>
       <tr>
         <td><strong>pedidos</strong></td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">nr_pedido</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">destino_id</span>, <span class="type-badge">nome_destinatario</span>, <span class="type-badge">morada</span>, <span class="type-badge">codigo_postal</span>, <span class="type-badge">localidade</span>, <span class="type-badge">data_pedido</span>, <span class="type-badge">data_entrega</span>, <span class="type-badge">status</span>, <span class="type-badge">created_by</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">nr_pedido</span>, <span
+            class="type-badge">cliente_id</span>, <span class="type-badge">destino_id</span>, <span
+            class="type-badge">nome_destinatario</span>, <span class="type-badge">morada</span>, <span
+            class="type-badge">codigo_postal</span>, <span class="type-badge">localidade</span>, <span
+            class="type-badge">data_pedido</span>, <span class="type-badge">data_entrega</span>, <span
+            class="type-badge">status</span>, <span class="type-badge">created_by</span></td>
         <td>Armazena os dados de cabeçalho da ordem de expedição.</td>
       </tr>
       <tr>
         <td><strong>pedido_linhas</strong></td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">pedido_id</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">artigo_id</span>, <span class="type-badge">artigo_codigo</span>, <span class="type-badge">descricao</span>, <span class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span class="type-badge">quantidade</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">pedido_id</span>, <span
+            class="type-badge">cliente_id</span>, <span class="type-badge">artigo_id</span>, <span
+            class="type-badge">artigo_codigo</span>, <span class="type-badge">descricao</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span
+            class="type-badge">quantidade</span></td>
         <td>Linhas de detalhe do pedido com especificação do lote e quantidade.</td>
       </tr>
       <tr>
         <td><strong>movimentos</strong></td>
-        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">tipo_movimento ('ss')</span>, <span class="type-badge">tipo_armazem ('01')</span>, <span class="type-badge">quantidade</span>, <span class="type-badge">lote</span>, <span class="type-badge">documento_ref</span>, <span class="type-badge">data_movimento</span></td>
+        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">tipo_movimento ('ss')</span>, <span
+            class="type-badge">tipo_armazem ('01')</span>, <span class="type-badge">quantidade</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">documento_ref</span>, <span
+            class="type-badge">data_movimento</span></td>
         <td>Débito imediato de stock para que a contagem física reflita a saída do armazém.</td>
       </tr>
       <tr>
         <td><strong>destinos</strong></td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">cliente_id</span>, <span class="type-badge">codigo</span>, <span class="type-badge">nome</span>, <span class="type-badge">morada</span>, <span class="type-badge">codigo_postal</span>, <span class="type-badge">localidade</span>, <span class="type-badge">classifica_destino</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">cliente_id</span>, <span
+            class="type-badge">codigo</span>, <span class="type-badge">nome</span>, <span
+            class="type-badge">morada</span>, <span class="type-badge">codigo_postal</span>, <span
+            class="type-badge">localidade</span>, <span class="type-badge">classifica_destino</span></td>
         <td>Catálogo de destinatários e moradas para expedição.</td>
       </tr>
     </tbody>
@@ -856,12 +962,18 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Módulo de consulta, auditoria e rastreamento de entregas. Unifica tanto as ordens registadas diretamente na aplicação (clientes SF) como os movimentos de saída importados do ERP Primavera (clientes CF):</p>
+  <p>Módulo de consulta, auditoria e rastreamento de entregas. Unifica tanto as ordens registadas diretamente na
+    aplicação (clientes SF) como os movimentos de saída importados do ERP Primavera (clientes CF):</p>
   <ul>
-    <li><strong>Rastreamento Integrado Torrestir:</strong> Cruzamento da referência de transporte <code>ref_ser</code> com a view <code>VW_torrestir_last</code> para obtenção em tempo real da última etapa de entrega (ex: "Em Distribuição", "Entregue").</li>
-    <li><strong>Comprovativo de Entrega Digital (POD):</strong> Apresenta botão e link direto para o comprovativo assinado de entrega (<code>url_comprovativo</code>) arquivado no storage.</li>
-    <li><strong>Alteração de Estado de Pedido:</strong> Administradores e Gestores podem alterar o estado ('pendente', 'confirmado', 'em_preparacao', 'expedido', 'entregue', 'cancelado').</li>
-    <li><strong>Visualização em Acordeão:</strong> Permite expandir cada pedido para auditar as respetivas linhas de artigos, lotes e quantidades.</li>
+    <li><strong>Rastreamento Integrado Torrestir:</strong> Cruzamento da referência de transporte <code>ref_ser</code>
+      com a view <code>VW_torrestir_last</code> para obtenção em tempo real da última etapa de entrega (ex: "Em
+      Distribuição", "Entregue").</li>
+    <li><strong>Comprovativo de Entrega Digital (POD):</strong> Apresenta botão e link direto para o comprovativo
+      assinado de entrega (<code>url_comprovativo</code>) arquivado no storage.</li>
+    <li><strong>Alteração de Estado de Pedido:</strong> Administradores e Gestores podem alterar o estado ('pendente',
+      'confirmado', 'em_preparacao', 'expedido', 'entregue', 'cancelado').</li>
+    <li><strong>Visualização em Acordeão:</strong> Permite expandir cada pedido para auditar as respetivas linhas de
+      artigos, lotes e quantidades.</li>
   </ul>
 
   <h2>Server Actions e Métodos</h2>
@@ -877,12 +989,14 @@
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">atualizarEstadoPedido</span></td>
         <td><code>(pedidoId: string, novoStatus: StatusPedido) =&gt; Promise&lt;{success, error}&gt;</code></td>
-        <td>Valida se o utilizador autenticado possui perfil 'admin' ou 'gestor', atualiza a coluna <code>status</code> na tabela <code>pedidos</code> e aciona <code>revalidatePath</code>.</td>
+        <td>Valida se o utilizador autenticado possui perfil 'admin' ou 'gestor', atualiza a coluna <code>status</code>
+          na tabela <code>pedidos</code> e aciona <code>revalidatePath</code>.</td>
       </tr>
       <tr>
         <td><span class="code-fn">HistoricoPedidosPage</span></td>
         <td><code>historico-pedidos/page.tsx</code></td>
-        <td>Executa a query unificada: pesquisa pedidos na tabela <code>pedidos</code> e nos clientes CF pesquisa saídas em <code>movimentos</code>, agrupa por documento e cruza com a view <code>VW_torrestir_last</code>.</td>
+        <td>Executa a query unificada: pesquisa pedidos na tabela <code>pedidos</code> e nos clientes CF pesquisa saídas
+          em <code>movimentos</code>, agrupa por documento e cruza com a view <code>VW_torrestir_last</code>.</td>
       </tr>
     </tbody>
   </table>
@@ -899,22 +1013,31 @@
     <tbody>
       <tr>
         <td><strong>pedidos</strong></td>
-        <td><span class="type-badge">id</span>, <span class="type-badge">nr_pedido</span>, <span class="type-badge">data_pedido</span>, <span class="type-badge">status</span>, <span class="type-badge">nome_destinatario</span>, <span class="type-badge">localidade</span>, <span class="type-badge">morada</span>, <span class="type-badge">ref_documento</span></td>
+        <td><span class="type-badge">id</span>, <span class="type-badge">nr_pedido</span>, <span
+            class="type-badge">data_pedido</span>, <span class="type-badge">status</span>, <span
+            class="type-badge">nome_destinatario</span>, <span class="type-badge">localidade</span>, <span
+            class="type-badge">morada</span>, <span class="type-badge">ref_documento</span></td>
         <td>Listagem de pedidos submetidos na plataforma.</td>
       </tr>
       <tr>
         <td><strong>pedido_linhas</strong></td>
-        <td><span class="type-badge">artigo_codigo</span>, <span class="type-badge">descricao</span>, <span class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span class="type-badge">quantidade</span></td>
+        <td><span class="type-badge">artigo_codigo</span>, <span class="type-badge">descricao</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span
+            class="type-badge">quantidade</span></td>
         <td>Linhas de cada pedido exibidas no detalhe expandido.</td>
       </tr>
       <tr>
         <td><strong>VW_torrestir_last</strong> (View)</td>
-        <td><span class="type-badge">ref_ser</span>, <span class="type-badge">data_estado</span>, <span class="type-badge">hora_estado</span>, <span class="type-badge">desc_estado_expedicao</span>, <span class="type-badge">url_comprovativo</span>, <span class="type-badge">ref_comprovativo</span></td>
+        <td><span class="type-badge">ref_ser</span>, <span class="type-badge">data_estado</span>, <span
+            class="type-badge">hora_estado</span>, <span class="type-badge">desc_estado_expedicao</span>, <span
+            class="type-badge">url_comprovativo</span>, <span class="type-badge">ref_comprovativo</span></td>
         <td>Fornece o último estado oficial da transportadora Torrestir e a ligação para o comprovativo assinado.</td>
       </tr>
       <tr>
         <td><strong>movimentos</strong></td>
-        <td><span class="type-badge">documento_ref</span>, <span class="type-badge">ref_ser</span>, <span class="type-badge">artigo_cli</span>, <span class="type-badge">quantidade</span>, <span class="type-badge">lote</span>, <span class="type-badge">tipo_movimento ('ss')</span></td>
+        <td><span class="type-badge">documento_ref</span>, <span class="type-badge">ref_ser</span>, <span
+            class="type-badge">artigo_cli</span>, <span class="type-badge">quantidade</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">tipo_movimento ('ss')</span></td>
         <td>Utilizado para recompor os documentos de saída expedidos no ERP para clientes Com Faturação (CF).</td>
       </tr>
     </tbody>
@@ -928,16 +1051,24 @@
   </div>
 
   <h2>Descrição Funcional</h2>
-  <p>Área de administração global acessível exclusivamente a Administradores (<code>role === 'admin'</code> ou <code>admin@sermail.pt</code>). Agrupa a gestão estrutural em 8 abas de parametrização:</p>
+  <p>Área de administração global acessível exclusivamente a Administradores (<code>role === 'admin'</code> ou
+    <code>admin@sermail.pt</code>). Agrupa a gestão estrutural em 8 abas de parametrização:</p>
   <ul>
     <li><strong>Utilizadores:</strong> Registo, atribuição de perfil RBAC e associação a clientes.</li>
-    <li><strong>Clientes:</strong> Criação e configuração de empresas clientes, sigla, tipo CF/SF e código Primavera.</li>
-    <li><strong>Tempos de Validade:</strong> Parametrização dos dias de Validade (VAL) e Expirado (EXP) por tipo farmacêutico para cada cliente.</li>
-    <li><strong>Artigos:</strong> Manutenção da tabela mestre de artigos, tipo de artigo, tipo de armazenamento e preço de venda (PVA).</li>
-    <li><strong>Importação ERP / Movimentos:</strong> Importação de ficheiros de movimentos de armazém via staging <code>plat_movimentos</code> com transferência validada para <code>movimentos</code>.</li>
-    <li><strong>Importação de Stocks:</strong> Importação de snapshots de inventário para a tabela <code>imp_stk</code>.</li>
-    <li><strong>Transporte & Comprovativos:</strong> Carregamento do histórico de estados da transportadora Torrestir para <code>torrestir_status</code>.</li>
-    <li><strong>Servidor de Email:</strong> Monitorização da API Key Resend e teste de envio de emails transacionais.</li>
+    <li><strong>Clientes:</strong> Criação e configuração de empresas clientes, sigla, tipo CF/SF e código Primavera.
+    </li>
+    <li><strong>Tempos de Validade:</strong> Parametrização dos dias de Validade (VAL) e Expirado (EXP) por tipo
+      farmacêutico para cada cliente.</li>
+    <li><strong>Artigos:</strong> Manutenção da tabela mestre de artigos, tipo de artigo, tipo de armazenamento e preço
+      de venda (PVA).</li>
+    <li><strong>Importação ERP / Movimentos:</strong> Importação de ficheiros de movimentos de armazém via staging
+      <code>plat_movimentos</code> com transferência validada para <code>movimentos</code>.</li>
+    <li><strong>Importação de Stocks:</strong> Importação de snapshots de inventário para a tabela <code>imp_stk</code>.
+    </li>
+    <li><strong>Transporte & Comprovativos:</strong> Carregamento do histórico de estados da transportadora Torrestir
+      para <code>torrestir_status</code>.</li>
+    <li><strong>Servidor de Email:</strong> Monitorização da API Key Resend e teste de envio de emails transacionais.
+    </li>
   </ul>
 
   <h2>Server Actions Disponíveis no Módulo</h2>
@@ -958,7 +1089,8 @@
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">criarClienteAction</span></td>
         <td><code>clientes</code>, <code>tempos</code></td>
-        <td>Cria cliente com validação de sigla (1-4 letras) e inicializa automaticamente a tabela <code>tempos</code> com valores regulamentares padrão (180d/60d).</td>
+        <td>Cria cliente com validação de sigla (1-4 letras) e inicializa automaticamente a tabela <code>tempos</code>
+          com valores regulamentares padrão (180d/60d).</td>
       </tr>
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">atualizarTemposClienteAction</span></td>
@@ -981,9 +1113,11 @@
         <td>Importação em bloco de movimentos brutos extraídos do ERP Primavera para staging.</td>
       </tr>
       <tr>
-        <td><span class="tag-action">ACTION</span> <span class="code-fn">transferirPlatMovimentosParaMovimentosAction</span></td>
+        <td><span class="tag-action">ACTION</span> <span
+            class="code-fn">transferirPlatMovimentosParaMovimentosAction</span></td>
         <td><code>plat_movimentos</code> &rarr; <code>movimentos</code></td>
-        <td>Copia e normaliza movimentos validados de <code>plat_movimentos</code> para a tabela de produção <code>movimentos</code>.</td>
+        <td>Copia e normaliza movimentos validados de <code>plat_movimentos</code> para a tabela de produção
+          <code>movimentos</code>.</td>
       </tr>
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">importarTransporteAction</span></td>
@@ -1165,7 +1299,8 @@
         <td><code>tipo_movimento</code></td>
         <td><span class="type-badge">text</span></td>
         <td>CHECK ('es', 'ss', 'et', 'st')</td>
-        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada Transferência, <strong>st:</strong> Saída Transferência.</td>
+        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada
+          Transferência, <strong>st:</strong> Saída Transferência.</td>
       </tr>
       <tr>
         <td><code>quantidade</code></td>
@@ -1289,29 +1424,40 @@
   <!-- VIEWS CONSOLIDADAS -->
   <div class="page-break"></div>
   <h2>Views SQL Analíticas e Operacionais</h2>
-  
+
   <h3>1. <code>vw_stock_atual</code></h3>
-  <p>Calcula o stock real consolidado agrupando todas as entradas e saídas físicas de cada cliente, artigo, armazém e lote:</p>
+  <p>Calcula o stock real consolidado agrupando todas as entradas e saídas físicas de cada cliente, artigo, armazém e
+    lote:</p>
   <div class="info-card">
     <strong>Lógica de Agrupamento:</strong>
-    <code>SUM(CASE WHEN tipo_movimento IN ('es', 'et') THEN quantidade WHEN tipo_movimento IN ('ss', 'st') THEN -quantidade ELSE 0 END)</code> filtrando <code>HAVING stock &gt; 0</code>.
+    <code>SUM(CASE WHEN tipo_movimento IN ('es', 'et') THEN quantidade WHEN tipo_movimento IN ('ss', 'st') THEN -quantidade ELSE 0 END)</code>
+    filtrando <code>HAVING stock &gt; 0</code>.
   </div>
 
   <h3>2. <code>vw_stock_pedidos</code></h3>
-  <p>Semelhante à <code>vw_stock_atual</code>, mas com o filtro restrito <code>WHERE tipo_armazem = '01'</code> (Armazém de Venda). É utilizada exclusivamente pelo módulo de Registo de Pedidos para prevenir a seleção de lotes que estejam em quarentena ou expirados.</p>
+  <p>Semelhante à <code>vw_stock_atual</code>, mas com o filtro restrito <code>WHERE tipo_armazem = '01'</code> (Armazém
+    de Venda). É utilizada exclusivamente pelo módulo de Registo de Pedidos para prevenir a seleção de lotes que estejam
+    em quarentena ou expirados.</p>
 
   <h3>3. <code>vw_pedidos</code></h3>
-  <p>Agrupa movimentos do tipo 'ss' (saída de stock) por cliente e documento de referência, calculando a data de criação, total de linhas e quantidade total de artigos expedidos.</p>
+  <p>Agrupa movimentos do tipo 'ss' (saída de stock) por cliente e documento de referência, calculando a data de
+    criação, total de linhas e quantidade total de artigos expedidos.</p>
 
   <h3>4. <code>vw_fact_mes</code></h3>
-  <p>Calcula a faturação agregada mensal por cliente: <code>total_docs</code>, <code>total_linhas</code>, <code>total_quantidade</code>, <code>total_merc</code>, <code>total_iva</code>, <code>total_desc</code> e <code>total_liquido = (total_merc - total_iva - total_desc)</code>.</p>
+  <p>Calcula a faturação agregada mensal por cliente: <code>total_docs</code>, <code>total_linhas</code>,
+    <code>total_quantidade</code>, <code>total_merc</code>, <code>total_iva</code>, <code>total_desc</code> e
+    <code>total_liquido = (total_merc - total_iva - total_desc)</code>.</p>
 
   <h3>5. <code>VW_torrestir_last</code></h3>
-  <p>Retorna o estado mais recente de cada expedição através de <code>DISTINCT ON (ref_ser)</code> ordenado por data e hora decrescentes, incluindo hiperligação para o comprovativo de entrega assinado digitalmente (<code>url_comprovativo</code>).</p>
+  <p>Retorna o estado mais recente de cada expedição através de <code>DISTINCT ON (ref_ser)</code> ordenado por data e
+    hora decrescentes, incluindo hiperligação para o comprovativo de entrega assinado digitalmente
+    (<code>url_comprovativo</code>).</p>
 
-  <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #64748b;">
+  <div
+    style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #cbd5e1; text-align: center; font-size: 8pt; color: #64748b;">
     © 2026 Sermail, Logística Integrada Lda • Documentação Técnica da Plataforma Farmacêutica • PlatFarma Supa
   </div>
 
 </body>
+
 </html>
