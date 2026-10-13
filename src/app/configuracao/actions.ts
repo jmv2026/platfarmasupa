@@ -864,8 +864,8 @@ export async function importarMovimentosAction(
   }
 }
 
-// 8. AÇÃO: Limpar Registos da tabela movimentos (Acesso restrito a Admin)
-export async function limparMovimentosAction() {
+// 8. AÇÃO: Limpar Registos da tabela movimentos de um cliente específico (Acesso restrito a Admin)
+export async function limparMovimentosAction(clienteId?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -889,14 +889,21 @@ export async function limparMovimentosAction() {
     };
   }
 
+  if (!clienteId || clienteId === 'todos') {
+    return {
+      success: false,
+      error: 'É necessário selecionar um cliente no filtro para limpar os respetivos movimentos.',
+    };
+  }
+
   try {
-    const { error: deleteErr } = await supabase
+    const { error: deleteErr, count } = await supabase
       .from('movimentos')
-      .delete()
-      .gte('created_at', '1970-01-01T00:00:00Z');
+      .delete({ count: 'exact' })
+      .eq('cliente_id', clienteId);
 
     if (deleteErr) {
-      console.error('Erro ao limpar movimentos:', deleteErr);
+      console.error('Erro ao limpar movimentos do cliente:', deleteErr);
       return { success: false, error: `Erro ao limpar movimentos: ${deleteErr.message}` };
     }
 
@@ -905,7 +912,7 @@ export async function limparMovimentosAction() {
     revalidatePath('/dashboard');
     revalidatePath('/pedidos');
     revalidatePath('/historico-pedidos');
-    return { success: true };
+    return { success: true, count: count ?? 0 };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar movimentos';
     return { success: false, error: msg };

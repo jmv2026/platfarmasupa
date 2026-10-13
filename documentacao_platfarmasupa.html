@@ -472,7 +472,8 @@
         alteração de credenciais de utilizador.</li>
       <li><strong>user1, user2, user3:</strong> Utilizadores associados a um cliente proprietário específico (ex:
         <code>cliente_id</code>). Todas as consultas (stocks, faturacao, pedidos) são filtradas obrigatoriamente pelo
-        seu respetivo cliente.</li>
+        seu respetivo cliente.
+      </li>
     </ul>
   </div>
 
@@ -576,7 +577,8 @@
         <td><span class="code-fn">DashboardPage()</span></td>
         <td><code>dashboard/page.tsx</code></td>
         <td>Server Component: valida sessão, avalia papel RBAC e executa consultas em paralelo via
-          <code>Promise.all</code> com filtragem estrita de <code>cliente_id</code> para utilizadores externos.</td>
+          <code>Promise.all</code> com filtragem estrita de <code>cliente_id</code> para utilizadores externos.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">DashboardView</span></td>
@@ -588,13 +590,15 @@
         <td><span class="code-fn">GraficoFaturacaoMensal</span></td>
         <td><code>grafico-faturacao-mensal.tsx</code></td>
         <td>Renderização SVG da curva de faturação a partir da view <code>vw_fact_mes</code>, calculando
-          <code>total_liquido = total_merc - total_iva - total_desc</code>.</td>
+          <code>total_liquido = total_merc - total_iva - total_desc</code>.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">GraficoPedidosMensal</span></td>
         <td><code>grafico-pedidos-mensal.tsx</code></td>
         <td>Gráfico de barras e linhas mensais com total de encomendas e unidades expedidas da view
-          <code>vw_pedidos</code>.</td>
+          <code>vw_pedidos</code>.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">GraficoTopProdutos</span></td>
@@ -781,7 +785,8 @@
         <td><span class="code-fn">StocksPage()</span></td>
         <td><code>stocks/page.tsx</code></td>
         <td>Server component: carrega em simultâneo <code>vw_stock_atual</code>, <code>vw_stock_pedidos</code>,
-          <code>clientes</code> e <code>tempos</code> com segurança RBAC.</td>
+          <code>clientes</code> e <code>tempos</code> com segurança RBAC.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">StocksView</span></td>
@@ -793,13 +798,15 @@
         <td><span class="code-fn">calcularEstadoValidade</span></td>
         <td><code>stocks-view.tsx</code></td>
         <td>Avalia a data de validade face à data atual e aos prazos VAL e EXP parametrizados na tabela
-          <code>tempos</code> para o cliente.</td>
+          <code>tempos</code> para o cliente.
+        </td>
       </tr>
       <tr>
         <td><span class="code-fn">handleExportExcel()</span></td>
         <td><code>stocks-view.tsx</code></td>
         <td>Gera e descarrega um ficheiro Excel (.xlsx) estruturado com todo o stock filtrado através da biblioteca
-          <code>exceljs</code>.</td>
+          <code>exceljs</code>.
+        </td>
       </tr>
     </tbody>
   </table>
@@ -859,7 +866,8 @@
   <ul>
     <li><strong>Seleção de Destinatário:</strong> Pesquisa e seleção rápida a partir do catálogo de destinos (farmácias,
       hospitais, distribuidores) ou criação de um novo destino no próprio formulário com geração sequencial de código
-      <code>[SIGLA]-0001</code>.</li>
+      <code>[SIGLA]-0001</code>.
+    </li>
     <li><strong>Isolamento de Stock Disponível:</strong> Apenas permite adicionar produtos com stock positivo existente
       no <strong>Armazém 01 (Venda)</strong> através da view <code>vw_stock_pedidos</code>.</li>
     <li><strong>Seleção Rigorosa de Lote / FEFO:</strong> Garante que cada linha requisita uma quantidade estritamente
@@ -1052,7 +1060,8 @@
 
   <h2>Descrição Funcional</h2>
   <p>Área de administração global acessível exclusivamente a Administradores (<code>role === 'admin'</code> ou
-    <code>admin@sermail.pt</code>). Agrupa a gestão estrutural em 8 abas de parametrização:</p>
+    <code>admin@sermail.pt</code>). Agrupa a gestão estrutural em 8 abas de parametrização:
+  </p>
   <ul>
     <li><strong>Utilizadores:</strong> Registo, atribuição de perfil RBAC e associação a clientes.</li>
     <li><strong>Clientes:</strong> Criação e configuração de empresas clientes, sigla, tipo CF/SF e código Primavera.
@@ -1062,7 +1071,8 @@
     <li><strong>Artigos:</strong> Manutenção da tabela mestre de artigos, tipo de artigo, tipo de armazenamento e preço
       de venda (PVA).</li>
     <li><strong>Importação ERP / Movimentos:</strong> Importação de ficheiros de movimentos de armazém via staging
-      <code>plat_movimentos</code> com transferência validada para <code>movimentos</code>.</li>
+      <code>plat_movimentos</code> com transferência validada para <code>movimentos</code>.
+    </li>
     <li><strong>Importação de Stocks:</strong> Importação de snapshots de inventário para a tabela <code>imp_stk</code>.
     </li>
     <li><strong>Transporte & Comprovativos:</strong> Carregamento do histórico de estados da transportadora Torrestir
@@ -1117,7 +1127,8 @@
             class="code-fn">transferirPlatMovimentosParaMovimentosAction</span></td>
         <td><code>plat_movimentos</code> &rarr; <code>movimentos</code></td>
         <td>Copia e normaliza movimentos validados de <code>plat_movimentos</code> para a tabela de produção
-          <code>movimentos</code>.</td>
+          <code>movimentos</code>.
+        </td>
       </tr>
       <tr>
         <td><span class="tag-action">ACTION</span> <span class="code-fn">importarTransporteAction</span></td>
@@ -1446,7 +1457,8 @@
   <h3>4. <code>vw_fact_mes</code></h3>
   <p>Calcula a faturação agregada mensal por cliente: <code>total_docs</code>, <code>total_linhas</code>,
     <code>total_quantidade</code>, <code>total_merc</code>, <code>total_iva</code>, <code>total_desc</code> e
-    <code>total_liquido = (total_merc - total_iva - total_desc)</code>.</p>
+    <code>total_liquido = (total_merc - total_iva - total_desc)</code>.
+  </p>
 
   <h3>5. <code>VW_torrestir_last</code></h3>
   <p>Retorna o estado mais recente de cada expedição através de <code>DISTINCT ON (ref_ser)</code> ordenado por data e

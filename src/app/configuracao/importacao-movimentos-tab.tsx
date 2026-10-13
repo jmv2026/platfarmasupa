@@ -124,6 +124,23 @@ export default function ImportacaoMovimentosTab({
   const [movFilterArtigo, setMovFilterArtigo] = useState<string>('todos');
   const [movFilterArmazem, setMovFilterArmazem] = useState<string>('todos');
 
+  useEffect(() => {
+    setMovimentosList(initialMovimentos);
+  }, [initialMovimentos]);
+
+  // Cliente selecionado no filtro de clientes
+  const selectedClient = useMemo(() => {
+    if (!movFilterClient || movFilterClient === 'todos') return null;
+    return clientsList.find((c) => c.id === movFilterClient) || null;
+  }, [clientsList, movFilterClient]);
+
+  const selectedClientMovimentosCount = useMemo(() => {
+    if (!selectedClient) return 0;
+    return movimentosList.filter(
+      (m) => m.cliente_id === selectedClient.id || (selectedClient.sigla && m.sigla === selectedClient.sigla)
+    ).length;
+  }, [movimentosList, selectedClient]);
+
   // Estados para imp_stk (Legado / Inventários Brutos)
 
   // Feedback global da aba
@@ -217,12 +234,34 @@ export default function ImportacaoMovimentosTab({
   };
 
   const handleClearMovimentosTable = async () => {
+    if (!movFilterClient || movFilterClient === 'todos') {
+      setFeedback({
+        type: 'error',
+        message: 'Por favor, selecione um cliente no filtro "Cliente" antes de limpar os movimentos.',
+      });
+      setConfirmClearMovModal(false);
+      return;
+    }
+
     setClearingMovLoading(true);
     try {
-      const res = await limparMovimentosAction();
+      const res = await limparMovimentosAction(movFilterClient);
       if (res.success) {
-        setMovimentosList([]);
-        setFeedback({ type: 'success', message: 'Tabela de movimentos limpa com sucesso.' });
+        setMovimentosList((prev) =>
+          prev.filter(
+            (m) =>
+              m.cliente_id !== movFilterClient &&
+              (!selectedClient?.sigla || m.sigla !== selectedClient.sigla)
+          )
+        );
+        const clientLabel = selectedClient?.name
+          ? `${selectedClient.name}${selectedClient.sigla ? ` (${selectedClient.sigla})` : ''}`
+          : 'cliente selecionado';
+        const countMsg = res.count !== undefined ? ` (${res.count} movimentos eliminados)` : '';
+        setFeedback({
+          type: 'success',
+          message: `Movimentos do cliente ${clientLabel} limpos com sucesso.${countMsg}`,
+        });
         setConfirmClearMovModal(false);
         if (onRefresh) onRefresh();
       } else {
@@ -242,15 +281,24 @@ export default function ImportacaoMovimentosTab({
 
   // Exportar Movimentos Registados em CSV
 
-  // KPIs dos Movimentos
-  const totalMovimentosCount = movimentosList.length;
-  const countES = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'es').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
-  const countSS = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'ss').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
-  const countET = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'et').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
-  const countST = useMemo(() => movimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'st').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [movimentosList]);
+  // KPIs dos Movimentos filtrados pelo cliente selecionado
+  const kpiMovimentosList = useMemo(() => {
+    if (!movFilterClient || movFilterClient === 'todos') {
+      return movimentosList;
+    }
+    return movimentosList.filter(
+      (m) => m.cliente_id === movFilterClient || (selectedClient?.sigla && m.sigla === selectedClient.sigla)
+    );
+  }, [movimentosList, movFilterClient, selectedClient]);
+
+  const totalMovimentosCount = kpiMovimentosList.length;
+  const countES = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'es').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
+  const countSS = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'ss').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
+  const countET = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'et').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
+  const countST = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'st').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
   const totalVolumeMovimentado = useMemo(
-    () => movimentosList.reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
-    [movimentosList]
+    () => kpiMovimentosList.reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
+    [kpiMovimentosList]
   );
 
   // Lista de artigos únicos disponíveis para filtro
@@ -388,8 +436,15 @@ export default function ImportacaoMovimentosTab({
           {/* KPIs dos Movimentos */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-on-surface-variant">Total Movimentos</p>
-              <p className="text-xl font-bold font-headline text-secondary mt-0.5">{totalMovimentosCount}</p>
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-[11px] font-medium text-on-surface-variant truncate">Total Movimentos</p>
+                {selectedClient && (
+                  <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded shrink-0">
+                    {selectedClient.sigla || selectedClient.name}
+                  </span>
+                )}
+              </div>
+              <p className="text-xl font-bold font-headline text-secondary mt-0.5">{totalMovimentosCount.toLocaleString('pt-PT')}</p>
             </div>
 
             <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl p-4 shadow-sm">
@@ -478,12 +533,30 @@ export default function ImportacaoMovimentosTab({
                 {movimentosList.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setConfirmClearMovModal(true)}
+                    onClick={() => {
+                      if (!movFilterClient || movFilterClient === 'todos') {
+                        setFeedback({
+                          type: 'error',
+                          message: 'Por favor, selecione um cliente no filtro "Cliente" para limpar os respetivos movimentos.',
+                        });
+                        return;
+                      }
+                      setConfirmClearMovModal(true);
+                    }}
                     disabled={clearingMovLoading}
-                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 ${
+                      movFilterClient === 'todos'
+                        ? 'bg-rose-50/60 hover:bg-rose-50 text-rose-500 border border-rose-200/60'
+                        : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs'
+                    }`}
+                    title={
+                      movFilterClient === 'todos'
+                        ? 'Selecione um cliente no filtro "Cliente" para limpar os movimentos'
+                        : `Limpar movimentos de ${selectedClient?.name || 'cliente selecionado'}`
+                    }
                   >
                     <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                    Limpar Movimentos
+                    Limpar Movimentos {selectedClient?.sigla ? `(${selectedClient.sigla})` : ''}
                   </button>
                 )}
               </div>
@@ -755,13 +828,27 @@ export default function ImportacaoMovimentosTab({
                 <span className="material-symbols-outlined text-xl">warning</span>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-on-surface">Limpar Tabela de Movimentos?</h4>
+                <h4 className="text-sm font-bold text-on-surface">
+                  Limpar Movimentos de {selectedClient?.sigla || selectedClient?.name || 'Cliente'}?
+                </h4>
                 <p className="text-xs text-on-surface-variant mt-0.5">Esta ação não pode ser revertida.</p>
               </div>
             </div>
 
             <p className="text-xs text-on-surface leading-relaxed">
-              Tem a certeza de que deseja eliminar permanentemente todos os <strong>{totalMovimentosCount} registos</strong> da tabela <code>movimentos</code>? O saldo de stock nas views será recalculado.
+              Tem a certeza de que deseja eliminar permanentemente os movimentos do cliente{' '}
+              <strong>{selectedClient?.name || 'selecionado'}</strong>
+              {selectedClient?.sigla && (
+                <> (<code className="font-mono text-primary font-bold">{selectedClient.sigla}</code>)</>
+              )}{' '}
+              da tabela <code>movimentos</code>?
+              {selectedClientMovimentosCount > 0 && (
+                <> Foram encontrados <strong>{selectedClientMovimentosCount} registos</strong> deste cliente na lista atual.</>
+              )}
+              <br />
+              <span className="text-on-surface-variant text-[11px] mt-1 block">
+                O saldo de stock nas views será recalculado após esta eliminação.
+              </span>
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -779,12 +866,11 @@ export default function ImportacaoMovimentosTab({
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">delete_forever</span>
-                {clearingMovLoading ? 'A eliminar...' : 'Sim, Limpar Movimentos'}
+                {clearingMovLoading ? 'A eliminar...' : `Sim, Limpar Movimentos (${selectedClient?.sigla || 'Cliente'})`}
               </button>
             </div>
           </div>
         </div>
-
       )}
     </div>
   );
