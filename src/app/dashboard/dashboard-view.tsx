@@ -65,6 +65,7 @@ export interface DashboardPedidoItem {
 export interface DashboardSaidaItem {
   id: string;
   cliente_id: string;
+  sigla?: string | null;
   artigo_cli: string;
   artigo_codigo: string;
   artigo_descricao: string;
@@ -148,6 +149,11 @@ export default function DashboardView({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  const selectedClientObj = useMemo(() => {
+    if (selectedClientId === 'todos') return null;
+    return clients.find((c) => c.id === selectedClientId);
+  }, [clients, selectedClientId]);
+
   // Filtragem dos dados de acordo com a seleção de cliente
   const filteredStockAtual = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
@@ -167,22 +173,28 @@ export default function DashboardView({
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return pedidos;
     }
-    return pedidos.filter((p) => p.cliente_id === selectedClientId);
-  }, [pedidos, selectedClientId, isManagerOrAdmin]);
+    return pedidos.filter(
+      (p) => p.cliente_id === selectedClientId || (selectedClientObj?.sigla && p.sigla === selectedClientObj.sigla)
+    );
+  }, [pedidos, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   const filteredSaidas = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return saidas;
     }
-    return saidas.filter((s) => s.cliente_id === selectedClientId);
-  }, [saidas, selectedClientId, isManagerOrAdmin]);
+    return saidas.filter(
+      (s) => s.cliente_id === selectedClientId || (selectedClientObj?.sigla && s.sigla === selectedClientObj.sigla)
+    );
+  }, [saidas, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   const filteredFaturacao = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return faturacao;
     }
-    return faturacao.filter((f) => f.cliente_id === selectedClientId);
-  }, [faturacao, selectedClientId, isManagerOrAdmin]);
+    return faturacao.filter(
+      (f) => f.cliente_id === selectedClientId || (selectedClientObj?.sigla && f.sigla_cliente === selectedClientObj.sigla)
+    );
+  }, [faturacao, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   // 1. Stock Venda
   const totalStockVenda = useMemo(() => {
@@ -256,11 +268,6 @@ export default function DashboardView({
     });
     return artigosSet.size;
   }, [filteredStockAtual]);
-
-  const selectedClientObj = useMemo(() => {
-    if (selectedClientId === 'todos') return null;
-    return clients.find((c) => c.id === selectedClientId);
-  }, [clients, selectedClientId]);
 
   const effectiveClientObj = isManagerOrAdmin
     ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))

@@ -31,16 +31,47 @@ export default async function PrevisaoStockPage() {
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
+  // Função auxiliar para paginação transparente (PostgREST tem limite padrão de 1000 registos por pedido)
+  async function fetchAllRows<T>(
+    fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+    pageSize = 1000
+  ): Promise<T[]> {
+    const allRows: T[] = [];
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await fetchPage(from, from + pageSize - 1);
+      if (error) {
+        console.error('Erro ao buscar dados paginados:', error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      allRows.push(...data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return allRows;
+  }
+
   // Fonte exclusiva para pedidos e consumos no gráfico de previsão: view vw_pedidos
-  let pedidosQuery = supabase
-    .from('vw_pedidos')
-    .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc, pedido_linhas');
+  const fetchPedidos = () =>
+    fetchAllRows<any>((from, to) => {
+      let q = supabase
+        .from('vw_pedidos')
+        .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc, pedido_linhas')
+        .range(from, to);
+      if (!isManagerOrAdmin && userClientId) {
+        q = q.eq('cliente_id', userClientId);
+      }
+      return q;
+    });
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
-    pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
   }
 
   // Buscar dados em paralelo
@@ -48,12 +79,12 @@ export default async function PrevisaoStockPage() {
     { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
-    { data: pedidos },
+    pedidos,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
-    pedidosQuery,
+    fetchPedidos(),
   ]);
 
   return (

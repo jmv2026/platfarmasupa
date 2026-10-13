@@ -56,6 +56,11 @@ export default function PrevisaoStockView({
     }
   }, [searchParams]);
 
+  const selectedClientObj = useMemo(() => {
+    if (selectedClientId === 'todos') return null;
+    return clients.find((c) => c.id === selectedClientId);
+  }, [clients, selectedClientId]);
+
   // Filtragem dos dados de acordo com a seleção de cliente
   const filteredStockAtual = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
@@ -75,13 +80,10 @@ export default function PrevisaoStockView({
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
       return pedidos;
     }
-    return pedidos.filter((p) => p.cliente_id === selectedClientId);
-  }, [pedidos, selectedClientId, isManagerOrAdmin]);
-
-  const selectedClientObj = useMemo(() => {
-    if (selectedClientId === 'todos') return null;
-    return clients.find((c) => c.id === selectedClientId);
-  }, [clients, selectedClientId]);
+    return pedidos.filter(
+      (p) => p.cliente_id === selectedClientId || (selectedClientObj?.sigla && p.sigla === selectedClientObj.sigla)
+    );
+  }, [pedidos, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   return (
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">

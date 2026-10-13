@@ -30,44 +30,86 @@ export default async function DashboardPage() {
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
-  
-  // Fonte exclusiva para pedidos no dashboard: view vw_pedidos
-  let pedidosQuery = supabase
-    .from('vw_pedidos')
-    .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc');
-    
   let faturacaoQuery = supabase
     .from('vw_fact_mes')
     .select('sigla_cliente, cliente_id, data, total_docs, total_quantidade, total_merc, total_iva, total_desc');
-  let saidasQuery = supabase.from('vw_saidas').select('id, cliente_id, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
-    pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
-    saidasQuery = saidasQuery.eq('cliente_id', userClientId);
     faturacaoQuery = faturacaoQuery.eq('cliente_id', userClientId);
   }
+
+  // Função auxiliar para paginação transparente (PostgREST tem limite padrão de 1000 registos por pedido)
+  async function fetchAllRows<T>(
+    fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+    pageSize = 1000
+  ): Promise<T[]> {
+    const allRows: T[] = [];
+    let from = 0;
+
+    while (true) {
+      const { data, error } = await fetchPage(from, from + pageSize - 1);
+      if (error) {
+        console.error('Erro ao buscar dados paginados:', error);
+        break;
+      }
+      if (!data || data.length === 0) break;
+
+      allRows.push(...data);
+      if (data.length < pageSize) break;
+      from += pageSize;
+    }
+
+    return allRows;
+  }
+
+  // Buscar todas as saídas (vw_saidas ultrapassa 1000 registos e sem paginação trunca clientes como a Varimpulse)
+  const fetchSaidas = () =>
+    fetchAllRows<any>((from, to) => {
+      let q = supabase
+        .from('vw_saidas')
+        .select('id, cliente_id, sigla, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote')
+        .range(from, to);
+      if (!isManagerOrAdmin && userClientId) {
+        q = q.eq('cliente_id', userClientId);
+      }
+      return q;
+    });
+
+  // Buscar pedidos com suporte a paginação transparente
+  const fetchPedidos = () =>
+    fetchAllRows<any>((from, to) => {
+      let q = supabase
+        .from('vw_pedidos')
+        .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc')
+        .range(from, to);
+      if (!isManagerOrAdmin && userClientId) {
+        q = q.eq('cliente_id', userClientId);
+      }
+      return q;
+    });
 
   // Buscar todos os dados em paralelo
   const [
     { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
-    { data: pedidosRaw },
+    pedidosRaw,
     { data: faturacao },
-    { data: saidasRaw },
+    saidasRaw,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
-    pedidosQuery,
+    fetchPedidos(),
     faturacaoQuery,
-    saidasQuery,
+    fetchSaidas(),
   ]);
 
   const finalPedidos = pedidosRaw || [];
+  const finalSaidas = saidasRaw || [];
   const finalFaturacao = faturacao || [];
 
   return (
@@ -85,7 +127,7 @@ export default async function DashboardPage() {
         stockAtual={stockAtual || []}
         stockPedidos={stockPedidos || []}
         pedidos={finalPedidos}
-        saidas={saidasRaw || []}
+        saidas={finalSaidas}
         faturacao={finalFaturacao}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}

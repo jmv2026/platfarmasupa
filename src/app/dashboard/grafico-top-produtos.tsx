@@ -24,12 +24,35 @@ interface ProdutoRanking {
   percentagemTop: number;
 }
 
-// Extrai ano e mês com segurança
+// Extrai ano e mês/data com segurança para múltiplos formatos (ISO com T, PostgreSQL com espaço/fuso, YYYY-MM-DD)
 function extrairData(dateStr: string | null | undefined): Date | null {
   if (!dateStr) return null;
   const str = String(dateStr).trim();
-  const d = new Date(str.includes('T') ? str : `${str}T00:00:00`);
-  return isNaN(d.getTime()) ? null : d;
+  if (!str) return null;
+
+  // Se for apenas data no formato YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const d = new Date(`${str}T00:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // Se contiver espaço e fuso (ex: "2026-04-27 00:00:00+00")
+  if (str.includes(' ') && !str.includes('T')) {
+    const isoStr = str.replace(' ', 'T');
+    const d = new Date(isoStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+
+  // Se tiver pelo menos 10 caracteres no formato YYYY-MM-DD
+  if (str.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const d = new Date(`${str.slice(0, 10)}T00:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  return null;
 }
 
 export default function GraficoTopProdutos({
