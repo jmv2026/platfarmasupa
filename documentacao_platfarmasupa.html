@@ -1276,8 +1276,8 @@
 
   <!-- CONTINUAÇÃO DICIONÁRIO -->
   <div class="page-break"></div>
-  <h2>Tabela: <code>movimentos</code></h2>
-  <p>Tabela central de registo cronológico de todos os movimentos de armazém (físicos e transacionais).</p>
+  <h2>Tabela: <code>movimentos</code> (Cabeçalhos de Documento)</h2>
+  <p>Tabela de cabeçalho dos documentos de movimento (faturas, guias, entradas). Relação 1:N com <code>movimentos_linhas</code>.</p>
   <table>
     <thead>
       <tr>
@@ -1289,35 +1289,103 @@
     </thead>
     <tbody>
       <tr>
-        <td><code>id</code></td>
-        <td><span class="type-badge">uuid</span></td>
-        <td><span class="key-badge pk-badge">PK</span> DEFAULT gen_random_uuid()</td>
-        <td>Chave primária do movimento.</td>
+        <td><code>documento_ref</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td><span class="key-badge pk-badge">PK</span> NOT NULL</td>
+        <td>Chave primária única do cabeçalho do documento (ex: 'MAX-FA 26MAX/143').</td>
       </tr>
       <tr>
         <td><code>cliente_id</code></td>
         <td><span class="type-badge">uuid</span></td>
         <td><span class="key-badge fk-badge">FK</span> &rarr; clientes(id)</td>
-        <td>Cliente proprietário do stock movimentado.</td>
+        <td>Cliente proprietário associado ao documento.</td>
+      </tr>
+      <tr>
+        <td><code>sigla</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td>NOT NULL</td>
+        <td>Sigla do cliente (ex: 'MAX', 'MIA', 'TOV').</td>
+      </tr>
+      <tr>
+        <td><code>tipo_doc</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td>NULLABLE</td>
+        <td>Tipo de documento (ex: 'FA', 'ES', 'ET', 'ST').</td>
+      </tr>
+      <tr>
+        <td><code>data_movimento</code></td>
+        <td><span class="type-badge">timestamptz</span></td>
+        <td>DEFAULT now()</td>
+        <td>Data e hora em que a operação física ou documental decorreu.</td>
+      </tr>
+      <tr>
+        <td><code>total_merc</code>, <code>total_iva</code>, <code>total_desc</code>, <code>total_outros</code></td>
+        <td><span class="type-badge">numeric</span></td>
+        <td>DEFAULT 0</td>
+        <td>Totais financeiros calculados ao nível do documento.</td>
+      </tr>
+      <tr>
+        <td><code>entidade</code>, <code>nome</code>, <code>num_contribuinte</code>, <code>morada</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td>NULLABLE</td>
+        <td>Dados fiscais e de faturação do destinatário.</td>
+      </tr>
+      <tr>
+        <td><code>EntidadeEntrega</code>, <code>NomeEntrega</code>, <code>MoradaEntrega</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td>NULLABLE</td>
+        <td>Morada física e dados para a logística de entrega.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Tabela: <code>movimentos_linhas</code> (Linhas de Artigo)</h2>
+  <p>Tabela de detalhe de cada artigo movimentado. Cada linha possui chave primária <code>doc_linha</code>, permitindo ler todas as linhas individualmente sem colisões.</p>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 22%;">Campo</th>
+        <th style="width: 18%;">Tipo de Dados</th>
+        <th style="width: 15%;">Restrições</th>
+        <th>Descrição</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>doc_linha</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td><span class="key-badge pk-badge">PK</span> NOT NULL</td>
+        <td>Chave primária única da linha de movimento (ex: 'MAX-FA 26MAX/143-6'). Garante a integridade e leitura de todas as linhas.</td>
+      </tr>
+      <tr>
+        <td><code>documento_ref</code></td>
+        <td><span class="type-badge">text</span></td>
+        <td><span class="key-badge fk-badge">FK</span> &rarr; movimentos (ON DELETE CASCADE)</td>
+        <td>Chave estrangeira que referencia o cabeçalho correspondente na tabela <code>movimentos</code>.</td>
+      </tr>
+      <tr>
+        <td><code>num_linha</code></td>
+        <td><span class="type-badge">integer</span></td>
+        <td>NOT NULL</td>
+        <td>Número sequencial da linha dentro do documento.</td>
       </tr>
       <tr>
         <td><code>artigo_cli</code></td>
         <td><span class="type-badge">text</span></td>
         <td><span class="key-badge fk-badge">FK</span> &rarr; artigos(artigo_cli)</td>
-        <td>Artigo movimentado.</td>
+        <td>Artigo movimentado no armazém.</td>
       </tr>
       <tr>
         <td><code>tipo_movimento</code></td>
         <td><span class="type-badge">text</span></td>
         <td>CHECK ('es', 'ss', 'et', 'st')</td>
-        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada
-          Transferência, <strong>st:</strong> Saída Transferência.</td>
+        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada Transferência, <strong>st:</strong> Saída Transferência.</td>
       </tr>
       <tr>
         <td><code>quantidade</code></td>
         <td><span class="type-badge">numeric</span></td>
         <td>CHECK (&gt; 0)</td>
-        <td>Quantidade movimentada (positiva).</td>
+        <td>Quantidade movimentada do artigo (sempre estritamente positiva).</td>
       </tr>
       <tr>
         <td><code>tipo_armazem</code></td>
@@ -1329,7 +1397,7 @@
         <td><code>armazem_loc</code></td>
         <td><span class="type-badge">text</span></td>
         <td>NOT NULL</td>
-        <td>Concatenação da sigla com o armazém (ex: 'MIA01').</td>
+        <td>Concatenação da sigla com o armazém (ex: 'MAX-01').</td>
       </tr>
       <tr>
         <td><code>posicao</code></td>
@@ -1350,28 +1418,16 @@
         <td>Data limite de validade do lote.</td>
       </tr>
       <tr>
+        <td><code>data_fabrico</code></td>
+        <td><span class="type-badge">date</span></td>
+        <td>NULLABLE</td>
+        <td>Data de fabrico (ignorado se '1980-01-01').</td>
+      </tr>
+      <tr>
         <td><code>data_movimento</code></td>
         <td><span class="type-badge">timestamptz</span></td>
         <td>DEFAULT now()</td>
         <td>Data e hora em que a operação física ou documental decorreu.</td>
-      </tr>
-      <tr>
-        <td><code>documento_ref</code></td>
-        <td><span class="type-badge">text</span></td>
-        <td>NULLABLE</td>
-        <td>Referência do documento, guia ou número de pedido (ex: PED-2026-0001).</td>
-      </tr>
-      <tr>
-        <td><code>ref_ser</code></td>
-        <td><span class="type-badge">text</span></td>
-        <td>GENERATED / TEXT</td>
-        <td>Número do documento sem prefixo usado para cruzar com tracking Torrestir.</td>
-      </tr>
-      <tr>
-        <td><code>total_merc</code>, <code>total_iva</code>, <code>total_desc</code></td>
-        <td><span class="type-badge">numeric</span></td>
-        <td>DEFAULT 0</td>
-        <td>Valores monetários associados ao documento comercial de saída.</td>
       </tr>
     </tbody>
   </table>

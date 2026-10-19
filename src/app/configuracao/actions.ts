@@ -874,27 +874,32 @@ export async function importarMovimentosAction(
           .upsert(Array.from(headersMap.values()), { onConflict: 'documento_ref' });
       }
 
-      // Linhas em movimentos_linhas
-      const linhasBatch = batch.map((item: any) => ({
-        artigo_id: item.artigo_cli,
-        artigo_cli: item.artigo_cli,
-        sigla: item.sigla,
-        tipo_movimento: item.tipo_movimento,
-        quantidade: item.quantidade,
-        tipo_armazem: item.tipo_armazem,
-        armazem_loc: item.armazem_loc,
-        posicao: item.posicao,
-        lote: item.lote,
-        nr_serie: item.nr_serie,
-        validade: item.validade,
-        data_fabrico: item.data_fabrico,
-        data_movimento: item.data_movimento,
-        documento_ref: item.documento_ref,
-        observacoes: item.observacoes,
-        created_by: user.id,
-      }));
+      // Linhas em movimentos_linhas (Chave Primária: doc_linha)
+      const linhasBatch = batch.map((item: any, idx: number) => {
+        const docLinha = item.doc_linha || `${item.documento_ref || 'DOC'}-${item.num_linha ?? (idx + 1)}`;
+        return {
+          doc_linha: docLinha,
+          documento_ref: item.documento_ref,
+          num_linha: item.num_linha ?? (idx + 1),
+          artigo_cli: item.artigo_cli,
+          tipo_movimento: item.tipo_movimento,
+          quantidade: item.quantidade,
+          tipo_armazem: item.tipo_armazem,
+          armazem_loc: item.armazem_loc,
+          posicao: item.posicao,
+          lote: item.lote,
+          nr_serie: item.nr_serie,
+          validade: item.validade,
+          data_fabrico: item.data_fabrico,
+          data_movimento: item.data_movimento,
+          observacoes_linha: item.observacoes,
+          created_by: user.id,
+        };
+      });
 
-      const { error: insertErr } = await supabase.from('movimentos_linhas').insert(linhasBatch);
+      const { error: insertErr } = await supabase
+        .from('movimentos_linhas')
+        .upsert(linhasBatch, { onConflict: 'doc_linha' });
       if (insertErr) {
         console.error('Erro ao inserir lote em movimentos_linhas:', insertErr);
         return {
@@ -1042,8 +1047,13 @@ export async function importarPlatMovimentosAction(
 
         const dataMov = r.data_movimento || r.data || null;
         const dataOnly = r.data || (dataMov ? dataMov.split(' ')[0] : null);
-        const dataFab = r.datafabrico ? r.datafabrico.split(' ')[0] : null;
+        const rawFab = r.data_fabrico || r.datafabrico;
+        const dataFab = rawFab ? rawFab.split(' ')[0] : null;
         const cleanDataFab = (!dataFab || dataFab === '1980-01-01' || dataFab.startsWith('1980-01-01')) ? null : dataFab;
+
+        const resolvedDocRef = r.documento_ref ?? (resolvedSigla && r.documento ? `${resolvedSigla}-${r.documento}` : r.documento) ?? null;
+        const resolvedNumLinha = r.num_linha != null ? Number(r.num_linha) : null;
+        const resolvedDocLinha = r.doc_linha ?? (resolvedDocRef && resolvedNumLinha != null ? `${resolvedDocRef}-${resolvedNumLinha}` : (r.documento && resolvedNumLinha != null ? `${r.documento}-${resolvedNumLinha}` : null));
 
         return {
           sigla: resolvedSigla,
@@ -1051,10 +1061,10 @@ export async function importarPlatMovimentosAction(
           data_movimento: dataMov,
           tipo_movimento: r.tipo_movimento,
           documento: r.documento,
-          documento_ref: r.documento_ref ?? r.documento ?? null,
+          documento_ref: resolvedDocRef,
           tipo_doc: r.tipo_doc ?? null,
-          num_linha: r.num_linha,
-          doc_linha: r.doc_linha ?? (r.documento && r.num_linha ? `${r.documento}-${r.num_linha}` : null),
+          num_linha: resolvedNumLinha,
+          doc_linha: resolvedDocLinha,
           chave1: r.chave1,
           chave2: r.chave2,
           valor_unitario: r.valor_unitario ?? 0,
@@ -1069,7 +1079,7 @@ export async function importarPlatMovimentosAction(
           quantidade: r.quantidade ?? 0,
           familia: r.familia,
           sub_familia: r.sub_familia,
-          datafabrico: cleanDataFab,
+          data_fabrico: cleanDataFab,
           validade: r.validade,
           entidade: r.entidade ?? null,
           total_iva: r.total_iva ?? 0,
@@ -1134,7 +1144,7 @@ export async function limparPlatMovimentosAction() {
   }
 
   try {
-    const { error } = await supabase.from('plat_movimentos').delete().gt('id', 0);
+    const { error } = await supabase.from('plat_movimentos').delete().neq('doc_linha', '');
     if (error) {
       return { success: false, error: error.message };
     }
@@ -1175,7 +1185,7 @@ export async function getPlatMovimentosStatusAction() {
   }
 }
 
-// 15. AÇÃO: Transferir de plat_movimentos para movimentos (cabeçalhos) e movimentos_linhas (linhas)
+// 15. AÇÃO: Transferir de plat_movimentos para movimentos (1º Passo: Cabeçalhos/Documentos)
 export async function transferirPlatMovimentosParaMovimentosAction() {
   const supabase = await createClient();
   const {
@@ -1183,7 +1193,7 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { success: false, error: 'Sessão expirada.' };
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
   }
 
   const { data: profile } = await supabase
@@ -1208,16 +1218,18 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     revalidatePath('/dashboard');
     revalidatePath('/pedidos');
 
-    const linhas = typeof data === 'object' && data !== null ? Number((data as any).linhas ?? 0) : (typeof data === 'number' ? data : 0);
-    const cabecalhos = typeof data === 'object' && data !== null ? Number((data as any).cabecalhos ?? 0) : 0;
-    const artigos = typeof data === 'object' && data !== null ? Number((data as any).artigos ?? 0) : 0;
+    const linhas = typeof data === 'object' && data !== null 
+      ? Number((data as any).linhas ?? (data as any).count ?? 0) 
+      : (typeof data === 'number' ? data : 0);
+    const documentos = typeof data === 'object' && data !== null 
+      ? Number((data as any).documentos ?? 0) 
+      : 0;
 
     return { 
       success: true, 
-      count: linhas, 
-      linhas, 
-      cabecalhos, 
-      artigos,
+      count: linhas,
+      linhas,
+      documentos,
       data 
     };
   } catch (err: unknown) {
@@ -1225,6 +1237,7 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     return { success: false, error: msg };
   }
 }
+
 // 10. AÇÃO: Criar artigos a partir da tabela plat_movimentos
 export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) {
   const supabase = await createClient();

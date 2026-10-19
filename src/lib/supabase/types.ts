@@ -228,7 +228,7 @@ export interface Movimento {
 export type MovimentoSF = Movimento;
 
 export interface PlatMovimento {
-  id: number;
+  doc_linha: string;
   sigla?: string | null;
   num_linha?: number | null;
   data?: string | null;
@@ -253,6 +253,7 @@ export interface PlatMovimento {
   familia?: string | null;
   sub_familia?: string | null;
   validade?: string | null;
+  data_fabrico?: string | null;
   datafabrico?: string | null;
   total_iva?: number | null;
   total_merc?: number | null;
@@ -260,7 +261,6 @@ export interface PlatMovimento {
   entidade?: string | null;
   requisicao?: string | null;
   num_contribuinte?: string | null;
-  doc_linha?: string | null;
   num_registo?: number | null;
   estado_stock?: string | null;
   sistema?: boolean | null;

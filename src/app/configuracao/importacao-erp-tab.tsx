@@ -506,7 +506,7 @@ export default function ImportacaoErpTab({
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (11):</span>{' '}
-              <span className="text-on-surface-variant">artigo, descricao, tipo_artigo, armazem, localizacao, lote, quantidade, familia, sub_familia, datafabrico, validade</span>
+              <span className="text-on-surface-variant">artigo, descricao, tipo_artigo, armazem, localizacao, lote, quantidade, familia, sub_familia, data_fabrico, validade</span>
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais (7):</span>{' '}

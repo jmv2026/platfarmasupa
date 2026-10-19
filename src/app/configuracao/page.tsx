@@ -48,7 +48,7 @@ export default async function ConfiguracaoPage() {
       .from('vw_movimentos_detalhe')
       .select('*')
       .order('data_movimento', { ascending: false })
-      .limit(1000),
+      .limit(10000),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
     supabase

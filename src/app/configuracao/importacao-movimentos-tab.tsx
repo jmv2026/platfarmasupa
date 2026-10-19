@@ -113,7 +113,6 @@ export default function ImportacaoMovimentosTab({
   const [clearingPlatMovLoading, setClearingPlatMovLoading] = useState(false);
   const [confirmClearPlatMovModal, setConfirmClearPlatMovModal] = useState(false);
   const [transferringPlatMov, setTransferringPlatMov] = useState(false);
-  const [confirmTransferModal, setConfirmTransferModal] = useState(false);
   const [creatingArtigosLoading, setCreatingArtigosLoading] = useState(false);
   const [selectedClientIdForArtigos, setSelectedClientIdForArtigos] = useState('');
   
@@ -257,32 +256,39 @@ export default function ImportacaoMovimentosTab({
     if (!selectedDocModal) return null;
     return documentosList.find((d) => d.documento_ref === selectedDocModal) || null;
   }, [selectedDocModal, documentosList]);
-
-  // Ação de transferência de plat_movimentos para movimentos e movimentos_linhas
+  // Ação de transferência de plat_movimentos para movimentos (1º Passo)
   const handleTransferirPlatMov = async () => {
     setTransferringPlatMov(true);
+    setFeedback(null);
     try {
       const res = await transferirPlatMovimentosParaMovimentosAction();
-      setConfirmTransferModal(false);
       if (res.success) {
         setFeedback({ 
           type: 'success', 
-          message: `Transferência concluída com sucesso! Foram preenchidos ${res.cabecalhos ?? 0} cabeçalhos na tabela movimentos, ${res.linhas ?? res.count ?? 0} linhas na tabela movimentos_linhas e ${res.artigos ?? 0} novos artigos sincronizados.` 
+          message: `Transferência concluída com sucesso! Foram transferidos ${res.documentos ?? 0} documentos para a tabela movimentos e ${res.linhas ?? res.count ?? 0} linhas para a tabela movimentos_linhas.` 
         });
         carregarStatusPlat();
+        // Recarregar os movimentos atualizados da base de dados
+        const supabase = createClient();
+        const { data: updatedMovs } = await supabase
+          .from('vw_movimentos_detalhe')
+          .select('*')
+          .order('data_movimento', { ascending: false })
+          .limit(10000);
+        if (updatedMovs && updatedMovs.length > 0) {
+          setMovimentosList(updatedMovs as MovimentoWithDetails[]);
+        }
         if (onRefresh) onRefresh();
       } else {
-        setFeedback({ type: 'error', message: res.error || 'Erro na transferência.' });
+        setFeedback({ type: 'error', message: res.error || 'Erro na transferência para a tabela movimentos.' });
       }
     } catch (err) {
-      setConfirmTransferModal(false);
-      const msg = err instanceof Error ? err.message : 'Erro ao transferir';
+      const msg = err instanceof Error ? err.message : 'Erro ao transferir para movimentos';
       setFeedback({ type: 'error', message: msg });
     } finally {
       setTransferringPlatMov(false);
     }
   };
-
   const handleCriarArtigosFromPlatMov = async () => {
     if (!selectedClientIdForArtigos) {
       setFeedback({ type: 'error', message: 'Selecione um cliente primeiro.' });
@@ -668,21 +674,26 @@ export default function ImportacaoMovimentosTab({
                   {creatingArtigosLoading ? 'A criar...' : 'Criar Artigos'}
                 </button>
               </div>
-
-              {/* Botão de Transferir plat_movimentos */}
+              {/* Botão de Transferir plat_movimentos (1º Passo: movimentos) */}
               <button
                 type="button"
-                onClick={() => {
-                  carregarStatusPlat();
-                  setConfirmTransferModal(true);
-                }}
+                onClick={handleTransferirPlatMov}
                 disabled={transferringPlatMov}
-                className="px-3 py-1.5 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                className="px-3.5 py-1.5 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                title="Transferir dados de plat_movimentos para a tabela movimentos (1º Passo)"
               >
-                <span className="material-symbols-outlined text-sm">move_down</span>
-                Transferir plat_movimentos
+                {transferringPlatMov ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>A Transferir...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">move_down</span>
+                    <span>Transferir plat_movimentos</span>
+                  </>
+                )}
               </button>
-              
               {/* Limpar Tabela plat_movimentos */}
               <button
                 type="button"
@@ -821,17 +832,19 @@ export default function ImportacaoMovimentosTab({
           )}
 
           {/* ================================================================= */}
-          {/* TABELA: MODO LINHAS (movimentos_linhas) */}
+          {/* TABELA: MODO LINHAS (movimentos_linhas - Chave Primária: doc_linha) */}
           {/* ================================================================= */}
           {viewMode === 'linhas' && (
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-outline-variant/20 rounded-xl">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-container/80 sticky top-0 z-10 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                   <tr>
+                    <th className="py-2.5 px-3">Doc Linha (PK)</th>
+                    <th className="py-2.5 px-3">Doc Ref</th>
+                    <th className="py-2.5 px-3 text-center">Linha</th>
                     <th className="py-2.5 px-3">Data / Hora</th>
                     <th className="py-2.5 px-3">Sigla</th>
                     <th className="py-2.5 px-3">Tipo</th>
-                    <th className="py-2.5 px-3">Doc Ref</th>
                     <th className="py-2.5 px-3">Artigo</th>
                     <th className="py-2.5 px-3">Descrição</th>
                     <th className="py-2.5 px-3 text-right">Qtd</th>
@@ -845,7 +858,26 @@ export default function ImportacaoMovimentosTab({
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
                   {filteredMovimentos.length > 0 ? (
                     filteredMovimentos.map((m) => (
-                      <tr key={m.id || m.doc_linha} className="hover:bg-surface-container/30 transition-colors">
+                      <tr key={m.doc_linha || m.id} className="hover:bg-surface-container/30 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 bg-secondary/10 text-secondary px-2 py-0.5 rounded font-mono text-[11px] font-bold" title="Chave Primária de movimentos_linhas">
+                            {m.doc_linha}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocModal(m.documento_ref || null)}
+                            className="text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                            title="Ver cabeçalho do documento na tabela movimentos"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">receipt</span>
+                            {m.documento_ref || '-'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant text-center whitespace-nowrap">
+                          {m.num_linha ?? '-'}
+                        </td>
                         <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant whitespace-nowrap">
                           {formatDateTimeDisplay(m.data_movimento)}
                         </td>
@@ -853,17 +885,6 @@ export default function ImportacaoMovimentosTab({
                           {m.sigla || m.cliente_sigla || '-'}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">{renderTipoMovBadge(m.tipo_movimento)}</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDocModal(m.documento_ref || null)}
-                            className="text-secondary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
-                            title="Ver cabeçalho do documento"
-                          >
-                            <span className="material-symbols-outlined text-[13px]">receipt</span>
-                            {m.documento_ref || '-'}
-                          </button>
-                        </td>
                         <td className="py-2.5 px-3 font-mono font-bold text-on-surface whitespace-nowrap">{m.artigo_cli}</td>
                         <td className="py-2.5 px-3 truncate max-w-[180px]" title={m.artigo_descricao || ''}>
                           {m.artigo_descricao || '-'}
@@ -895,14 +916,11 @@ export default function ImportacaoMovimentosTab({
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={12} className="py-12 text-center text-on-surface-variant">
+                      <td colSpan={14} className="py-12 text-center text-on-surface-variant">
                         <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
                           swap_horiz
                         </span>
                         <p className="text-xs font-semibold">Nenhuma linha de movimento encontrada.</p>
-                        <p className="text-[11px] text-on-surface-variant/80 mt-1">
-                          Pressione "Transferir plat_movimentos" para popular as tabelas movimentos e movimentos_linhas.
-                        </p>
                       </td>
                     </tr>
                   )}
@@ -991,105 +1009,7 @@ export default function ImportacaoMovimentosTab({
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: CONFIRMAÇÃO DE TRANSFERÊNCIA DE PLAT_MOVIMENTOS */}
-      {/* ========================================================================= */}
-      {confirmTransferModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-2xl">move_down</span>
-              </div>
-              <div>
-                <h4 className="text-base font-bold text-on-surface">
-                  Transferir para movimentos e movimentos_linhas
-                </h4>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Processamento relacional dos dados staging da tabela <code>plat_movimentos</code>.
-                </p>
-              </div>
-            </div>
 
-            {/* Painel de Arquitetura da Transferência */}
-            <div className="space-y-3 bg-surface-container/40 p-4 rounded-xl border border-outline-variant/20 text-xs">
-              <p className="font-semibold text-on-surface flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-secondary text-sm">schema</span>
-                Estrutura de Preenchimento das Tabelas:
-              </p>
-              
-              <ul className="space-y-2 text-on-surface-variant">
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">receipt</span>
-                  <div>
-                    <strong className="text-on-surface">Tabela movimentos (Cabeçalhos):</strong>
-                    <p className="text-[11px] leading-relaxed">
-                      Agrupa por <code>documento_ref</code> e grava cliente, sigla, data, tipo de documento, dados da entidade, moradas de entrega e faturação, e totais financeiros.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-cyan-600 text-sm mt-0.5">list_alt</span>
-                  <div>
-                    <strong className="text-on-surface">Tabela movimentos_linhas (Linhas de Movimento):</strong>
-                    <p className="text-[11px] leading-relaxed">
-                      Preenche cada item com <code>doc_linha</code>, <code>artigo_cli</code>, tipo de movimento (ES, SS, ET, ST), quantidade, armazém, posição, lote e validade.
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-indigo-600 text-sm mt-0.5">auto_awesome</span>
-                  <div>
-                    <strong className="text-on-surface">Tabela artigos (Auto-sincronização):</strong>
-                    <p className="text-[11px] leading-relaxed">
-                      Regista automaticamente no catálogo de artigos quaisquer referências novas que ainda não existam.
-                    </p>
-                  </div>
-                </li>
-              </ul>
-
-              {/* Indicador de Dados Prontos */}
-              {platStatus && (
-                <div className="mt-3 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-[11px]">
-                  <span className="text-on-surface-variant">Registos em plat_movimentos:</span>
-                  <span className="font-mono font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
-                    {platStatus.totalPlat.toLocaleString('pt-PT')} registos prontos
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmTransferModal(false)}
-                disabled={transferringPlatMov}
-                className="px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container rounded-xl transition-all disabled:opacity-50 cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleTransferirPlatMov}
-                disabled={transferringPlatMov}
-                className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                {transferringPlatMov ? (
-                  <>
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    <span>A Transferir...</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">check</span>
-                    <span>Executar Transferência</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
       {/* MODAL 2: DETALHES DO DOCUMENTO (CABEÇALHO EM MOVIMENTOS & LINHAS) */}
