@@ -13,7 +13,6 @@ import {
   TipoArmazenamento,
   TipoCliente,
   TIPO_CLIENTE_LABELS,
-  ImpStk,
   Armazem,
   Tempo,
   TIPO_ARTIGO_LABELS,
@@ -49,7 +48,6 @@ interface ConfiguracaoTabsProps {
   clients: Client[];
   artigos: Artigo[];
   perfis: Perfil[];
-  initialImpStk?: ImpStk[];
   initialMovimentos?: MovimentoWithDetails[];
   armazens?: Armazem[];
   tempos?: Tempo[];
@@ -62,7 +60,6 @@ export default function ConfiguracaoTabs({
   clients,
   artigos,
   perfis,
-  initialImpStk = [],
   initialMovimentos = [],
   armazens = [],
   tempos = [],

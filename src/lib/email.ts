@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-import { gerarExcelPedido } from './excel.ts';
+import { gerarExcelPedido } from './excel';
 
 export interface LinhaPedidoEmail {
   artigo_codigo: string;

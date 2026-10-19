@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem, Tempo } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Perfil, Armazem, Tempo } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export const dynamic = 'force-dynamic';
@@ -55,7 +55,6 @@ export default async function ConfiguracaoPage() {
       .limit(1000),
   ]);
 
-  const impStkList: ImpStk[] = [];
   const trackingList = trackingListRaw || [];
   const movimentosList = Array.isArray(movimentosListRaw) ? movimentosListRaw : [];
 
@@ -95,7 +94,6 @@ export default async function ConfiguracaoPage() {
         clients={(clientsList as Client[]) || []}
         artigos={(artigosList as Artigo[]) || []}
         perfis={(perfisList as Perfil[]) || []}
-        initialImpStk={(impStkList as ImpStk[]) || []}
         initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
         tempos={(temposList as Tempo[]) || []}

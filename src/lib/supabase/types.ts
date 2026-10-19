@@ -473,34 +473,6 @@ export interface NovoPedidoInput {
   linhas: NovaLinhaPedidoInput[];
 }
 
-export interface ImpStk {
-  artigo: string | null;
-  descricao: string | null;
-  armazem: string | null;
-  lote: string | null;
-  estado_stock: string | null;
-  stk: number;
-  datastock: string | null;
-  bloqueado: boolean;
-  familia: string | null;
-  tipo_artigo: string | null;
-  sub_familia: string | null;
-  created_at?: string;
-}
-
-export interface ImpStkInput {
-  artigo?: string;
-  descricao?: string;
-  armazem?: string;
-  lote?: string;
-  estado_stock?: string;
-  stk?: number;
-  datastock?: string;
-  bloqueado?: boolean | string;
-  familia?: string;
-  tipo_artigo?: string;
-  sub_familia?: string;
-}
 
 export interface Tempo {
   id: string;
