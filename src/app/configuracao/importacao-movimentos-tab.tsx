@@ -1,28 +1,27 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
-import ExcelJS from 'exceljs';
+import { useState, useMemo, useEffect } from 'react';
 import { Client, Artigo, Armazem, Movimento, TipoMovimento } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
 import {
-  MovimentoImportInput,
-  parseTextMovimentosFile,
-  generateMovimentosSampleCSV,
-  normalizeMovimentoPosicao,
-} from '@/lib/parse-movimentos-file';
-import {
-  importarMovimentosAction,
   limparMovimentosAction,
-  limparImportacoesStockAction,
   limparPlatMovimentosAction, 
   criarArtigosAPartirPlatMovimentosAction,
   transferirPlatMovimentosParaMovimentosAction,
+  getPlatMovimentosStatusAction,
 } from './actions';
 
 export type MovimentoWithDetails = Movimento & {
   cliente_nome?: string;
   cliente_sigla?: string;
   artigo_descricao?: string;
+  entidade_nome?: string;
+  pais?: string | null;
+  EntidadeEntrega?: string | null;
+  NomeEntrega?: string | null;
+  MoradaEntrega?: string | null;
+  LocalidadeEntrega?: string | null;
+  CodPostalEntrega?: string | null;
 };
 
 interface ImportacaoMovimentosTabProps {
@@ -104,9 +103,11 @@ export default function ImportacaoMovimentosTab({
         });
     }
   }, [clients]);
-  // Sub-abas dentro da aba Movimentos
 
-  // Estados para Importação de Movimentos
+  // Modo de visualização: Linhas (movimentos_linhas) ou Documentos (movimentos)
+  const [viewMode, setViewMode] = useState<'linhas' | 'documentos'>('linhas');
+
+  // Estados dos Modais
   const [clearingMovLoading, setClearingMovLoading] = useState(false);
   const [confirmClearMovModal, setConfirmClearMovModal] = useState(false);
   const [clearingPlatMovLoading, setClearingPlatMovLoading] = useState(false);
@@ -115,8 +116,18 @@ export default function ImportacaoMovimentosTab({
   const [confirmTransferModal, setConfirmTransferModal] = useState(false);
   const [creatingArtigosLoading, setCreatingArtigosLoading] = useState(false);
   const [selectedClientIdForArtigos, setSelectedClientIdForArtigos] = useState('');
+  
+  // Modal de Detalhes do Documento (Cabeçalho de movimentos)
+  const [selectedDocModal, setSelectedDocModal] = useState<string | null>(null);
 
-  // Lista local de Movimentos
+  // Estado das contagens de plat_movimentos
+  const [platStatus, setPlatStatus] = useState<{
+    totalPlat: number;
+    totalLinhas: number;
+    totalDocs: number;
+  } | null>(null);
+
+  // Lista local de Movimentos (linhas com detalhe do cabeçalho)
   const [movimentosList, setMovimentosList] = useState<MovimentoWithDetails[]>(initialMovimentos);
   const [movSearchTerm, setMovSearchTerm] = useState('');
   const [movFilterTipo, setMovFilterTipo] = useState<string>('todos');
@@ -128,26 +139,36 @@ export default function ImportacaoMovimentosTab({
     setMovimentosList(initialMovimentos);
   }, [initialMovimentos]);
 
+  // Carregar status da plat_movimentos quando abrir o modal de transferência
+  const carregarStatusPlat = async () => {
+    try {
+      const res = await getPlatMovimentosStatusAction();
+      if (res.success) {
+        setPlatStatus({
+          totalPlat: res.totalPlat,
+          totalLinhas: res.totalLinhas,
+          totalDocs: res.totalDocs,
+        });
+      }
+    } catch {
+      // Ignorar erros secundários
+    }
+  };
+
+  useEffect(() => {
+    carregarStatusPlat();
+  }, [initialMovimentos]);
+
   // Cliente selecionado no filtro de clientes
   const selectedClient = useMemo(() => {
     if (!movFilterClient || movFilterClient === 'todos') return null;
     return clientsList.find((c) => c.id === movFilterClient) || null;
   }, [clientsList, movFilterClient]);
 
-  const selectedClientMovimentosCount = useMemo(() => {
-    if (!selectedClient) return 0;
-    return movimentosList.filter(
-      (m) => m.cliente_id === selectedClient.id || (selectedClient.sigla && m.sigla === selectedClient.sigla)
-    ).length;
-  }, [movimentosList, selectedClient]);
-
-  // Estados para imp_stk (Legado / Inventários Brutos)
-
   // Feedback global da aba
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-
-  // Mapas rápidos para validação e display
+  // Mapas rápidos para display
   const artigosMap = useMemo(() => {
     const map = new Map<string, string>();
     artigos.forEach((a) => {
@@ -156,30 +177,99 @@ export default function ImportacaoMovimentosTab({
     return map;
   }, [artigos]);
 
-  const clientsSiglaMap = useMemo(() => {
-    const map = new Map<string, Client>();
-    clientsList.forEach((c) => {
-      if (c.sigla) map.set(c.sigla.toUpperCase(), c);
-      if (c.id) map.set(c.id, c);
+  // Agrupamento dos movimentos por Documento (tabela movimentos - cabeçalhos)
+  const documentosList = useMemo(() => {
+    const map = new Map<string, {
+      documento_ref: string;
+      data_movimento: string;
+      sigla: string;
+      cliente_nome: string;
+      cliente_id?: string;
+      tipo_doc: string;
+      entidade?: string;
+      nome?: string;
+      num_contribuinte?: string;
+      requisicao?: string;
+      morada?: string;
+      localidade?: string;
+      cod_postal?: string;
+      pais?: string;
+      EntidadeEntrega?: string;
+      NomeEntrega?: string;
+      MoradaEntrega?: string;
+      LocalidadeEntrega?: string;
+      CodPostalEntrega?: string;
+      total_merc: number;
+      total_iva: number;
+      total_desc: number;
+      total_outros: number;
+      linhasCount: number;
+      quantidadeTotal: number;
+      linhas: MovimentoWithDetails[];
+    }>();
+
+    movimentosList.forEach((m) => {
+      const docRef = m.documento_ref || 'SEM_DOC';
+      let entry = map.get(docRef);
+      if (!entry) {
+        entry = {
+          documento_ref: docRef,
+          data_movimento: m.data_movimento,
+          sigla: m.sigla || m.cliente_sigla || '',
+          cliente_nome: m.cliente_nome || m.sigla || '',
+          cliente_id: m.cliente_id,
+          tipo_doc: m.tipo_doc || (m.documento_ref ? m.documento_ref.split(' ')[0] : '-'),
+          entidade: m.entidade || undefined,
+          nome: m.nome || undefined,
+          num_contribuinte: m.num_contribuinte || undefined,
+          requisicao: m.requisicao || undefined,
+          morada: m.morada || undefined,
+          localidade: m.localidade || undefined,
+          cod_postal: m.cod_postal || undefined,
+          pais: m.pais || undefined,
+          EntidadeEntrega: (m as any).EntidadeEntrega || undefined,
+          NomeEntrega: (m as any).NomeEntrega || undefined,
+          MoradaEntrega: (m as any).MoradaEntrega || undefined,
+          LocalidadeEntrega: (m as any).LocalidadeEntrega || undefined,
+          CodPostalEntrega: (m as any).CodPostalEntrega || undefined,
+          total_merc: Number(m.total_merc || 0),
+          total_iva: Number(m.total_iva || 0),
+          total_desc: Number(m.total_desc || 0),
+          total_outros: Number(m.total_outros || 0),
+          linhasCount: 0,
+          quantidadeTotal: 0,
+          linhas: [],
+        };
+        map.set(docRef, entry);
+      }
+      entry.linhasCount += 1;
+      entry.quantidadeTotal += Number(m.quantidade || 0);
+      entry.linhas.push(m);
     });
-    return map;
-  }, [clientsList]);
 
-  // =========================================================================
-  // 1. MANIPULAÇÃO DO FICHEIRO DE MOVIMENTOS (.xlsx, .xls, .csv, .txt)
-  // =========================================================================
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.data_movimento).getTime() - new Date(a.data_movimento).getTime()
+    );
+  }, [movimentosList]);
 
-  // Submeter a gravação dos movimentos na tabela movimentos
+  // Documento selecionado para a janela modal
+  const docParaModal = useMemo(() => {
+    if (!selectedDocModal) return null;
+    return documentosList.find((d) => d.documento_ref === selectedDocModal) || null;
+  }, [selectedDocModal, documentosList]);
 
-
-
+  // Ação de transferência de plat_movimentos para movimentos e movimentos_linhas
   const handleTransferirPlatMov = async () => {
     setTransferringPlatMov(true);
     try {
       const res = await transferirPlatMovimentosParaMovimentosAction();
       setConfirmTransferModal(false);
       if (res.success) {
-        setFeedback({ type: 'success', message: 'Transferência concluída! ' + res.count + ' movimentos inseridos.' });
+        setFeedback({ 
+          type: 'success', 
+          message: `Transferência concluída com sucesso! Foram preenchidos ${res.cabecalhos ?? 0} cabeçalhos na tabela movimentos, ${res.linhas ?? res.count ?? 0} linhas na tabela movimentos_linhas e ${res.artigos ?? 0} novos artigos sincronizados.` 
+        });
+        carregarStatusPlat();
         if (onRefresh) onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro na transferência.' });
@@ -193,8 +283,7 @@ export default function ImportacaoMovimentosTab({
     }
   };
 
-
-    const handleCriarArtigosFromPlatMov = async () => {
+  const handleCriarArtigosFromPlatMov = async () => {
     if (!selectedClientIdForArtigos) {
       setFeedback({ type: 'error', message: 'Selecione um cliente primeiro.' });
       return;
@@ -203,7 +292,8 @@ export default function ImportacaoMovimentosTab({
     try {
       const res = await criarArtigosAPartirPlatMovimentosAction(selectedClientIdForArtigos);
       if (res.success) {
-        setFeedback({ type: 'success', message: "Foram criados/atualizados " + res.count + " artigos com sucesso!" });
+        setFeedback({ type: 'success', message: `Foram criados/atualizados ${res.count} artigos com sucesso!` });
+        if (onRefresh) onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao criar artigos.' });
       }
@@ -222,6 +312,7 @@ export default function ImportacaoMovimentosTab({
       if (res.success) {
         setFeedback({ type: 'success', message: 'Tabela plat_movimentos limpa com sucesso.' });
         setConfirmClearPlatMovModal(false);
+        carregarStatusPlat();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao limpar plat_movimentos.' });
       }
@@ -234,35 +325,34 @@ export default function ImportacaoMovimentosTab({
   };
 
   const handleClearMovimentosTable = async () => {
-    if (!movFilterClient || movFilterClient === 'todos') {
-      setFeedback({
-        type: 'error',
-        message: 'Por favor, selecione um cliente no filtro "Cliente" antes de limpar os movimentos.',
-      });
-      setConfirmClearMovModal(false);
-      return;
-    }
-
     setClearingMovLoading(true);
     try {
       const res = await limparMovimentosAction(movFilterClient);
       if (res.success) {
-        setMovimentosList((prev) =>
-          prev.filter(
-            (m) =>
-              m.cliente_id !== movFilterClient &&
-              (!selectedClient?.sigla || m.sigla !== selectedClient.sigla)
-          )
-        );
-        const clientLabel = selectedClient?.name
-          ? `${selectedClient.name}${selectedClient.sigla ? ` (${selectedClient.sigla})` : ''}`
-          : 'cliente selecionado';
-        const countMsg = res.count !== undefined ? ` (${res.count} movimentos eliminados)` : '';
-        setFeedback({
-          type: 'success',
-          message: `Movimentos do cliente ${clientLabel} limpos com sucesso.${countMsg}`,
-        });
+        if (!movFilterClient || movFilterClient === 'todos') {
+          setMovimentosList([]);
+          setFeedback({
+            type: 'success',
+            message: `Todas as tabelas de movimentos e movimentos_linhas foram limpas com sucesso (${res.count ?? 0} cabeçalhos eliminados).`,
+          });
+        } else {
+          setMovimentosList((prev) =>
+            prev.filter(
+              (m) =>
+                m.cliente_id !== movFilterClient &&
+                (!selectedClient?.sigla || m.sigla !== selectedClient.sigla)
+            )
+          );
+          const clientLabel = selectedClient?.name
+            ? `${selectedClient.name}${selectedClient.sigla ? ` (${selectedClient.sigla})` : ''}`
+            : 'cliente selecionado';
+          setFeedback({
+            type: 'success',
+            message: `Movimentos e linhas do cliente ${clientLabel} limpos com sucesso (${res.count ?? 0} cabeçalhos eliminados).`,
+          });
+        }
         setConfirmClearMovModal(false);
+        carregarStatusPlat();
         if (onRefresh) onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao limpar movimentos.' });
@@ -275,12 +365,6 @@ export default function ImportacaoMovimentosTab({
     }
   };
 
-  // Download do Modelo CSV de Movimentos
-
-  // Download do Modelo Excel (.xlsx) de Movimentos
-
-  // Exportar Movimentos Registados em CSV
-
   // KPIs dos Movimentos filtrados pelo cliente selecionado
   const kpiMovimentosList = useMemo(() => {
     if (!movFilterClient || movFilterClient === 'todos') {
@@ -291,20 +375,31 @@ export default function ImportacaoMovimentosTab({
     );
   }, [movimentosList, movFilterClient, selectedClient]);
 
-  const totalMovimentosCount = kpiMovimentosList.length;
-  const countES = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'es').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
-  const countSS = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'ss').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
-  const countET = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'et').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
-  const countST = useMemo(() => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'st').reduce((acc, m) => acc + Number(m.quantidade || 0), 0), [kpiMovimentosList]);
-  const totalVolumeMovimentado = useMemo(
-    () => kpiMovimentosList.reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
+  const totalLinhasCount = kpiMovimentosList.length;
+  const totalDocsCount = useMemo(() => {
+    return new Set(kpiMovimentosList.map((m) => m.documento_ref || '')).size;
+  }, [kpiMovimentosList]);
+
+  const countES = useMemo(
+    () => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'es').reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
+    [kpiMovimentosList]
+  );
+  const countSS = useMemo(
+    () => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'ss').reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
+    [kpiMovimentosList]
+  );
+  const countET = useMemo(
+    () => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'et').reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
+    [kpiMovimentosList]
+  );
+  const countST = useMemo(
+    () => kpiMovimentosList.filter((m) => (m.tipo_movimento || '').toLowerCase() === 'st').reduce((acc, m) => acc + Number(m.quantidade || 0), 0),
     [kpiMovimentosList]
   );
 
   // Lista de artigos únicos disponíveis para filtro
   const availableArtigos = useMemo(() => {
     const map = new Map<string, string>();
-    // 1. Extrair artigos dos movimentos existentes (respeitando cliente se selecionado)
     movimentosList.forEach((m) => {
       if (movFilterClient !== 'todos' && m.cliente_id !== movFilterClient && m.sigla !== movFilterClient) {
         return;
@@ -314,7 +409,6 @@ export default function ImportacaoMovimentosTab({
       }
     });
 
-    // 2. Se nenhum cliente selecionado, complementar com catálogo de artigos
     if (movFilterClient === 'todos') {
       artigos.forEach((a) => {
         if (a.artigo_id && !map.has(a.artigo_id)) {
@@ -328,7 +422,7 @@ export default function ImportacaoMovimentosTab({
       .sort((a, b) => a.codigo.localeCompare(b.codigo));
   }, [movimentosList, movFilterClient, artigos, artigosMap]);
 
-  // Filtragem da Lista de Movimentos
+  // Filtragem da Lista de Linhas de Movimento
   const filteredMovimentos = useMemo(() => {
     return movimentosList.filter((m) => {
       if (movFilterTipo !== 'todos' && m.tipo_movimento !== movFilterTipo) return false;
@@ -338,25 +432,55 @@ export default function ImportacaoMovimentosTab({
 
       if (movSearchTerm.trim()) {
         const q = movSearchTerm.toLowerCase();
-        const matchArtigo = m.artigo_cli.toLowerCase().includes(q);
+        const matchArtigo = m.artigo_cli?.toLowerCase().includes(q);
         const matchDesc = m.artigo_descricao?.toLowerCase().includes(q);
         const matchLote = m.lote?.toLowerCase().includes(q);
         const matchDoc = m.documento_ref?.toLowerCase().includes(q);
         const matchSigla = m.sigla?.toLowerCase().includes(q);
         const matchCliente = m.cliente_nome?.toLowerCase().includes(q);
-        return Boolean(matchArtigo || matchDesc || matchLote || matchDoc || matchSigla || matchCliente);
+        const matchNome = m.nome?.toLowerCase().includes(q);
+        return Boolean(matchArtigo || matchDesc || matchLote || matchDoc || matchSigla || matchCliente || matchNome);
       }
 
       return true;
     });
   }, [movimentosList, movFilterTipo, movFilterClient, movFilterArtigo, movFilterArmazem, movSearchTerm]);
 
-  // =========================================================================
-  // 2. MANIPULAÇÃO DO FICHEIRO DE STOCKS BRUTOS (imp_stk)
-  // =========================================================================
-
-
-
+  // Filtragem da Lista de Documentos
+  const filteredDocumentos = useMemo(() => {
+    return documentosList.filter((doc) => {
+      if (movFilterClient !== 'todos' && doc.cliente_id !== movFilterClient && doc.sigla !== movFilterClient) {
+        return false;
+      }
+      if (movFilterTipo !== 'todos') {
+        const hasTipo = doc.linhas.some((l) => (l.tipo_movimento || '').toLowerCase() === movFilterTipo.toLowerCase());
+        if (!hasTipo) return false;
+      }
+      if (movFilterArtigo !== 'todos') {
+        const hasArtigo = doc.linhas.some((l) => l.artigo_cli === movFilterArtigo);
+        if (!hasArtigo) return false;
+      }
+      if (movFilterArmazem !== 'todos') {
+        const hasArmazem = doc.linhas.some((l) => l.tipo_armazem === movFilterArmazem);
+        if (!hasArmazem) return false;
+      }
+      if (movSearchTerm.trim()) {
+        const q = movSearchTerm.toLowerCase();
+        const matchDoc = doc.documento_ref.toLowerCase().includes(q);
+        const matchSigla = doc.sigla.toLowerCase().includes(q);
+        const matchCliente = doc.cliente_nome.toLowerCase().includes(q);
+        const matchNome = doc.nome?.toLowerCase().includes(q);
+        const matchEntidade = doc.entidade?.toLowerCase().includes(q);
+        const matchLinhas = doc.linhas.some((l) =>
+          l.artigo_cli?.toLowerCase().includes(q) ||
+          (l.artigo_descricao && l.artigo_descricao.toLowerCase().includes(q)) ||
+          (l.lote && l.lote.toLowerCase().includes(q))
+        );
+        return Boolean(matchDoc || matchSigla || matchCliente || matchNome || matchEntidade || matchLinhas);
+      }
+      return true;
+    });
+  }, [documentosList, movFilterClient, movFilterTipo, movFilterArtigo, movFilterArmazem, movSearchTerm]);
 
   // Renderizador de Badge por Tipo de Movimento
   const renderTipoMovBadge = (tipo: TipoMovimento | string) => {
@@ -423,250 +547,283 @@ export default function ImportacaoMovimentosTab({
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
         </div>
-
       )}
-      {/* Removed Tabs */}
 
       {/* ========================================================================= */}
+      {/* TABELA DE MOVIMENTOS E MOVIMENTOS_LINHAS */}
+      {/* ========================================================================= */}
+      <div className="space-y-6">
+        {/* KPIs dos Movimentos */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-1">
+              <p className="text-[11px] font-medium text-on-surface-variant truncate">Documentos (movimentos)</p>
+              {selectedClient && (
+                <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded shrink-0">
+                  {selectedClient.sigla || selectedClient.name}
+                </span>
+              )}
+            </div>
+            <p className="text-xl font-bold font-headline text-secondary mt-0.5">
+              {totalDocsCount.toLocaleString('pt-PT')}
+            </p>
+            <p className="text-[10px] text-on-surface-variant/80 mt-0.5">
+              {totalLinhasCount.toLocaleString('pt-PT')} linhas em movimentos_linhas
+            </p>
+          </div>
 
-      {/* ========================================================================= */}
-      {/* 2. SUB-ABA: TABELA DE MOVIMENTOS (REGISTOS NA BASE DE DADOS) */}
-      {/* ========================================================================= */}
-        <div className="space-y-6">
-          {/* KPIs dos Movimentos */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-between gap-1">
-                <p className="text-[11px] font-medium text-on-surface-variant truncate">Total Movimentos</p>
-                {selectedClient && (
-                  <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded shrink-0">
-                    {selectedClient.sigla || selectedClient.name}
-                  </span>
-                )}
+          <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl p-4 shadow-sm">
+            <p className="text-[11px] font-medium text-emerald-800">Entradas (ES)</p>
+            <p className="text-xl font-bold font-headline text-emerald-700 mt-0.5">
+              {countES.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+            </p>
+          </div>
+
+          <div className="bg-surface-container-lowest border border-rose-200/60 rounded-xl p-4 shadow-sm">
+            <p className="text-[11px] font-medium text-rose-800">Saídas (SS)</p>
+            <p className="text-xl font-bold font-headline text-rose-700 mt-0.5">
+              {countSS.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+            </p>
+          </div>
+
+          <div className="bg-surface-container-lowest border border-cyan-200/60 rounded-xl p-4 shadow-sm">
+            <p className="text-[11px] font-medium text-cyan-800">Entr. Transf. (ET)</p>
+            <p className="text-xl font-bold font-headline text-cyan-700 mt-0.5">
+              {countET.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+            </p>
+          </div>
+
+          <div className="bg-surface-container-lowest border border-amber-200/60 rounded-xl p-4 shadow-sm">
+            <p className="text-[11px] font-medium text-amber-800">Saídas Transf. (ST)</p>
+            <p className="text-xl font-bold font-headline text-amber-700 mt-0.5">
+              {countST.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Barra de Filtros, Seletor de Modo & Ações */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="text-base font-bold font-headline text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">database</span>
+                  Dados de Movimentos
+                </h3>
+                {/* Seletor de Modo: Linhas vs Documentos */}
+                <div className="inline-flex rounded-xl p-1 bg-surface-container border border-outline-variant/30">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('linhas')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      viewMode === 'linhas'
+                        ? 'bg-surface-container-lowest text-secondary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">view_list</span>
+                    Linhas ({filteredMovimentos.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('documentos')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      viewMode === 'documentos'
+                        ? 'bg-surface-container-lowest text-secondary shadow-xs'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">receipt_long</span>
+                    Documentos ({filteredDocumentos.length})
+                  </button>
+                </div>
               </div>
-              <p className="text-xl font-bold font-headline text-secondary mt-0.5">{totalMovimentosCount.toLocaleString('pt-PT')}</p>
+              <p className="text-xs text-on-surface-variant mt-1">
+                Visualização integrada entre a tabela de cabeçalho (<strong>movimentos</strong>) e as linhas de detalhe (<strong>movimentos_linhas</strong>).
+              </p>
             </div>
 
-            <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-emerald-800">Entradas (ES)</p>
-              <p className="text-xl font-bold font-headline text-emerald-700 mt-0.5">{countES.toLocaleString('pt-PT')}</p>
-            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Criar Artigos */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={selectedClientIdForArtigos}
+                  onChange={(e) => setSelectedClientIdForArtigos(e.target.value)}
+                  className="px-2 py-1.5 border border-outline-variant/50 rounded-lg text-xs outline-none focus:border-primary bg-surface"
+                >
+                  <option value="">Selecione o Cliente</option>
+                  {clientsList.map((c) => (
+                    <option key={c.id} value={c.id}>{c.sigla} - {c.name}</option>
+                  ))}
+                </select>
+                
+                <button
+                  type="button"
+                  onClick={handleCriarArtigosFromPlatMov}
+                  disabled={creatingArtigosLoading || !selectedClientIdForArtigos}
+                  className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  title="Criar artigos pendentes a partir da plat_movimentos"
+                >
+                  <span className="material-symbols-outlined text-sm">add_box</span>
+                  {creatingArtigosLoading ? 'A criar...' : 'Criar Artigos'}
+                </button>
+              </div>
 
-            <div className="bg-surface-container-lowest border border-rose-200/60 rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-rose-800">Saídas (SS)</p>
-              <p className="text-xl font-bold font-headline text-rose-700 mt-0.5">{countSS.toLocaleString('pt-PT')}</p>
-            </div>
+              {/* Botão de Transferir plat_movimentos */}
+              <button
+                type="button"
+                onClick={() => {
+                  carregarStatusPlat();
+                  setConfirmTransferModal(true);
+                }}
+                disabled={transferringPlatMov}
+                className="px-3 py-1.5 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+              >
+                <span className="material-symbols-outlined text-sm">move_down</span>
+                Transferir plat_movimentos
+              </button>
+              
+              {/* Limpar Tabela plat_movimentos */}
+              <button
+                type="button"
+                onClick={() => setConfirmClearPlatMovModal(true)}
+                disabled={clearingPlatMovLoading}
+                className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                Limpar plat_movimentos
+              </button>
 
-            <div className="bg-surface-container-lowest border border-cyan-200/60 rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-cyan-800">Entradas Transf. (ET)</p>
-              <p className="text-xl font-bold font-headline text-cyan-700 mt-0.5">{countET.toLocaleString('pt-PT')}</p>
-            </div>
-
-            <div className="bg-surface-container-lowest border border-amber-200/60 rounded-xl p-4 shadow-sm">
-              <p className="text-[11px] font-medium text-amber-800">Saídas Transf. (ST)</p>
-              <p className="text-xl font-bold font-headline text-amber-700 mt-0.5">{countST.toLocaleString('pt-PT')}</p>
+              {/* Limpar Tabela Movimentos & Linhas */}
+              {movimentosList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearMovModal(true)}
+                  disabled={clearingMovLoading}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-xs"
+                  title={
+                    movFilterClient === 'todos'
+                      ? 'Limpar todos os movimentos e linhas registadas'
+                      : `Limpar movimentos de ${selectedClient?.name || 'cliente selecionado'}`
+                  }
+                >
+                  <span className="material-symbols-outlined text-sm">delete_forever</span>
+                  Limpar Movimentos {selectedClient?.sigla ? `(${selectedClient.sigla})` : '(Todos)'}
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Barra de Filtros & Ações */}
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-bold font-headline text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">receipt_long</span>
-                  Registos na Tabela movimentos ({filteredMovimentos.length})
-                </h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Consulta detalhada com isolamento transacional de entradas, saídas e transferências entre armazéns.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Exportar CSV */}
-
-                                  {/* Criar Artigos */}
-                  <div className="flex items-center gap-2 mr-2">
-                    <select
-                      value={selectedClientIdForArtigos}
-                      onChange={(e) => setSelectedClientIdForArtigos(e.target.value)}
-                      className="px-2 py-1.5 border border-outline/50 rounded-lg text-xs outline-hidden focus:border-primary bg-surface"
-                    >
-                      <option value="">Selecione o Cliente</option>
-                      {clientsList.map(c => (
-                        <option key={c.id} value={c.id}>{c.sigla} - {c.name}</option>
-                      ))}
-                    </select>
-                    
-                    <button
-                      type="button"
-                      onClick={handleCriarArtigosFromPlatMov}
-                      disabled={creatingArtigosLoading || !selectedClientIdForArtigos}
-                      className="px-3 py-1.5 bg-primary hover:bg-primary/90 text-on-primary text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">add_box</span>
-                      {creatingArtigosLoading ? 'A criar...' : 'Criar Artigos'}
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setConfirmTransferModal(true)}
-                  disabled={transferringPlatMov}
-                  className="px-3 py-1.5 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-sm">move_down</span>
-                  Transferir plat_movimentos
-                </button>
-                
-                {/* Limpar Tabela plat_movimentos */}
-                <button
-                  type="button"
-                  onClick={() => setConfirmClearPlatMovModal(true)}
-                  disabled={clearingPlatMovLoading}
-                  className="px-3 py-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                  Limpar plat-movimentos
-                </button>
-
-                {/* Limpar Tabela */}
-                {movimentosList.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!movFilterClient || movFilterClient === 'todos') {
-                        setFeedback({
-                          type: 'error',
-                          message: 'Por favor, selecione um cliente no filtro "Cliente" para limpar os respetivos movimentos.',
-                        });
-                        return;
-                      }
-                      setConfirmClearMovModal(true);
-                    }}
-                    disabled={clearingMovLoading}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 ${
-                      movFilterClient === 'todos'
-                        ? 'bg-rose-50/60 hover:bg-rose-50 text-rose-500 border border-rose-200/60'
-                        : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-xs'
-                    }`}
-                    title={
-                      movFilterClient === 'todos'
-                        ? 'Selecione um cliente no filtro "Cliente" para limpar os movimentos'
-                        : `Limpar movimentos de ${selectedClient?.name || 'cliente selecionado'}`
-                    }
-                  >
-                    <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                    Limpar Movimentos {selectedClient?.sigla ? `(${selectedClient.sigla})` : ''}
-                  </button>
-                )}
-              </div>
+          {/* Linha de Controlos de Filtro */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-outline-variant/10">
+            {/* Pesquisa */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
+                search
+              </span>
+              <input
+                type="text"
+                value={movSearchTerm}
+                onChange={(e) => setMovSearchTerm(e.target.value)}
+                placeholder="Pesquisar doc, artigo, lote, entidade..."
+                className="w-full pl-9 pr-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
+              />
             </div>
 
-            {/* Linha de Controlos de Filtro */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-outline-variant/10">
-              {/* Pesquisa */}
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">
-                  search
-                </span>
-                <input
-                  type="text"
-                  value={movSearchTerm}
-                  onChange={(e) => setMovSearchTerm(e.target.value)}
-                  placeholder="Pesquisar artigo, lote, doc..."
-                  className="w-full pl-9 pr-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
-                />
-              </div>
-
-              {/* Filtro Tipo de Movimento */}
-              <div>
-                <select
-                  value={movFilterTipo}
-                  onChange={(e) => setMovFilterTipo(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
-                >
-                  <option value="todos">Todos os Tipos de Movimento</option>
-                  <option value="es">ES - Entrada de Stock</option>
-                  <option value="ss">SS - Saída de Stock</option>
-                  <option value="et">ET - Entrada por Transferência</option>
-                  <option value="st">ST - Saída por Transferência</option>
-                </select>
-              </div>
-
-              {/* Filtro Cliente */}
-              <div>
-                <select
-                  value={movFilterClient}
-                  onChange={(e) => setMovFilterClient(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
-                >
-                  <option value="todos">Todos os Clientes</option>
-                  {clientsList.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.sigla} - {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro Artigo */}
-              <div>
-                <select
-                  value={movFilterArtigo}
-                  onChange={(e) => setMovFilterArtigo(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
-                >
-                  <option value="todos">Todos os Artigos ({availableArtigos.length})</option>
-                  {availableArtigos.map((art) => (
-                    <option key={art.codigo} value={art.codigo}>
-                      {art.codigo} - {art.descricao}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro Armazém */}
-              <div>
-                <select
-                  value={movFilterArmazem}
-                  onChange={(e) => setMovFilterArmazem(e.target.value)}
-                  className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
-                >
-                  <option value="todos">Todos os Armazéns</option>
-                  {armazens.map((arm) => (
-                    <option key={arm.tipo_armazem} value={arm.tipo_armazem}>
-                      {arm.tipo_armazem} - {arm.descricao}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Filtro Tipo de Movimento */}
+            <div>
+              <select
+                value={movFilterTipo}
+                onChange={(e) => setMovFilterTipo(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">Todos os Tipos de Movimento</option>
+                <option value="es">ES - Entrada de Stock</option>
+                <option value="ss">SS - Saída de Stock</option>
+                <option value="et">ET - Entrada por Transferência</option>
+                <option value="st">ST - Saída por Transferência</option>
+              </select>
             </div>
 
-            {/* Barra de Filtros Ativos / Botão de Limpar */}
-            {(movFilterTipo !== 'todos' || movFilterClient !== 'todos' || movFilterArtigo !== 'todos' || movFilterArmazem !== 'todos' || !!movSearchTerm) && (
-              <div className="flex items-center justify-between text-xs text-on-surface-variant bg-surface-container/40 px-3 py-1.5 rounded-lg border border-outline-variant/20">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-xs text-secondary">filter_alt</span>
-                  <span>Filtros ativos ({filteredMovimentos.length} registos encontrados)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMovFilterTipo('todos');
-                    setMovFilterClient('todos');
-                    setMovFilterArtigo('todos');
-                    setMovFilterArmazem('todos');
-                    setMovSearchTerm('');
-                  }}
-                  className="font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
-                >
-                  <span className="material-symbols-outlined text-xs">close</span>
-                  Limpar filtros
-                </button>
-              </div>
-            )}
+            {/* Filtro Cliente */}
+            <div>
+              <select
+                value={movFilterClient}
+                onChange={(e) => setMovFilterClient(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">Todos os Clientes</option>
+                {clientsList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.sigla} - {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {/* Tabela de Dados */}
+            {/* Filtro Artigo */}
+            <div>
+              <select
+                value={movFilterArtigo}
+                onChange={(e) => setMovFilterArtigo(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">Todos os Artigos ({availableArtigos.length})</option>
+                {availableArtigos.map((art) => (
+                  <option key={art.codigo} value={art.codigo}>
+                    {art.codigo} - {art.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro Armazém */}
+            <div>
+              <select
+                value={movFilterArmazem}
+                onChange={(e) => setMovFilterArmazem(e.target.value)}
+                className="w-full px-3 py-1.5 bg-surface border border-outline-variant/40 rounded-lg text-xs font-medium text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary"
+              >
+                <option value="todos">Todos os Armazéns</option>
+                {armazens.map((arm) => (
+                  <option key={arm.tipo_armazem} value={arm.tipo_armazem}>
+                    {arm.tipo_armazem} - {arm.descricao}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Barra de Filtros Ativos */}
+          {(movFilterTipo !== 'todos' || movFilterClient !== 'todos' || movFilterArtigo !== 'todos' || movFilterArmazem !== 'todos' || !!movSearchTerm) && (
+            <div className="flex items-center justify-between text-xs text-on-surface-variant bg-surface-container/40 px-3 py-1.5 rounded-lg border border-outline-variant/20">
+              <span className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-xs text-secondary">filter_alt</span>
+                <span>
+                  Filtros ativos ({viewMode === 'linhas' ? `${filteredMovimentos.length} linhas` : `${filteredDocumentos.length} documentos`})
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setMovFilterTipo('todos');
+                  setMovFilterClient('todos');
+                  setMovFilterArtigo('todos');
+                  setMovFilterArmazem('todos');
+                  setMovSearchTerm('');
+                }}
+                className="font-semibold text-secondary hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-xs">close</span>
+                Limpar filtros
+              </button>
+            </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* TABELA: MODO LINHAS (movimentos_linhas) */}
+          {/* ================================================================= */}
+          {viewMode === 'linhas' && (
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-outline-variant/20 rounded-xl">
               <table className="w-full text-left text-xs">
                 <thead className="bg-surface-container/80 sticky top-0 z-10 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
@@ -674,48 +831,65 @@ export default function ImportacaoMovimentosTab({
                     <th className="py-2.5 px-3">Data / Hora</th>
                     <th className="py-2.5 px-3">Sigla</th>
                     <th className="py-2.5 px-3">Tipo</th>
+                    <th className="py-2.5 px-3">Doc Ref</th>
                     <th className="py-2.5 px-3">Artigo</th>
                     <th className="py-2.5 px-3">Descrição</th>
                     <th className="py-2.5 px-3 text-right">Qtd</th>
                     <th className="py-2.5 px-3">Armazém</th>
-                    <th className="py-2.5 px-3">Localização</th>
                     <th className="py-2.5 px-3">Posição</th>
                     <th className="py-2.5 px-3">Lote</th>
                     <th className="py-2.5 px-3">Validade</th>
-                    <th className="py-2.5 px-3">Doc Ref</th>
+                    <th className="py-2.5 px-3 text-center">Detalhes</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
                   {filteredMovimentos.length > 0 ? (
                     filteredMovimentos.map((m) => (
-                      <tr key={m.id} className="hover:bg-surface-container/30 transition-colors">
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant">
+                      <tr key={m.id || m.doc_linha} className="hover:bg-surface-container/30 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant whitespace-nowrap">
                           {formatDateTimeDisplay(m.data_movimento)}
                         </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-secondary">
+                        <td className="py-2.5 px-3 font-mono font-bold text-secondary whitespace-nowrap">
                           {m.sigla || m.cliente_sigla || '-'}
                         </td>
-                        <td className="py-2.5 px-3">{renderTipoMovBadge(m.tipo_movimento)}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-on-surface">{m.artigo_cli}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">{renderTipoMovBadge(m.tipo_movimento)}</td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocModal(m.documento_ref || null)}
+                            className="text-secondary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                            title="Ver cabeçalho do documento"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">receipt</span>
+                            {m.documento_ref || '-'}
+                          </button>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-on-surface whitespace-nowrap">{m.artigo_cli}</td>
                         <td className="py-2.5 px-3 truncate max-w-[180px]" title={m.artigo_descricao || ''}>
                           {m.artigo_descricao || '-'}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-on-surface">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-on-surface whitespace-nowrap">
                           {Math.round(Number(m.quantidade || 0)).toLocaleString('pt-PT')}
                         </td>
-                        <td className="py-2.5 px-3 font-mono">
+                        <td className="py-2.5 px-3 font-mono whitespace-nowrap">
                           <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
                             {m.tipo_armazem}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-[11px]">{m.armazem_loc || '-'}</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px]">{m.posicao || '-'}</td>
-                        <td className="py-2.5 px-3 font-mono font-semibold">{m.lote || '-'}</td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant">
+                        <td className="py-2.5 px-3 font-mono text-[11px] whitespace-nowrap">{m.posicao || '-'}</td>
+                        <td className="py-2.5 px-3 font-mono font-semibold whitespace-nowrap">{m.lote || '-'}</td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant whitespace-nowrap">
                           {formatDateDisplay(m.validade)}
                         </td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] truncate max-w-[120px]" title={m.documento_ref || ''}>
-                          {m.documento_ref || '-'}
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocModal(m.documento_ref || null)}
+                            className="p-1 rounded-md hover:bg-surface-container text-on-surface-variant hover:text-secondary cursor-pointer"
+                            title="Ver Cabeçalho do Documento em movimentos"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -725,9 +899,9 @@ export default function ImportacaoMovimentosTab({
                         <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
                           swap_horiz
                         </span>
-                        <p className="text-xs font-semibold">Nenhum movimento encontrado na tabela.</p>
+                        <p className="text-xs font-semibold">Nenhuma linha de movimento encontrada.</p>
                         <p className="text-[11px] text-on-surface-variant/80 mt-1">
-                          Aceda à aba "Importar Ficheiro de Movimentos" para carregar novas transações.
+                          Pressione "Transferir plat_movimentos" para popular as tabelas movimentos e movimentos_linhas.
                         </p>
                       </td>
                     </tr>
@@ -735,28 +909,156 @@ export default function ImportacaoMovimentosTab({
                 </tbody>
               </table>
             </div>
-          </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* TABELA: MODO DOCUMENTOS (movimentos - Cabeçalhos) */}
+          {/* ================================================================= */}
+          {viewMode === 'documentos' && (
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-outline-variant/20 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-surface-container/80 sticky top-0 z-10 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th className="py-2.5 px-3">Data / Hora</th>
+                    <th className="py-2.5 px-3">Sigla / Cliente</th>
+                    <th className="py-2.5 px-3">Documento Ref</th>
+                    <th className="py-2.5 px-3">Tipo Doc</th>
+                    <th className="py-2.5 px-3">Entidade / Destinatário</th>
+                    <th className="py-2.5 px-3 text-center">Linhas</th>
+                    <th className="py-2.5 px-3 text-right">Qtd Total</th>
+                    <th className="py-2.5 px-3 text-right">Total Merc.</th>
+                    <th className="py-2.5 px-3 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/10 text-on-surface bg-surface-container-lowest">
+                  {filteredDocumentos.length > 0 ? (
+                    filteredDocumentos.map((doc) => (
+                      <tr key={doc.documento_ref} className="hover:bg-surface-container/30 transition-colors">
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-on-surface-variant whitespace-nowrap">
+                          {formatDateTimeDisplay(doc.data_movimento)}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-secondary whitespace-nowrap">
+                          <span title={doc.cliente_nome}>{doc.sigla}</span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono font-bold text-on-surface whitespace-nowrap">
+                          {doc.documento_ref}
+                        </td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary">
+                            {doc.tipo_doc}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 truncate max-w-[200px]" title={doc.nome || doc.entidade || ''}>
+                          {doc.nome || doc.entidade || '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-center font-mono font-bold whitespace-nowrap">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-800">
+                            {doc.linhasCount} {doc.linhasCount === 1 ? 'linha' : 'linhas'}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-on-surface whitespace-nowrap">
+                          {Math.round(doc.quantidadeTotal).toLocaleString('pt-PT')}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-on-surface-variant whitespace-nowrap">
+                          {doc.total_merc > 0 ? `€ ${doc.total_merc.toFixed(2)}` : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocModal(doc.documento_ref)}
+                            className="px-2.5 py-1 bg-secondary/10 hover:bg-secondary/20 text-secondary rounded-lg font-semibold text-[11px] transition-all flex items-center gap-1 mx-auto cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">visibility</span>
+                            Ver Detalhes
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="py-12 text-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
+                          receipt_long
+                        </span>
+                        <p className="text-xs font-semibold">Nenhum documento encontrado na tabela movimentos.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+      </div>
 
       {/* ========================================================================= */}
-
+      {/* MODAL 1: CONFIRMAÇÃO DE TRANSFERÊNCIA DE PLAT_MOVIMENTOS */}
+      {/* ========================================================================= */}
       {confirmTransferModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 z-[60]">
-          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in duration-200">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
-                <span className="material-symbols-outlined text-xl">move_down</span>
+              <div className="w-11 h-11 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl">move_down</span>
               </div>
               <div>
-                <h4 className="text-sm font-bold text-on-surface">Transferir plat_movimentos</h4>
-                <p className="text-xs text-on-surface-variant mt-0.5">Mover dados para a tabela principal.</p>
+                <h4 className="text-base font-bold text-on-surface">
+                  Transferir para movimentos e movimentos_linhas
+                </h4>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Processamento relacional dos dados staging da tabela <code>plat_movimentos</code>.
+                </p>
               </div>
             </div>
-            <p className="text-xs text-on-surface leading-relaxed">
-              Tem a certeza de que deseja executar a transferência da tabela <code>plat_movimentos</code> para a tabela <code>movimentos</code>? 
-              <br/><br/>
-              Apenas os movimentos novos (cujo <code>doc_linha</code> não exista) serão importados.
-            </p>
+
+            {/* Painel de Arquitetura da Transferência */}
+            <div className="space-y-3 bg-surface-container/40 p-4 rounded-xl border border-outline-variant/20 text-xs">
+              <p className="font-semibold text-on-surface flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-secondary text-sm">schema</span>
+                Estrutura de Preenchimento das Tabelas:
+              </p>
+              
+              <ul className="space-y-2 text-on-surface-variant">
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-emerald-600 text-sm mt-0.5">receipt</span>
+                  <div>
+                    <strong className="text-on-surface">Tabela movimentos (Cabeçalhos):</strong>
+                    <p className="text-[11px] leading-relaxed">
+                      Agrupa por <code>documento_ref</code> e grava cliente, sigla, data, tipo de documento, dados da entidade, moradas de entrega e faturação, e totais financeiros.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-cyan-600 text-sm mt-0.5">list_alt</span>
+                  <div>
+                    <strong className="text-on-surface">Tabela movimentos_linhas (Linhas de Movimento):</strong>
+                    <p className="text-[11px] leading-relaxed">
+                      Preenche cada item com <code>doc_linha</code>, <code>artigo_cli</code>, tipo de movimento (ES, SS, ET, ST), quantidade, armazém, posição, lote e validade.
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-indigo-600 text-sm mt-0.5">auto_awesome</span>
+                  <div>
+                    <strong className="text-on-surface">Tabela artigos (Auto-sincronização):</strong>
+                    <p className="text-[11px] leading-relaxed">
+                      Regista automaticamente no catálogo de artigos quaisquer referências novas que ainda não existam.
+                    </p>
+                  </div>
+                </li>
+              </ul>
+
+              {/* Indicador de Dados Prontos */}
+              {platStatus && (
+                <div className="mt-3 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-[11px]">
+                  <span className="text-on-surface-variant">Registos em plat_movimentos:</span>
+                  <span className="font-mono font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">
+                    {platStatus.totalPlat.toLocaleString('pt-PT')} registos prontos
+                  </span>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -772,14 +1074,187 @@ export default function ImportacaoMovimentosTab({
                 disabled={transferringPlatMov}
                 className="px-4 py-2 bg-secondary hover:bg-secondary/90 text-on-secondary text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-sm">check</span>
-                {transferringPlatMov ? 'A Transferir...' : 'Sim, Transferir'}
+                {transferringPlatMov ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span>A Transferir...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">check</span>
+                    <span>Executar Transferência</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-      
+
+      {/* ========================================================================= */}
+      {/* MODAL 2: DETALHES DO DOCUMENTO (CABEÇALHO EM MOVIMENTOS & LINHAS) */}
+      {/* ========================================================================= */}
+      {docParaModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-5 animate-in fade-in duration-200">
+            {/* Header do Modal */}
+            <div className="flex items-start justify-between gap-4 border-b border-outline-variant/20 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-xl">receipt_long</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-base font-bold text-on-surface font-mono">
+                      {docParaModal.documento_ref}
+                    </h4>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary">
+                      {docParaModal.tipo_doc}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
+                      {docParaModal.sigla}
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Cliente: <strong>{docParaModal.cliente_nome || docParaModal.sigla}</strong> • Data:{' '}
+                    {formatDateTimeDisplay(docParaModal.data_movimento)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedDocModal(null)}
+                className="text-on-surface-variant hover:text-on-surface p-1 rounded-lg hover:bg-surface-container cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Secção 1: Entidade & Destinatário */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-surface-container/30 border border-outline-variant/20 rounded-xl p-3.5 text-xs space-y-1.5">
+                <p className="font-bold text-on-surface flex items-center gap-1.5 text-secondary">
+                  <span className="material-symbols-outlined text-sm">person</span>
+                  Entidade / Faturação
+                </p>
+                <p><strong>Entidade:</strong> {docParaModal.entidade || '-'}</p>
+                <p><strong>Nome:</strong> {docParaModal.nome || '-'}</p>
+                <p><strong>NIF:</strong> {docParaModal.num_contribuinte || '-'}</p>
+                <p><strong>Requisição:</strong> {docParaModal.requisicao || '-'}</p>
+                <p className="pt-1 text-[11px] text-on-surface-variant">
+                  {docParaModal.morada ? `${docParaModal.morada}, ${docParaModal.cod_postal || ''} ${docParaModal.localidade || ''}` : '-'}
+                </p>
+              </div>
+
+              <div className="bg-surface-container/30 border border-outline-variant/20 rounded-xl p-3.5 text-xs space-y-1.5">
+                <p className="font-bold text-on-surface flex items-center gap-1.5 text-secondary">
+                  <span className="material-symbols-outlined text-sm">local_shipping</span>
+                  Local de Entrega
+                </p>
+                <p><strong>Entidade Entrega:</strong> {docParaModal.EntidadeEntrega || '-'}</p>
+                <p><strong>Nome Entrega:</strong> {docParaModal.NomeEntrega || '-'}</p>
+                <p><strong>Morada:</strong> {docParaModal.MoradaEntrega || '-'}</p>
+                <p><strong>Localidade:</strong> {docParaModal.LocalidadeEntrega || '-'}</p>
+                <p><strong>Código Postal:</strong> {docParaModal.CodPostalEntrega || '-'}</p>
+              </div>
+            </div>
+
+            {/* Secção 2: Totais Financeiros */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-3">
+                <p className="text-[10px] text-on-surface-variant">Total Mercadoria</p>
+                <p className="text-sm font-bold font-mono text-on-surface mt-0.5">
+                  € {docParaModal.total_merc.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-3">
+                <p className="text-[10px] text-on-surface-variant">Total IVA</p>
+                <p className="text-sm font-bold font-mono text-on-surface mt-0.5">
+                  € {docParaModal.total_iva.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-3">
+                <p className="text-[10px] text-on-surface-variant">Descontos</p>
+                <p className="text-sm font-bold font-mono text-on-surface mt-0.5">
+                  € {docParaModal.total_desc.toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-surface-container-lowest border border-secondary/30 bg-secondary/5 rounded-xl p-3">
+                <p className="text-[10px] text-secondary font-semibold">Volume Total</p>
+                <p className="text-sm font-bold font-mono text-secondary mt-0.5">
+                  {Math.round(docParaModal.quantidadeTotal).toLocaleString('pt-PT')} unid.
+                </p>
+              </div>
+            </div>
+
+            {/* Secção 3: Tabela com as Linhas do Documento (movimentos_linhas) */}
+            <div className="space-y-2">
+              <h5 className="text-xs font-bold text-on-surface flex items-center justify-between">
+                <span>Linhas do Documento na tabela movimentos_linhas ({docParaModal.linhas.length})</span>
+                <span className="text-[11px] text-on-surface-variant font-normal">
+                  Chave FK: documento_ref = "{docParaModal.documento_ref}"
+                </span>
+              </h5>
+
+              <div className="overflow-x-auto max-h-[300px] overflow-y-auto border border-outline-variant/20 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-container/70 sticky top-0 text-[10px] uppercase font-semibold text-on-surface-variant">
+                    <tr>
+                      <th className="py-2 px-3">Linha</th>
+                      <th className="py-2 px-3">Tipo</th>
+                      <th className="py-2 px-3">Artigo</th>
+                      <th className="py-2 px-3">Descrição</th>
+                      <th className="py-2 px-3 text-right">Qtd</th>
+                      <th className="py-2 px-3">Armazém</th>
+                      <th className="py-2 px-3">Posição</th>
+                      <th className="py-2 px-3">Lote</th>
+                      <th className="py-2 px-3">Validade</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10 bg-surface-container-lowest text-on-surface">
+                    {docParaModal.linhas.map((l) => (
+                      <tr key={l.id || l.doc_linha} className="hover:bg-surface-container/30">
+                        <td className="py-2 px-3 font-mono text-[11px] text-on-surface-variant">
+                          {l.num_linha ?? '-'}
+                        </td>
+                        <td className="py-2 px-3">{renderTipoMovBadge(l.tipo_movimento)}</td>
+                        <td className="py-2 px-3 font-mono font-bold">{l.artigo_cli}</td>
+                        <td className="py-2 px-3 truncate max-w-[200px]" title={l.artigo_descricao || ''}>
+                          {l.artigo_descricao || '-'}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold">
+                          {Math.round(Number(l.quantidade || 0)).toLocaleString('pt-PT')}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-[11px]">{l.tipo_armazem}</td>
+                        <td className="py-2 px-3 font-mono text-[11px]">{l.posicao || '-'}</td>
+                        <td className="py-2 px-3 font-mono font-semibold">{l.lote || '-'}</td>
+                        <td className="py-2 px-3 font-mono text-[11px] text-on-surface-variant">
+                          {formatDateDisplay(l.validade)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedDocModal(null)}
+                className="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold rounded-xl cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 3: LIMPAR TABELA PLAT_MOVIMENTOS */}
+      {/* ========================================================================= */}
       {confirmClearPlatMovModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -794,7 +1269,7 @@ export default function ImportacaoMovimentosTab({
             </div>
 
             <p className="text-xs text-on-surface leading-relaxed">
-              Tem a certeza de que deseja eliminar permanentemente todos os registos da tabela <code>plat_movimentos</code>?
+              Tem a certeza de que deseja eliminar permanentemente todos os registos staging da tabela <code>plat_movimentos</code>?
             </p>
 
             <div className="flex items-center justify-end gap-3 pt-2">
@@ -819,7 +1294,9 @@ export default function ImportacaoMovimentosTab({
         </div>
       )}
 
-      {/* Modal de Limpeza de Movimentos */}
+      {/* ========================================================================= */}
+      {/* MODAL 4: LIMPAR TABELAS MOVIMENTOS & MOVIMENTOS_LINHAS */}
+      {/* ========================================================================= */}
       {confirmClearMovModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
@@ -829,25 +1306,26 @@ export default function ImportacaoMovimentosTab({
               </div>
               <div>
                 <h4 className="text-sm font-bold text-on-surface">
-                  Limpar Movimentos de {selectedClient?.sigla || selectedClient?.name || 'Cliente'}?
+                  Limpar Movimentos {selectedClient?.sigla || selectedClient?.name || '(Todos os Clientes)'}?
                 </h4>
-                <p className="text-xs text-on-surface-variant mt-0.5">Esta ação não pode ser revertida.</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">Eliminação permanente de dados relacionais.</p>
               </div>
             </div>
 
             <p className="text-xs text-on-surface leading-relaxed">
-              Tem a certeza de que deseja eliminar permanentemente os movimentos do cliente{' '}
-              <strong>{selectedClient?.name || 'selecionado'}</strong>
-              {selectedClient?.sigla && (
-                <> (<code className="font-mono text-primary font-bold">{selectedClient.sigla}</code>)</>
-              )}{' '}
-              da tabela <code>movimentos</code>?
-              {selectedClientMovimentosCount > 0 && (
-                <> Foram encontrados <strong>{selectedClientMovimentosCount} registos</strong> deste cliente na lista atual.</>
+              {selectedClient ? (
+                <>
+                  Tem a certeza de que deseja eliminar os movimentos do cliente{' '}
+                  <strong>{selectedClient.name}</strong> (<code className="font-mono text-primary font-bold">{selectedClient.sigla}</code>)?
+                </>
+              ) : (
+                <>
+                  Tem a certeza de que deseja eliminar <strong>TODOS</strong> os movimentos registados no sistema?
+                </>
               )}
-              <br />
-              <span className="text-on-surface-variant text-[11px] mt-1 block">
-                O saldo de stock nas views será recalculado após esta eliminação.
+              <br /><br />
+              <span className="text-on-surface-variant text-[11px] block">
+                Esta ação elimina os registos da tabela <code>movimentos</code> e remove em cascata todas as linhas associadas na tabela <code>movimentos_linhas</code>. O saldo de stock nas views será recalculado.
               </span>
             </p>
 
@@ -866,7 +1344,7 @@ export default function ImportacaoMovimentosTab({
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">delete_forever</span>
-                {clearingMovLoading ? 'A eliminar...' : `Sim, Limpar Movimentos (${selectedClient?.sigla || 'Cliente'})`}
+                {clearingMovLoading ? 'A eliminar...' : 'Sim, Limpar Movimentos e Linhas'}
               </button>
             </div>
           </div>

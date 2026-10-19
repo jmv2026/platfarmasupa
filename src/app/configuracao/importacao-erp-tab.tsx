@@ -3,7 +3,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Client } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
-import { PlatMovimentoRow, parsePlatMovimentosFile, generatePlatMovimentosSampleCSV } from '@/lib/parse-erp-file';
+import {
+  PlatMovimentoRow,
+  parsePlatMovimentosFile,
+  generatePlatMovimentosSampleCSV,
+  generatePlatMovimentosSampleExcel,
+} from '@/lib/parse-erp-file';
 import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './actions';
 
 interface ImportacaoErpTabProps {
@@ -28,9 +33,9 @@ export default function ImportacaoErpTab({
         .from('clientes')
         .select('*')
         .order('name')
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setClientsList(data as Client[]);
+        .then((res: { data: any }) => {
+          if (res.data && res.data.length > 0) {
+            setClientsList(res.data as Client[]);
           }
         });
     }
@@ -136,17 +141,34 @@ export default function ImportacaoErpTab({
     }
   };
 
-  const handleDownloadSample = () => {
+  const handleDownloadCsvSample = () => {
     const csvContent = generatePlatMovimentosSampleCSV();
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'modelo_plat_movimentos.csv');
+    link.setAttribute('download', 'modelo_plat_movimentos_erp.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadExcelSample = async () => {
+    try {
+      const blob = await generatePlatMovimentosSampleExcel();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'modelo_plat_movimentos_erp.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao gerar modelo Excel';
+      setFeedback({ type: 'error', message: msg });
+    }
   };
 
   const filteredPreviewRows = useMemo(() => {
@@ -158,9 +180,15 @@ export default function ImportacaoErpTab({
           r.artigo?.toLowerCase().includes(q) ||
           r.descricao?.toLowerCase().includes(q) ||
           r.documento?.toLowerCase().includes(q) ||
+          r.documento_ref?.toLowerCase().includes(q) ||
+          r.tipo_doc?.toLowerCase().includes(q) ||
           r.lote?.toLowerCase().includes(q) ||
           r.armazem?.toLowerCase().includes(q) ||
           r.localizacao?.toLowerCase().includes(q) ||
+          r.sigla?.toLowerCase().includes(q) ||
+          r.nome?.toLowerCase().includes(q) ||
+          r.nome_entrega?.toLowerCase().includes(q) ||
+          r.entidade?.toLowerCase().includes(q) ||
           r.chave1?.toLowerCase().includes(q) ||
           r.chave2?.toLowerCase().includes(q)
       )
@@ -200,15 +228,24 @@ export default function ImportacaoErpTab({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
-              onClick={handleDownloadSample}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all cursor-pointer"
-              title="Descarregar ficheiro CSV modelo com a estrutura exata do ERP"
+              onClick={handleDownloadExcelSample}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl transition-all cursor-pointer shadow-2xs"
+              title="Descarregar folha de cálculo Excel (.xlsx) modelo com as 42 colunas exatas do perfil ERP"
             >
-              <span className="material-symbols-outlined text-sm">download</span>
-              Descarregar Modelo (CSV)
+              <span className="material-symbols-outlined text-sm text-emerald-700">table_view</span>
+              Modelo Excel (.xlsx)
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadCsvSample}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all cursor-pointer shadow-2xs"
+              title="Descarregar ficheiro CSV (.csv) modelo com as 42 colunas delimitadas por ponto e vírgula (;)"
+            >
+              <span className="material-symbols-outlined text-sm text-indigo-600">download</span>
+              Modelo CSV (.csv)
             </button>
             <button
               type="button"
@@ -387,8 +424,11 @@ export default function ImportacaoErpTab({
                     <thead className="bg-surface-container text-on-surface-variant text-[11px] font-bold sticky top-0 z-10 border-b border-outline-variant/30">
                       <tr>
                         <th className="py-2.5 px-3">Linha</th>
-                        <th className="py-2.5 px-3">Data</th>
+                        <th className="py-2.5 px-3">Data/Hora</th>
+                        <th className="py-2.5 px-3">Sigla</th>
                         <th className="py-2.5 px-3">Documento</th>
+                        <th className="py-2.5 px-3">Doc. Ref</th>
+                        <th className="py-2.5 px-3">Tipo Doc</th>
                         <th className="py-2.5 px-3">Artigo</th>
                         <th className="py-2.5 px-3">Descrição</th>
                         <th className="py-2.5 px-3">Armazém</th>
@@ -396,22 +436,27 @@ export default function ImportacaoErpTab({
                         <th className="py-2.5 px-3">Lote</th>
                         <th className="py-2.5 px-3">Tipo</th>
                         <th className="py-2.5 px-3 text-right">Qtd</th>
+                        <th className="py-2.5 px-3">Entidade</th>
+                        <th className="py-2.5 px-3">Entrega</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-outline-variant/20 font-mono text-[11px]">
                       {filteredPreviewRows.map((row, idx) => (
                         <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
                           <td className="py-2 px-3 text-on-surface-variant">{row.num_linha ?? idx + 1}</td>
-                          <td className="py-2 px-3">{row.data || '-'}</td>
-                          <td className="py-2 px-3 font-semibold text-secondary">{row.documento || '-'}</td>
+                          <td className="py-2 px-3 whitespace-nowrap text-[10px]">{row.data_movimento || row.data || '-'}</td>
+                          <td className="py-2 px-3 font-bold text-indigo-700">{row.sigla || '-'}</td>
+                          <td className="py-2 px-3 font-semibold text-secondary whitespace-nowrap">{row.documento || '-'}</td>
+                          <td className="py-2 px-3 text-on-surface-variant whitespace-nowrap">{row.documento_ref || '-'}</td>
+                          <td className="py-2 px-3 text-center">{row.tipo_doc || '-'}</td>
                           <td className="py-2 px-3 font-bold text-on-surface">{row.artigo || '-'}</td>
-                          <td className="py-2 px-3 font-sans truncate max-w-[200px]" title={row.descricao || ''}>
+                          <td className="py-2 px-3 font-sans truncate max-w-[180px]" title={row.descricao || ''}>
                             {row.descricao || '-'}
                           </td>
                           <td className="py-2 px-3">{row.armazem || '-'}</td>
                           <td className="py-2 px-3 text-on-surface-variant">{row.localizacao || '-'}</td>
                           <td className="py-2 px-3 font-semibold text-purple-700">{row.lote || '-'}</td>
-                          <td className="py-2 px-3">
+                          <td className="py-2 px-3 text-center">
                             <span
                               className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
                                 (row.tipo_movimento || '').toUpperCase() === 'ES'
@@ -425,6 +470,10 @@ export default function ImportacaoErpTab({
                           <td className="py-2 px-3 text-right font-bold text-on-surface">
                             {row.quantidade?.toLocaleString() || 0}
                           </td>
+                          <td className="py-2 px-3 text-on-surface-variant">{row.entidade || '-'}</td>
+                          <td className="py-2 px-3 font-sans truncate max-w-[150px]" title={`${row.nome_entrega || ''} ${row.morada_entrega || ''}`}>
+                            {row.nome_entrega || row.cod_postal_localidade_entrega || row.localidade || '-'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -432,7 +481,7 @@ export default function ImportacaoErpTab({
                 </div>
                 <div className="bg-surface-container/20 px-3 py-2 text-[11px] text-on-surface-variant border-t border-outline-variant/20 flex justify-between items-center">
                   <span>A mostrar {filteredPreviewRows.length} de {parsedRows.length} linhas</span>
-                  <span>Delimitador padrão: Ponto e vírgula (;)</span>
+                  <span>Perfil Padrão ERP: 42 colunas delimitadas por ponto e vírgula (;)</span>
                 </div>
               </div>
             </div>
@@ -445,31 +494,31 @@ export default function ImportacaoErpTab({
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
             <span className="material-symbols-outlined text-indigo-600 text-base">tune</span>
-            Campos Mapeados na Tabela plat_movimentos (40 Campos)
+            Campos Mapeados na Tabela plat_movimentos (42 Campos - Perfil Padrão ERP)
           </div>
           <p className="text-xs text-on-surface-variant">
-            A tabela foi totalmente reconfigurada para acolher todos os campos presentes no ficheiro do ERP:
+            A tabela e os analisadores (.csv, .txt, .xlsx, .xls) acolhem integralmente a estrutura de 42 colunas extraída do ERP:
           </p>
           <div className="text-[11px] font-mono bg-surface-container/40 rounded-xl p-3.5 text-on-surface space-y-1.5 divide-y divide-outline-variant/15">
             <div className="pb-1">
-              <span className="text-indigo-600 font-bold">1. Documento & Registo:</span>{' '}
-              <span className="text-on-surface-variant">Data, tipo_movimento, Documento, NumLinha, doc_linha, NumRegisto, Chave1, Chave2, NumChave1, NumChave2</span>
+              <span className="text-indigo-600 font-bold">1. Documento & Registo (10):</span>{' '}
+              <span className="text-on-surface-variant">data_movimento, sigla, tipo_movimento, documento, documento-ref, tipo_doc, num_linha, doc_linha, Chave1, Chave2</span>
             </div>
             <div className="py-1">
-              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade:</span>{' '}
-              <span className="text-on-surface-variant">Artigo, Descricao, TipoArtigo, Armazem, Localizacao, Lote, EstadoStock, Quantidade, Familia, SubFamilia, DataFabrico, Validade</span>
+              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (11):</span>{' '}
+              <span className="text-on-surface-variant">artigo, descricao, tipo_artigo, armazem, localizacao, lote, quantidade, familia, sub_familia, datafabrico, validade</span>
             </div>
             <div className="py-1">
-              <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais:</span>{' '}
-              <span className="text-on-surface-variant">ValorUnitario, ValorAdicional, ValorAbater, TotalIva, TotalMerc, TotalOutros, TotalDesc</span>
+              <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais (7):</span>{' '}
+              <span className="text-on-surface-variant">valor_unitario, valor_adicional, valor_abater, total_iva, total_merc, total_outros, total_desc</span>
             </div>
             <div className="py-1">
-              <span className="text-indigo-600 font-bold">4. Entidade & Morada de Entrega:</span>{' '}
-              <span className="text-on-surface-variant">Entidade, Requisicao, NumContribuinte, Nome, Morada, Localidade, CodPostal, CodPostalLocalidade</span>
+              <span className="text-indigo-600 font-bold">4. Entidade & Faturação (9):</span>{' '}
+              <span className="text-on-surface-variant">entidade, requisicao, num_contribuinte, morada, nome, localidade, cod_Postal, cod_postal_localidade, pais</span>
             </div>
             <div className="pt-1">
-              <span className="text-indigo-600 font-bold">5. Controlo de Sistema:</span>{' '}
-              <span className="text-on-surface-variant">Sistema, ativa, chave_ativa, sigla, cliente_id</span>
+              <span className="text-indigo-600 font-bold">5. Destino de Entrega (5):</span>{' '}
+              <span className="text-on-surface-variant">nome_entrega, morada_entrega, cod_postal_entrega, cod_postal_localidade_entrega, entidade_entrega</span>
             </div>
           </div>
         </div>

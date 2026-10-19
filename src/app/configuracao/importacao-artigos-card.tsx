@@ -183,6 +183,8 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
     let mhCount = 0;
     let dmCount = 0;
     let dcCount = 0;
+    let saCount = 0;
+    let scCount = 0;
     let frioCount = 0;
 
     parsedRows.forEach((r) => {
@@ -192,10 +194,12 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
       if (tipo === 'MH' || tipo === 'MV') mhCount++;
       if (tipo === 'DM') dmCount++;
       if (tipo === 'DC') dcCount++;
+      if (tipo === 'SA') saCount++;
+      if (tipo === 'SC') scCount++;
       if (r.tipo_armazenamento === 'TF' || r.tipo_armazenamento === 'TC') frioCount++;
     });
 
-    return { comLote, comSerie, mhCount, dmCount, dcCount, frioCount };
+    return { comLote, comSerie, mhCount, dmCount, dcCount, saCount, scCount, frioCount };
   }, [parsedRows]);
 
   // Filtragem na pré-visualização
@@ -205,7 +209,11 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
     return parsedRows.filter(
       (r) =>
         r.artigo_id.toLowerCase().includes(term) ||
+        (r.artigo_cli && r.artigo_cli.toLowerCase().includes(term)) ||
         r.descricao.toLowerCase().includes(term) ||
+        (r.familia && r.familia.toLowerCase().includes(term)) ||
+        ((r.sub_familia || r.subfamilia) && (r.sub_familia || r.subfamilia)!.toLowerCase().includes(term)) ||
+        (r.cli_primavera && r.cli_primavera.toLowerCase().includes(term)) ||
         (r.id_tipo_artigo && (ID_TIPO_ARTIGO_MAP[r.id_tipo_artigo] || '').toLowerCase().includes(term))
     );
   }, [parsedRows, searchTerm]);
@@ -259,65 +267,96 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
       {/* Ajuda / Estrutura do Ficheiro */}
       {showHelp && (
         <div className="p-4 bg-surface-container/40 rounded-xl border border-outline-variant/30 text-xs space-y-3">
-          <h4 className="font-bold text-on-surface flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-sm text-secondary">info</span>
-            Colunas e Formatos Aceites:
-          </h4>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <h4 className="font-bold text-on-surface flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-sm text-secondary">info</span>
+              Máscara de Importação Aceite (CSV / XLSX):
+            </h4>
+            <span className="text-[11px] font-mono bg-secondary/10 text-secondary px-2 py-0.5 rounded-md font-semibold self-start sm:self-auto">
+              Delimitador CSV: ponto e vírgula (;) ou vírgula (,)
+            </span>
+          </div>
+
+          <div className="p-2.5 bg-surface rounded-lg border border-outline-variant/20 font-mono text-[11px] text-secondary font-semibold overflow-x-auto select-all">
+            artigo_cli;artigo_id;descricao;familia;id_tipo_artigo;subfamilia;tratamento_serie;tratamento_lote;cli_primavera;tipo_armazenamento
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px] divide-y divide-outline-variant/20">
               <thead className="bg-surface-container/80 text-on-surface-variant font-semibold">
                 <tr>
                   <th className="py-2 px-2.5">Nome do Cabeçalho</th>
                   <th className="py-2 px-2.5">Descrição</th>
+                  <th className="py-2 px-2.5">Obrigatório?</th>
                   <th className="py-2 px-2.5">Valores Exemplo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                 <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">artigo_id</td>
-                  <td className="py-2 px-2.5">Código base ou interno identificador do artigo (Obrigatório)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">A024273070, 00 1275627</td>
-                </tr>
-                <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">artigo_cli</td>
-                  <td className="py-2 px-2.5">Código identificador de cliente (Opcional, gera automático se vazio)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">SERM-A024273070</td>
+                  <td className="py-2 px-2.5">Chave primária única do artigo para o cliente (ex: cli_primavera-Artigo)</td>
+                  <td className="py-2 px-2.5 text-emerald-700 font-semibold">Sim (ou gerado)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">6373-202604AV5008, 6509-10495L</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">Descricao</td>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">artigo_id</td>
+                  <td className="py-2 px-2.5">Código base ou interno do produto</td>
+                  <td className="py-2 px-2.5 text-rose-700 font-semibold">Sim</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">202604AV5008, 10495L, 7774273</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">descricao</td>
                   <td className="py-2 px-2.5">Designação comercial ou nome do produto</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">LUVION 200 MG/2ML, SELOKEN 1MG</td>
+                  <td className="py-2 px-2.5 text-rose-700 font-semibold">Sim</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">FRESENIUS AV SET 5008, BATA PROTEÇÃO</td>
                 </tr>
                 <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">tratamento_serie</td>
-                  <td className="py-2 px-2.5">Exige controlo de número de série unitário (0 ou 1)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">0 (Não), 1 (Sim)</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">tratamento_lote</td>
-                  <td className="py-2 px-2.5">Exige rastreabilidade por lote de fabrico (0 ou 1)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">1 (Sim), 0 (Não)</td>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">familia</td>
+                  <td className="py-2 px-2.5">Família logística/comercial do artigo</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">MED, CONS, EXP</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">id_tipo_artigo</td>
-                  <td className="py-2 px-2.5">ID da Classificação regulamentar na base de dados (80 a 85)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">80 (Medicamento Humano), 82 (Dispositivo Médico), 83 (Dermo/Cosmético)</td>
+                  <td className="py-2 px-2.5">Classificação regulamentar (80 a 85 / MH, MV, DM, DC, SA, SC)</td>
+                  <td className="py-2 px-2.5 text-rose-700 font-semibold">Sim (def. 80)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">80 (Humano), 82 (Dispositivo), 84 (Suplemento)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">subfamilia</td>
+                  <td className="py-2 px-2.5">Sub-família ou agrupamento específico</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">VAR, PHM, SER</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">tratamento_serie</td>
+                  <td className="py-2 px-2.5">Exige controlo de número de série individual</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional (def. Falso)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">FALSO, VERDADEIRO (ou 0 / 1)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">tratamento_lote</td>
+                  <td className="py-2 px-2.5">Exige rastreabilidade de lote e validade</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional (def. Verdadeiro)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">VERDADEIRO, FALSO (ou 1 / 0)</td>
+                </tr>
+                <tr>
+                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">cli_primavera</td>
+                  <td className="py-2 px-2.5">Código de identificação do cliente no Primavera ERP</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">6373, 6509, 482</td>
                 </tr>
                 <tr>
                   <td className="py-2 px-2.5 font-mono font-bold text-secondary">tipo_armazenamento</td>
-                  <td className="py-2 px-2.5">Condição térmica de conservação (TA, TC, TF)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">TA (Ambiente), TC (15-25ºC), TF (2-8ºC)</td>
-                </tr>
-                <tr>
-                  <td className="py-2 px-2.5 font-mono font-bold text-secondary">pva</td>
-                  <td className="py-2 px-2.5">Preço de Venda / PVA (Opcional)</td>
-                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">12.50, 4.99, 0.00</td>
+                  <td className="py-2 px-2.5">Condição térmica de conservação (TA - Ambiente, TC - 15-25ºC, TF - 2-8ºC)</td>
+                  <td className="py-2 px-2.5 text-on-surface-variant">Opcional (def. TA)</td>
+                  <td className="py-2 px-2.5 font-mono text-on-surface-variant">TA, TC, TF</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p className="text-[11px] text-on-surface-variant">
-            * <strong>Nota:</strong> Se o artigo já existir na base de dados, os seus dados serão atualizados com as novas definições (upsert automático por <code>artigo_id</code>).
+            * <strong>Nota:</strong> Se o artigo já existir no catálogo, os seus dados serão atualizados através de upsert automático pela chave primária <code>artigo_cli</code>.
           </p>
         </div>
       )}
@@ -392,15 +431,29 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
               <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md font-medium text-[11px]">
                 Dispositivos: {stats.dmCount}
               </span>
-              <span className="px-2 py-0.5 bg-pink-100 text-pink-800 rounded-md font-medium text-[11px]">
-                Dermo/Cosméticos: {stats.dcCount}
-              </span>
-              <span className="px-2 py-0.5 bg-cyan-100 text-cyan-800 rounded-md font-medium text-[11px]">
-                Frio/Controlado: {stats.frioCount}
-              </span>
+              {stats.dcCount > 0 && (
+                <span className="px-2 py-0.5 bg-pink-100 text-pink-800 rounded-md font-medium text-[11px]">
+                  Dermo/Cosméticos: {stats.dcCount}
+                </span>
+              )}
+              {stats.saCount > 0 && (
+                <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md font-medium text-[11px]">
+                  Suplementos: {stats.saCount}
+                </span>
+              )}
+              {stats.scCount > 0 && (
+                <span className="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-md font-medium text-[11px]">
+                  Controlados: {stats.scCount}
+                </span>
+              )}
               <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md font-medium text-[11px]">
                 Lote: {stats.comLote}
               </span>
+              {stats.comSerie > 0 && (
+                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded-md font-medium text-[11px]">
+                  Série: {stats.comSerie}
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -444,7 +497,7 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Filtrar artigos da pré-visualização..."
+                placeholder="Filtrar por artigo, descrição, família, cliente..."
                 className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-xl pl-9 pr-3 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
               />
             </div>
@@ -458,68 +511,83 @@ export default function ImportacaoArtigosCard({ onSuccess, clients = [] }: Impor
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container text-on-surface-variant font-semibold uppercase tracking-wider text-[10px] sticky top-0 z-10 shadow-xs">
                 <tr>
-                  <th className="py-2.5 px-3">Código</th>
+                  <th className="py-2.5 px-3">Artigo CLI</th>
+                  <th className="py-2.5 px-3">Artigo</th>
                   <th className="py-2.5 px-3">Descrição Comercial</th>
+                  <th className="py-2.5 px-3">Família</th>
                   <th className="py-2.5 px-3">Tipo Artigo</th>
+                  <th className="py-2.5 px-3">SubFamília</th>
                   <th className="py-2.5 px-3">Conservação</th>
-                  <th className="py-2.5 px-3 text-right">PVA (€)</th>
                   <th className="py-2.5 px-3 text-center">Lote</th>
                   <th className="py-2.5 px-3 text-center">Série</th>
+                  <th className="py-2.5 px-3">Cli Primavera</th>
                   <th className="py-2.5 px-3 text-right">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10 text-on-surface">
-                {filteredPreview.slice(0, 100).map((row, idx) => (
-                  <tr key={`${row.artigo_id}-${idx}`} className="hover:bg-surface-container/30 transition-colors">
-                    <td className="py-2.5 px-3 font-mono font-bold text-secondary">
-                      {row.artigo_id}
-                    </td>
-                    <td className="py-2.5 px-3 font-medium">
-                      {row.descricao}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span className="text-[11px] text-on-surface-variant">
-                        {TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[row.id_tipo_artigo || '80'] || 'MH']}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${row.tipo_armazenamento === 'TF'
-                            ? 'bg-cyan-100 text-cyan-800'
-                            : row.tipo_armazenamento === 'TC'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-slate-100 text-slate-800'
-                          }`}
-                      >
-                        <span className="material-symbols-outlined text-[12px]">
-                          {row.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                {filteredPreview.slice(0, 100).map((row, idx) => {
+                  const tipoCod = row.id_tipo_artigo || '80';
+                  const tipoLabel = ID_TIPO_ARTIGO_MAP[tipoCod] || 'MH';
+                  return (
+                    <tr key={`${row.artigo_cli || row.artigo_id}-${idx}`} className="hover:bg-surface-container/30 transition-colors">
+                      <td className="py-2.5 px-3 font-mono font-bold text-secondary whitespace-nowrap">
+                        {row.artigo_cli || '-'}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-semibold text-on-surface whitespace-nowrap">
+                        {row.artigo_id}
+                      </td>
+                      <td className="py-2.5 px-3 font-medium min-w-[200px]">
+                        {row.descricao}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-on-surface-variant whitespace-nowrap">
+                        {row.familia || '-'}
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container border border-outline-variant/30 text-on-surface">
+                          <span className="font-mono text-secondary">{tipoCod}</span>
+                          <span className="text-on-surface-variant">({tipoLabel})</span>
                         </span>
-                        {TIPO_ARMAZENAMENTO_LABELS[row.tipo_armazenamento || 'TA'] || row.tipo_armazenamento}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-semibold text-on-surface">
-                      {typeof (row.pva ?? row.pvp) === 'number' && Number(row.pva ?? row.pvp) > 0
-                        ? `${Number(row.pva ?? row.pvp).toFixed(2)} €`
-                        : <span className="text-on-surface-variant/50">-</span>}
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className={`material-symbols-outlined text-sm ${row.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
-                        {row.tratamento_lote ? 'check_circle' : 'cancel'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      <span className={`material-symbols-outlined text-sm ${row.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
-                        {row.tratamento_serie ? 'check_circle' : 'cancel'}
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <span className={`inline-flex items-center gap-1 font-medium ${row.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${row.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                        {row.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-on-surface-variant whitespace-nowrap">
+                        {row.sub_familia || row.subfamilia || '-'}
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${row.tipo_armazenamento === 'TF'
+                              ? 'bg-cyan-100 text-cyan-800'
+                              : row.tipo_armazenamento === 'TC'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-100 text-slate-800'
+                            }`}
+                        >
+                          <span className="material-symbols-outlined text-[12px]">
+                            {row.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                          </span>
+                          {TIPO_ARMAZENAMENTO_LABELS[row.tipo_armazenamento || 'TA'] || row.tipo_armazenamento || 'TA'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`material-symbols-outlined text-sm ${row.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
+                          {row.tratamento_lote ? 'check_circle' : 'cancel'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`material-symbols-outlined text-sm ${row.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
+                          {row.tratamento_serie ? 'check_circle' : 'cancel'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-on-surface-variant whitespace-nowrap">
+                        {row.cli_primavera || '-'}
+                      </td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1 font-medium ${row.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${row.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                          {row.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

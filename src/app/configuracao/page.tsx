@@ -45,10 +45,10 @@ export default async function ConfiguracaoPage() {
     supabase.from('perfis').select('*').order('codigo'),
     supabase.from('imp_stk').select('*').order('created_at', { ascending: false }).limit(200),
     supabase
-      .from('movimentos')
-      .select('*, clientes(name, sigla), artigos(descricao)')
+      .from('vw_movimentos_detalhe')
+      .select('*')
       .order('data_movimento', { ascending: false })
-      .limit(300),
+      .limit(1000),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
     supabase
@@ -62,9 +62,10 @@ export default async function ConfiguracaoPage() {
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
     ...m,
-    cliente_nome: m.clientes?.name || m.clients?.name,
-    cliente_sigla: m.sigla || m.clientes?.sigla || m.clients?.sigla,
-    artigo_descricao: m.artigos?.descricao,
+    id: m.id || m.doc_linha,
+    cliente_nome: m.cliente_nome || m.sigla,
+    cliente_sigla: m.sigla || m.cliente_sigla,
+    artigo_descricao: m.artigo_descricao || m.artigo_cli,
   }));
 
   // Dados de Parametrização do Servidor de Email (.env.local)

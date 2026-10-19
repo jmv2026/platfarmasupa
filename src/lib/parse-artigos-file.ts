@@ -1,11 +1,15 @@
 import ExcelJS from 'exceljs';
-import { TipoArtigo, TipoArmazenamento } from './supabase/types';
+import type { TipoArtigo, TipoArmazenamento } from './supabase/types';
 
 export interface ArtigoImportInput {
   artigo_id: string;
-  descricao: string;
-  tratamento_serie?: boolean;
   artigo_cli?: string;
+  descricao: string;
+  familia?: string;
+  sub_familia?: string;
+  subfamilia?: string;
+  cli_primavera?: string;
+  tratamento_serie?: boolean;
   tratamento_lote?: boolean;
   id_tipo_artigo?: string;
   tipo_armazenamento?: TipoArmazenamento;
@@ -16,8 +20,8 @@ export interface ArtigoImportInput {
 
 /**
  * Normaliza os nomes de cabeçalhos de ficheiros TXT/CSV/Excel para os campos de Artigo.
- * Ordem estrita: descrições e nomes são avaliados ANTES de 'artigo' para não haver colisões
- * (ex: 'Descrição do Artigo' deve ser 'descricao' e 'Código do Artigo' deve ser 'artigo_id').
+ * Ordem estrita: descrições, códigos específicos e famílias são avaliados ANTES de 'artigo'
+ * para não haver colisões de prefixo/sufixo.
  */
 export function normalizeArtigoHeaderKey(key: string): string {
   if (!key) return '';
@@ -29,7 +33,56 @@ export function normalizeArtigoHeaderKey(key: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '');
 
-  // 1. Descrição / Designação / Nome do Artigo (AVALIAR PRIMEIRO para evitar que 'artigo' capture 'descrição do artigo')
+  // 1. Cliente Primavera / Cli Primavera
+  if (
+    clean === 'cliprimavera' ||
+    clean === 'clienteprimavera' ||
+    clean === 'codcliprimavera' ||
+    clean === 'codprimavera' ||
+    clean === 'primavera' ||
+    clean === 'codcliente' ||
+    clean === 'idcliente' ||
+    clean === 'cliente'
+  ) {
+    return 'cli_primavera';
+  }
+
+  // 2. Artigo Cliente / Artigo CLI (AVALIAR ANTES de 'artigo' para não colidir com includes('artigo'))
+  if (
+    clean === 'artigocli' ||
+    clean === 'artcli' ||
+    clean === 'artigocliente' ||
+    clean === 'codartcli' ||
+    clean === 'codigoartigocli' ||
+    clean === 'artclient' ||
+    clean.includes('artigocli') ||
+    clean.includes('artigocliente')
+  ) {
+    return 'artigo_cli';
+  }
+
+  // 3. SubFamília (AVALIAR ANTES de 'familia')
+  if (
+    clean === 'subfamilia' ||
+    clean === 'subfam' ||
+    clean === 'subfamily' ||
+    clean.includes('subfamilia') ||
+    clean.includes('subfam')
+  ) {
+    return 'sub_familia';
+  }
+
+  // 4. Família
+  if (
+    clean === 'familia' ||
+    clean === 'fam' ||
+    clean === 'family' ||
+    clean.includes('familia')
+  ) {
+    return 'familia';
+  }
+
+  // 5. Descrição / Designação / Nome do Artigo (AVALIAR ANTES de 'artigo')
   if (
     clean.includes('desc') ||
     clean.includes('designacao') ||
@@ -42,14 +95,14 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'descricao';
   }
 
-  // 2. Tratamento Série (antes de 'serie')
+  // 6. Tratamento Série
   if (
     clean.includes('tratamentoserie') ||
-    clean.includes('tratserie') ||
+    clean.includes('tratseries') ||
     clean.includes('controloserie') ||
     clean.includes('controleserie') ||
+    clean.includes('series') ||
     clean.includes('serie') ||
-    clean === 'series' ||
     clean === 'serial' ||
     clean === 'nrserie' ||
     clean === 'numserie' ||
@@ -58,20 +111,21 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'tratamento_serie';
   }
 
-  // 3. Tratamento Lote (antes de 'lote')
+  // 7. Tratamento Lote
   if (
     clean.includes('tratamentolote') ||
+    clean.includes('tratlotes') ||
     clean.includes('tratlote') ||
     clean.includes('contrololote') ||
     clean.includes('controlelote') ||
+    clean.includes('lotes') ||
     clean.includes('lote') ||
-    clean === 'lotes' ||
     clean === 'batch'
   ) {
     return 'tratamento_lote';
   }
 
-  // 4. Tipo de Artigo / Classificação Regulamentar
+  // 8. Tipo de Artigo / Classificação Regulamentar (80 a 85 / MH, MV, DM, DC, SA, SC)
   if (
     clean.includes('tipoartigo') ||
     clean.includes('tipodeartigo') ||
@@ -79,14 +133,12 @@ export function normalizeArtigoHeaderKey(key: string): string {
     clean === 'tipoart' ||
     clean === 'tipo' ||
     clean === 'classificacao' ||
-    clean === 'categoria' ||
-    clean === 'familia' ||
-    clean === 'subfamilia'
+    clean === 'categoria'
   ) {
     return 'id_tipo_artigo';
   }
 
-  // 5. Tipo de Armazenamento / Condição de Conservação Térmica
+  // 9. Tipo de Armazenamento / Condição de Conservação Térmica
   if (
     clean.includes('tipoarmazenamento') ||
     clean.includes('armazenamento') ||
@@ -99,7 +151,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'tipo_armazenamento';
   }
 
-  // 6. PVA / PVP / Preço de Venda
+  // 10. PVA / PVP / Preço de Venda
   if (
     clean === 'pva' ||
     clean.includes('pva') ||
@@ -119,7 +171,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'pva';
   }
 
-  // 7. Ativo / Estado
+  // 11. Ativo / Estado
   if (
     clean === 'ativo' ||
     clean === 'active' ||
@@ -130,18 +182,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
     return 'ativo';
   }
 
-  // 9. Artigo Cliente / Artigo CLI
-  if (
-    clean === 'artigocli' ||
-    clean === 'artcli' ||
-    clean.includes('artigocli') ||
-    clean.includes('artigocliente') ||
-    clean.includes('sigla')
-  ) {
-    return 'artigo_cli';
-  }
-
-  // 8. Artigo ID / Código Único do Produto (avaliado por último)
+  // 12. Artigo ID / Código Único do Produto (avaliado por último)
   if (
     clean === 'artigo' ||
     clean === 'art' ||
@@ -224,19 +265,20 @@ export function parseArtigoNumeric(val: unknown, defaultValue = 0): number {
 }
 
 /**
- * Normaliza valores de boolean (0/1, true/false, sim/nao)
- * 0 -> false, 1 -> true
+ * Normaliza valores booleanos (0/1, true/false, verdadeiro/falso, sim/nao)
  */
 export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean {
   if (val === undefined || val === null || val === '') return defaultValue;
   if (typeof val === 'boolean') return val;
   if (typeof val === 'number') return val === 1;
 
-  const clean = extractExcelCellValue(val).toLowerCase();
+  const clean = extractExcelCellValue(val).toLowerCase().trim();
   if (
     clean === '1' ||
     clean === 'true' ||
+    clean === 'verdadeiro' ||
     clean === 't' ||
+    clean === 'v' ||
     clean === 'sim' ||
     clean === 's' ||
     clean === 'yes' ||
@@ -247,6 +289,7 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
   if (
     clean === '0' ||
     clean === 'false' ||
+    clean === 'falso' ||
     clean === 'f' ||
     clean === 'nao' ||
     clean === 'não' ||
@@ -259,19 +302,23 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
 }
 
 /**
- * Normaliza o Tipo de Artigo para valores válidos na base de dados ('MH' | 'MV' | 'DM' | 'DC' | 'SC')
+ * Normaliza o Tipo de Artigo para IDs válidos na tabela tipos_artigo ('80' a '85')
+ * 80: MH (Medicamento de uso humano)
+ * 81: MV (Medicamento de uso veterinário)
+ * 82: DM (Dispositivo médico)
+ * 83: DC (Dermo-Cosmético)
+ * 84: SA (Suplemento alimentar)
+ * 85: SC (Substância controlada)
  */
 export function normalizeTipoArtigo(val: unknown): string {
   if (!val) return '80'; // MH
-  const clean = extractExcelCellValue(val).toUpperCase();
+  const clean = extractExcelCellValue(val).toUpperCase().trim();
 
   if (
     clean === '80' ||
     clean === 'MH' ||
     clean.includes('HUMAN') ||
-    clean.includes('MEDICAMENTO') ||
-    clean === 'MED' ||
-    clean === 'M'
+    clean.includes('MEDICAMENTO')
   ) {
     return '80';
   }
@@ -283,16 +330,20 @@ export function normalizeTipoArtigo(val: unknown): string {
   }
   if (
     clean === '83' ||
-    clean === '84' ||
     clean === 'DC' ||
     clean.includes('DERMO') ||
     clean.includes('COSM') ||
-    clean.includes('HIGIENE') ||
-    clean.includes('SUPL') ||
-    clean === 'SA'
+    clean.includes('HIGIENE')
   ) {
-    if (clean === '84' || clean.includes('SUPL') || clean === 'SA') return '84';
     return '83';
+  }
+  if (
+    clean === '84' ||
+    clean === 'SA' ||
+    clean.includes('SUPL') ||
+    clean.includes('ALIMENTAR')
+  ) {
+    return '84';
   }
   if (
     clean === '85' ||
@@ -312,7 +363,7 @@ export function normalizeTipoArtigo(val: unknown): string {
  */
 export function normalizeTipoArmazenamento(val: unknown): TipoArmazenamento {
   if (!val) return 'TA';
-  const clean = extractExcelCellValue(val).toUpperCase();
+  const clean = extractExcelCellValue(val).toUpperCase().trim();
 
   if (clean === 'TA' || clean.includes('AMB') || clean.includes('NORMAL')) {
     return 'TA';
@@ -334,7 +385,8 @@ export function normalizeTipoArmazenamento(val: unknown): TipoArmazenamento {
 }
 
 /**
- * Parser para ficheiros TXT/CSV de catálogo de artigos
+ * Parser para ficheiros TXT/CSV de catálogo de artigos.
+ * Suporta delimitadores ; , ou tabulação e extrai automaticamente colunas padrão ou estendidas.
  */
 export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
   const cleanContent = textContent.replace(/^\uFEFF/, '');
@@ -393,8 +445,8 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
 
     const parts = parseCsvLine(rawLine).map((p) => p.replace(/^["']|["']$/g, '').trim());
 
+    // Se o ficheiro tiver exatamente 6 colunas padrão clássicas e parts exceder 6 colunas por ponto-e-vírgula na descrição
     if (hasStandardColumns && rawHeaders.length === 6 && parts.length > 6) {
-      // Formato clássico com ponto-e-vírgula na descrição
       const artigo_id = parts[0];
       const tipo_armazenamento = parts[parts.length - 1];
       const tipo_artigo = parts[parts.length - 2];
@@ -430,10 +482,19 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
     if (!artigo_id && !descricao) continue;
     if (!artigo_id) continue;
 
+    const cli_primavera = (rowObj.cli_primavera || '').trim() || undefined;
+    let artigo_cli = (rowObj.artigo_cli || '').trim() || undefined;
+    if (!artigo_cli && cli_primavera) {
+      artigo_cli = `${cli_primavera}-${artigo_id}`;
+    }
+
     rows.push({
       artigo_id,
-      artigo_cli: rowObj.artigo_cli?.trim() || undefined,
+      artigo_cli,
       descricao: descricao || artigo_id,
+      familia: rowObj.familia?.trim() || undefined,
+      sub_familia: (rowObj.sub_familia || rowObj.subfamilia)?.trim() || undefined,
+      cli_primavera,
       tratamento_serie: parseArtigoBoolean(rowObj.tratamento_serie, false),
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       id_tipo_artigo: normalizeTipoArtigo(rowObj.id_tipo_artigo),
@@ -443,11 +504,12 @@ export function parseTextArtigosFile(textContent: string): ArtigoImportInput[] {
     });
   }
 
-  // Deduplicar por artigo_id
+  // Deduplicar preferencialmente por artigo_cli ou artigo_id
   const uniqueMap = new Map<string, ArtigoImportInput>();
   for (const r of rows) {
-    if (r.artigo_id) {
-      uniqueMap.set(r.artigo_id, r);
+    const key = r.artigo_cli || r.artigo_id;
+    if (key) {
+      uniqueMap.set(key, r);
     }
   }
 
@@ -484,17 +546,17 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
     }
 
     const mappedKeys = rowHeaders.map((h) => normalizeArtigoHeaderKey(h));
-    const hasArtigo = mappedKeys.includes('artigo_id');
+    const hasArtigo = mappedKeys.includes('artigo_id') || mappedKeys.includes('artigo_cli');
     const hasDesc = mappedKeys.includes('descricao');
 
-    // Se a linha tiver pelo menos 'artigo_id' e 'descricao', é a linha de cabeçalhos
+    // Se a linha tiver pelo menos identificador de artigo e descrição, é a linha de cabeçalhos
     if (hasArtigo && hasDesc) {
       headerRowIndex = rowNumber;
       headers = mappedKeys;
     }
   });
 
-  // Se não encontrou linha com 'artigo_id' e 'descricao', tentar a linha 1 como fallback
+  // Se não encontrou linha com artigo_id/artigo_cli e descricao, tentar a linha 1 como fallback
   if (headerRowIndex === -1) {
     const firstRow = worksheet.getRow(1);
     const cellCount = Math.max(firstRow.cellCount || 0, 10);
@@ -508,7 +570,7 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
     headerRowIndex = 1;
 
     // Se nem assim tiver artigo_id e descricao, assume mapeamento padrão por posição (Col 1: Artigo, Col 2: Descrição)
-    if (!headers.includes('artigo_id')) headers[0] = 'artigo_id';
+    if (!headers.includes('artigo_id') && !headers.includes('artigo_cli')) headers[0] = 'artigo_id';
     if (!headers.includes('descricao')) headers[1] = 'descricao';
   }
 
@@ -534,10 +596,19 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
     if (!artigo_id && !descricao) return;
     if (!artigo_id) return;
 
+    const cli_primavera = String(rowObj.cli_primavera || '').trim() || undefined;
+    let artigo_cli = String(rowObj.artigo_cli || '').trim() || undefined;
+    if (!artigo_cli && cli_primavera) {
+      artigo_cli = `${cli_primavera}-${artigo_id}`;
+    }
+
     rows.push({
       artigo_id,
-      artigo_cli: rowObj.artigo_cli?.trim() || undefined,
+      artigo_cli,
       descricao: descricao || artigo_id,
+      familia: rowObj.familia ? String(rowObj.familia).trim() : undefined,
+      sub_familia: (rowObj.sub_familia || rowObj.subfamilia) ? String(rowObj.sub_familia || rowObj.subfamilia).trim() : undefined,
+      cli_primavera,
       tratamento_serie: parseArtigoBoolean(rowObj.tratamento_serie, false),
       tratamento_lote: parseArtigoBoolean(rowObj.tratamento_lote, true),
       id_tipo_artigo: normalizeTipoArtigo(rowObj.id_tipo_artigo),
@@ -547,11 +618,12 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
     });
   });
 
-  // 3. Deduplicar por artigo_id (mantém a última ocorrência)
+  // 3. Deduplicar preferencialmente por artigo_cli ou artigo_id
   const uniqueMap = new Map<string, ArtigoImportInput>();
   for (const r of rows) {
-    if (r.artigo_id) {
-      uniqueMap.set(r.artigo_id, r);
+    const key = r.artigo_cli || r.artigo_id;
+    if (key) {
+      uniqueMap.set(key, r);
     }
   }
 
@@ -559,31 +631,64 @@ export async function parseExcelArtigosFile(arrayBuffer: ArrayBuffer): Promise<A
 }
 
 /**
- * Gera um ficheiro CSV de exemplo/modelo para catálogo de artigos.
+ * Gera um ficheiro CSV de exemplo/modelo para catálogo de artigos correspondente à máscara solicitada.
  */
 export function generateArtigosSampleCSV(): string {
   const headers = [
-    'artigo_id',
     'artigo_cli',
-    'Descricao',
+    'artigo_id',
+    'descricao',
+    'familia',
+    'id_tipo_artigo',
+    'subfamilia',
     'tratamento_serie',
     'tratamento_lote',
-    'id_tipo_artigo',
+    'cli_primavera',
     'tipo_armazenamento',
-    'pva',
-    'ativo',
   ];
 
   const sampleRows = [
-    ['024273070', 'SERM-024273070', 'LUVION 200MG + 6F 2ML', '0', '1', '80', 'TA', '12.50', '1'],
-    ['00 1275627', 'SERM-001275627', 'SELOKEN 1MG/ML SOL INJ', '0', '1', '80', 'TC', '8.90', '1'],
-    ['023616055', 'SERM-023616055', 'VACINA VETERINÁRIA 2-8 ºC', '1', '1', '81', 'TF', '34.20', '1'],
-    ['000155152', 'SERM-000155152', 'MULTICATH 16 CM (DISPOSITIVO)', '0', '1', '82', 'TA', '4.50', '1'],
+    [
+      '6373-202604AV5008',
+      '202604AV5008',
+      'FRESENIUS AV SET 5008 CORDIAX POST-R',
+      'MED',
+      '80',
+      'VAR',
+      'FALSO',
+      'VERDADEIRO',
+      '6373',
+      'TA',
+    ],
+    [
+      '6509-10495L',
+      '10495L',
+      'BATA DE PROTEÇÃO REUTILIZÁVEL CAT III',
+      'MED',
+      '82',
+      'PHM',
+      'FALSO',
+      'VERDADEIRO',
+      '6509',
+      'TC',
+    ],
+    [
+      '482-7774273',
+      '7774273',
+      'AUDIOVIT PLUS 60 CAPS.',
+      'MED',
+      '84',
+      'SER',
+      'FALSO',
+      'VERDADEIRO',
+      '482',
+      'TF',
+    ],
   ];
 
   const lines = [
     headers.join(';'),
-    ...sampleRows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(';')),
+    ...sampleRows.map((r) => r.join(';')),
   ];
 
   return lines.join('\n');
@@ -597,15 +702,16 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
   const worksheet = workbook.addWorksheet('Catálogo de Artigos');
 
   worksheet.columns = [
-    { header: 'Código do Artigo', key: 'artigo_id', width: 18 },
-    { header: 'Código do Artigo (Cliente)', key: 'artigo_cli', width: 25 },
-    { header: 'Descrição Comercial', key: 'descricao', width: 35 },
-    { header: 'Tratamento Lote', key: 'tratamento_lote', width: 16 },
-    { header: 'Tratamento Série', key: 'tratamento_serie', width: 16 },
-    { header: 'Tipo Artigo (ID)', key: 'id_tipo_artigo', width: 22 },
-    { header: 'Condição Conservação', key: 'tipo_armazenamento', width: 22 },
-    { header: 'PVA (€)', key: 'pva', width: 14 },
-    { header: 'Ativo', key: 'ativo', width: 10 },
+    { header: 'artigo_cli', key: 'artigo_cli', width: 22 },
+    { header: 'artigo_id', key: 'artigo_id', width: 18 },
+    { header: 'descricao', key: 'descricao', width: 40 },
+    { header: 'familia', key: 'familia', width: 14 },
+    { header: 'id_tipo_artigo', key: 'id_tipo_artigo', width: 16 },
+    { header: 'subfamilia', key: 'subfamilia', width: 14 },
+    { header: 'tratamento_serie', key: 'tratamento_serie', width: 18 },
+    { header: 'tratamento_lote', key: 'tratamento_lote', width: 18 },
+    { header: 'cli_primavera', key: 'cli_primavera', width: 16 },
+    { header: 'tipo_armazenamento', key: 'tipo_armazenamento', width: 20 },
   ];
 
   // Estilo de cabeçalho
@@ -618,51 +724,42 @@ export async function generateArtigosSampleExcel(): Promise<Blob> {
   };
 
   worksheet.addRow({
-    artigo_id: '024273070',
-    artigo_cli: 'SERM-024273070',
-    descricao: 'LUVION 200MG + 6F 2ML',
-    tratamento_lote: 'Sim',
-    tratamento_serie: 'Não',
-    id_tipo_artigo: '80', // Medicamento Uso Humano (MH)
-    tipo_armazenamento: 'Temperatura Ambiente (TA)',
-    pva: 12.50,
-    ativo: 'Sim',
+    artigo_cli: '6373-202604AV5008',
+    artigo_id: '202604AV5008',
+    descricao: 'FRESENIUS AV SET 5008 CORDIAX POST-R',
+    familia: 'MED',
+    id_tipo_artigo: '80',
+    subfamilia: 'VAR',
+    tratamento_serie: 'FALSO',
+    tratamento_lote: 'VERDADEIRO',
+    cli_primavera: '6373',
+    tipo_armazenamento: 'TA',
   });
 
   worksheet.addRow({
-    artigo_id: '00 1275627',
-    artigo_cli: 'SERM-001275627',
-    descricao: 'SELOKEN 1MG/ML SOL INJ 5ML',
-    tratamento_lote: 'Sim',
-    tratamento_serie: 'Não',
-    id_tipo_artigo: '80', // Medicamento Uso Humano (MH)
-    tipo_armazenamento: 'Temperatura Controlada (TC 15-25ºC)',
-    pva: 8.90,
-    ativo: 'Sim',
+    artigo_cli: '6509-10495L',
+    artigo_id: '10495L',
+    descricao: 'BATA DE PROTEÇÃO REUTILIZÁVEL CAT III',
+    familia: 'MED',
+    id_tipo_artigo: '82',
+    subfamilia: 'PHM',
+    tratamento_serie: 'FALSO',
+    tratamento_lote: 'VERDADEIRO',
+    cli_primavera: '6509',
+    tipo_armazenamento: 'TC',
   });
 
   worksheet.addRow({
-    artigo_id: '023616055',
-    artigo_cli: 'SERM-023616055',
-    descricao: 'VACINA VETERINÁRIA FRASCO 10ML',
-    tratamento_lote: 'Sim',
-    tratamento_serie: 'Sim',
-    id_tipo_artigo: '81', // Medicamento Veterinário (MV)
-    tipo_armazenamento: 'Frio (TF 2-8ºC)',
-    pva: 34.20,
-    ativo: 'Sim',
-  });
-
-  worksheet.addRow({
-    artigo_id: '000155152',
-    artigo_cli: 'SERM-000155152',
-    descricao: 'MULTICATH 16 CM CATETER',
-    tratamento_lote: 'Sim',
-    tratamento_serie: 'Não',
-    id_tipo_artigo: '82', // Dispositivo Médico (DM)
-    tipo_armazenamento: 'Temperatura Ambiente (TA)',
-    pva: 4.50,
-    ativo: 'Sim',
+    artigo_cli: '482-7774273',
+    artigo_id: '7774273',
+    descricao: 'AUDIOVIT PLUS 60 CAPS.',
+    familia: 'MED',
+    id_tipo_artigo: '84',
+    subfamilia: 'SER',
+    tratamento_serie: 'FALSO',
+    tratamento_lote: 'VERDADEIRO',
+    cli_primavera: '482',
+    tipo_armazenamento: 'TF',
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

@@ -613,7 +613,10 @@ export function parseTextMovimentosFile(
         lote: rowObj['lote'] ? rowObj['lote'].trim() : null,
         nr_serie: rowObj['nr_serie'] ? rowObj['nr_serie'].trim() : null,
         validade: parseMovimentoDate(rowObj['validade']),
-        data_fabrico: parseMovimentoDate(rowObj['data_fabrico']),
+        data_fabrico: (() => {
+          const df = parseMovimentoDate(rowObj['data_fabrico']);
+          return (!df || df === '1980-01-01' || df.startsWith('1980-01-01')) ? null : df;
+        })(),
         data_movimento: parseMovimentoDate(rowObj['data_movimento']) || new Date().toISOString(),
         documento_ref: rowObj['documento_ref'] ? rowObj['documento_ref'].trim() : null,
         total_iva: rowObj['total_iva'] !== undefined && rowObj['total_iva'] !== null && rowObj['total_iva'] !== '' ? Number(rowObj['total_iva']) : null,
@@ -627,98 +630,13 @@ export function parseTextMovimentosFile(
   return rows;
 }
 
+import { generatePlatMovimentosSampleCSV } from './parse-erp-file';
+
 /**
  * Gera um ficheiro CSV de exemplo/modelo para descarregar.
+ * Alinhado com a estrutura padrão oficial de 42 colunas do ERP (plat_movimentos).
  */
 export function generateMovimentosSampleCSV(): string {
-  const headers = [
-    'Artigo',
-    'Sigla',
-    'TipoMovimento',
-    'Quantidade',
-    'TipoArmazem',
-    'ArmazemLoc',
-    'Posicao',
-    'Lote',
-    'NrSerie',
-    'Validade',
-    'DataFabrico',
-    'DataMovimento',
-    'DocumentoRef',
-    'Observacoes',
-  ];
-
-  const sampleRows = [
-    [
-      '024273070',
-      'PFIZ',
-      'ES',
-      '100',
-      '01',
-      'PFIZ01',
-      '01A01',
-      'LOT-2026-01',
-      '',
-      '31-12-2028',
-      '15-01-2026',
-      '20-09-2026',
-      'REC-2026-001',
-      'Entrada inicial por rececao de fabrica',
-    ],
-    [
-      '024273070',
-      'PFIZ',
-      'SS',
-      '15',
-      '01',
-      'PFIZ01',
-      '01A01',
-      'LOT-2026-01',
-      '',
-      '31-12-2028',
-      '15-01-2026',
-      '21-09-2026',
-      'EXP-2026-001',
-      'Saida para expedicao de encomenda',
-    ],
-    [
-      '024273070',
-      'PFIZ',
-      'ST',
-      '10',
-      '01',
-      'PFIZ01',
-      '01A01',
-      'LOT-2026-01',
-      '',
-      '31-12-2028',
-      '15-01-2026',
-      '22-09-2026',
-      'TRF-2026-001',
-      'Saida por transferencia para quarentena',
-    ],
-    [
-      '024273070',
-      'PFIZ',
-      'ET',
-      '10',
-      '05',
-      'PFIZ05',
-      '01Q01',
-      'LOT-2026-01',
-      '',
-      '31-12-2028',
-      '15-01-2026',
-      '22-09-2026',
-      'TRF-2026-001',
-      'Entrada por transferencia em quarentena',
-    ],
-  ];
-
-  const lines = [
-    headers.join(';'),
-    ...sampleRows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(';')),
-  ];
-
-  return lines.join('\n');
+  return generatePlatMovimentosSampleCSV();
 }
+

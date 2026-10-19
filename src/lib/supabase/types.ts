@@ -102,8 +102,8 @@ export const ID_TIPO_ARTIGO_MAP: Record<string, TipoArtigo> = {
   '81': 'MV',
   '82': 'DM',
   '83': 'DC',
-  '84': 'SC',
-  '85': 'SA',
+  '84': 'SA',
+  '85': 'SC',
 };
 
 export const TIPO_ARTIGO_ID_MAP: Record<TipoArtigo, string> = {
@@ -111,8 +111,8 @@ export const TIPO_ARTIGO_ID_MAP: Record<TipoArtigo, string> = {
   MV: '81',
   DM: '82',
   DC: '83',
-  SC: '84',
-  SA: '85',
+  SA: '84',
+  SC: '85',
 };
 
 export type TipoArmazenamento = 'TA' | 'TC' | 'TF';
@@ -127,10 +127,14 @@ export interface Artigo {
   artigo_id: string;
   artigo_cli: string;
   descricao: string;
-  tipo_artigo: TipoArtigo;
+  id_tipo_artigo?: string;
+  tipo_artigo?: TipoArtigo;
   tipo_armazenamento: TipoArmazenamento;
   tratamento_lote: boolean;
   tratamento_serie: boolean;
+  familia?: string | null;
+  subfamilia?: string | null;
+  cli_primavera?: string | null;
   pva?: number | null;
   ativo: boolean;
   created_at?: string;
@@ -222,6 +226,59 @@ export interface Movimento {
 }
 
 export type MovimentoSF = Movimento;
+
+export interface PlatMovimento {
+  id: number;
+  sigla?: string | null;
+  num_linha?: number | null;
+  data?: string | null;
+  data_movimento?: string | null;
+  documento?: string | null;
+  documento_ref?: string | null;
+  tipo_doc?: string | null;
+  chave1?: string | null;
+  chave2?: string | null;
+  ativa?: boolean | null;
+  valor_unitario?: number | null;
+  valor_adicional?: number | null;
+  valor_abater?: number | null;
+  artigo?: string | null;
+  descricao?: string | null;
+  tipo_artigo?: string | null;
+  armazem?: string | null;
+  localizacao?: string | null;
+  lote?: string | null;
+  tipo_movimento?: string | null;
+  quantidade?: number | null;
+  familia?: string | null;
+  sub_familia?: string | null;
+  validade?: string | null;
+  datafabrico?: string | null;
+  total_iva?: number | null;
+  total_merc?: number | null;
+  total_outros?: number | null;
+  entidade?: string | null;
+  requisicao?: string | null;
+  num_contribuinte?: string | null;
+  doc_linha?: string | null;
+  num_registo?: number | null;
+  estado_stock?: string | null;
+  sistema?: boolean | null;
+  total_desc?: number | null;
+  morada?: string | null;
+  nome?: string | null;
+  localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
+  pais?: string | null;
+  nome_entrega?: string | null;
+  morada_entrega?: string | null;
+  cod_postal_entrega?: string | null;
+  cod_postal_localidade_entrega?: string | null;
+  entidade_entrega?: string | null;
+  chave_ativa?: boolean | null;
+  created_at: string;
+}
 
 export interface StockAtual {
   cliente_id: string;

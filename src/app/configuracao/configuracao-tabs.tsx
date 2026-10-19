@@ -211,6 +211,7 @@ export default function ConfiguracaoTabs({
   const [artigoLote, setArtigoLote] = useState(true);
   const [artigoSerie, setArtigoSerie] = useState(false);
   const [artigoAtivo, setArtigoAtivo] = useState(true);
+  const [showNovoArtigoForm, setShowNovoArtigoForm] = useState(false);
   const [confirmClearArtigosModal, setConfirmClearArtigosModal] = useState(false);
   const [clearingArtigosLoading, setClearingArtigosLoading] = useState(false);
 
@@ -360,6 +361,7 @@ export default function ConfiguracaoTabs({
         setArtigoPva('');
         setArtigoLote(true);
         setArtigoSerie(false);
+        setShowNovoArtigoForm(false);
         router.refresh();
       } else {
         setFeedback({ type: 'error', message: res.error || t.common.error });
@@ -1272,140 +1274,178 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {activeTab === 'artigos' && (
           <div className="space-y-8">
-            {/* Formulário Novo Artigo */}
-            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
-              <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">add_circle</span>
-                {t.configuracao.addArticle}
-              </h3>
-              <p className="text-xs text-on-surface-variant mb-6">
-                {language === 'pt' ? 'Defina as características regulamentares do produto, tipo de conservação e requisitos de rastreabilidade (lote e série).' : language === 'es' ? 'Defina las características del producto, tipo de conservación y trazabilidad (lote y serie).' : 'Define product regulatory characteristics, storage condition, and traceability (batch and serial).'}
-              </p>
-
-              <form onSubmit={handleSubmitArtigo} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Janela / Formulário Novo Artigo (Colapsável e Compacto para Reduzir Altura) */}
+            <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-5 shadow-sm transition-all">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-lg">add_circle</span>
+                  </div>
                   <div>
-                    <label className="block text-xs font-semibold text-on-surface mb-1">
-                      {t.configuracao.articleCode} <span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={artigoCodigo}
-                      onChange={(e) => setArtigoCodigo(e.target.value.toUpperCase())}
-                      placeholder="Ex: BL-001"
-                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono font-bold uppercase"
-                      required
-                    />
+                    <h3 className="text-sm font-bold font-headline text-on-surface">
+                      {t.configuracao.addArticle}
+                    </h3>
+                    <p className="text-xs text-on-surface-variant hidden sm:block">
+                      {language === 'pt' ? 'Registe um novo artigo manual no catálogo de produtos.' : language === 'es' ? 'Registre un nuevo artículo manual en el catálogo.' : 'Register a new manual article in the catalog.'}
+                    </p>
                   </div>
+                </div>
 
-                  <div className="lg:col-span-3">
-                    <label className="block text-xs font-semibold text-on-surface mb-1">
-                      {t.configuracao.articleDesc} <span className="text-rose-600">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={artigoDescricao}
-                      onChange={(e) => setArtigoDescricao(e.target.value)}
-                      placeholder="Ex: Zebinix 800mg Comprimidos Revestidos"
-                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                      required
-                    />
-                  </div>
-
-                  <div className="lg:col-span-2">
-                    <label className="block text-xs font-semibold text-on-surface mb-1">
-                      {t.configuracao.articleType} <span className="text-rose-600">*</span>
-                    </label>
-                    <select
-                      value={artigoTipo}
-                      onChange={(e) => setArtigoTipo(e.target.value as TipoArtigo)}
-                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
-                      required
+                <div className="flex items-center gap-2">
+                  {!showNovoArtigoForm ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowNovoArtigoForm(true)}
+                      className="bg-secondary text-on-secondary hover:bg-secondary/90 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
                     >
-                      <option value="MH">[MH] Medicamento de uso humano</option>
-                      <option value="MV">[MV] Medicamento de uso veterinário</option>
-                      <option value="DM">[DM] Dispositivo médico</option>
-                      <option value="DC">[DC] Dermo-Cosmético</option>
-                      <option value="SC">[SC] Substância controlada</option>
-                      <option value="SA">[SA] Suplemento alimentar</option>
-                    </select>
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      {t.configuracao.addArticle}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowNovoArtigoForm(false)}
+                        className="px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-all cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">close</span>
+                        {t.common.cancel}
+                      </button>
+                      <button
+                        form="novo-artigo-form"
+                        type="submit"
+                        disabled={loading}
+                        className="bg-secondary text-on-secondary hover:bg-secondary/90 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">check</span>
+                        {loading ? t.common.loading : (language === 'pt' ? 'Guardar Artigo' : language === 'es' ? 'Guardar' : 'Save')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Corpo do Formulário quando expandido */}
+              {showNovoArtigoForm && (
+                <form id="novo-artigo-form" onSubmit={handleSubmitArtigo} className="mt-4 pt-4 border-t border-outline-variant/20 space-y-4 animate-in fade-in duration-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <div className="lg:col-span-1">
+                      <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                        {t.configuracao.articleCode} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={artigoCodigo}
+                        onChange={(e) => setArtigoCodigo(e.target.value.toUpperCase())}
+                        placeholder="Ex: BL-001"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono font-bold uppercase"
+                        required
+                      />
+                    </div>
+
+                    <div className="lg:col-span-3">
+                      <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                        {t.configuracao.articleDesc} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={artigoDescricao}
+                        onChange={(e) => setArtigoDescricao(e.target.value)}
+                        placeholder="Ex: Zebinix 800mg Comprimidos Revestidos"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                        required
+                      />
+                    </div>
+
+                    <div className="lg:col-span-1">
+                      <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                        {t.configuracao.articleType} <span className="text-rose-600">*</span>
+                      </label>
+                      <select
+                        value={artigoTipo}
+                        onChange={(e) => setArtigoTipo(e.target.value as TipoArtigo)}
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                        required
+                      >
+                        <option value="MH">[MH] Humano</option>
+                        <option value="MV">[MV] Veterinário</option>
+                        <option value="DM">[DM] Disp. Médico</option>
+                        <option value="DC">[DC] Cosmético</option>
+                        <option value="SC">[SC] Controlada</option>
+                        <option value="SA">[SA] Suplemento</option>
+                      </select>
+                    </div>
+
+                    <div className="lg:col-span-1">
+                      <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                        {t.configuracao.articleStorage} <span className="text-rose-600">*</span>
+                      </label>
+                      <select
+                        value={artigoArmazenamento}
+                        onChange={(e) => setArtigoArmazenamento(e.target.value as TipoArmazenamento)}
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                        required
+                      >
+                        <option value="TA">[TA] Ambiente</option>
+                        <option value="TC">[TC] 15-25 ºC</option>
+                        <option value="TF">[TF] 2-8 ºC</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-on-surface mb-1">
-                      {t.configuracao.articleStorage} <span className="text-rose-600">*</span>
-                    </label>
-                    <select
-                      value={artigoArmazenamento}
-                      onChange={(e) => setArtigoArmazenamento(e.target.value as TipoArmazenamento)}
-                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
-                      required
-                    >
-                      <option value="TA">[TA] Temperatura Ambiente</option>
-                      <option value="TC">[TC] Temperatura controlada (15-25 ºC)</option>
-                      <option value="TF">[TF] Temperatura controlada frio (2-8 ºC)</option>
-                    </select>
+                  {/* Segunda linha compacta com PVA e Checkboxes inline */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-1">
+                    <div className="flex flex-wrap items-center gap-6">
+                      <div className="w-28">
+                        <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                          {t.configuracao.articlePva}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={artigoPva}
+                          onChange={(e) => setArtigoPva(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-4 mt-3 sm:mt-4">
+                        <label className="flex items-center gap-1.5 text-xs text-on-surface font-medium cursor-pointer bg-surface-container/30 hover:bg-surface-container/60 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={artigoLote}
+                            onChange={(e) => setArtigoLote(e.target.checked)}
+                            className="rounded text-secondary focus:ring-secondary w-3.5 h-3.5"
+                          />
+                          <span>{t.stocks.colBatch} ({t.stocks.detailsTitle})</span>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 text-xs text-on-surface font-medium cursor-pointer bg-surface-container/30 hover:bg-surface-container/60 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={artigoSerie}
+                            onChange={(e) => setArtigoSerie(e.target.checked)}
+                            className="rounded text-secondary focus:ring-secondary w-3.5 h-3.5"
+                          />
+                          <span>Série</span>
+                        </label>
+
+                        <label className="flex items-center gap-1.5 text-xs text-on-surface font-medium cursor-pointer bg-surface-container/30 hover:bg-surface-container/60 px-2.5 py-1.5 rounded-lg border border-outline-variant/20 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={artigoAtivo}
+                            onChange={(e) => setArtigoAtivo(e.target.checked)}
+                            className="rounded text-secondary focus:ring-secondary w-3.5 h-3.5"
+                          />
+                          <span>{t.configuracao.articleActive}</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-on-surface mb-1">
-                      {t.configuracao.articlePva}
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={artigoPva}
-                      onChange={(e) => setArtigoPva(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-                  <label className="flex items-center gap-2 text-xs text-on-surface font-medium cursor-pointer p-3 bg-surface-container/40 rounded-lg border border-outline-variant/20">
-                    <input
-                      type="checkbox"
-                      checked={artigoLote}
-                      onChange={(e) => setArtigoLote(e.target.checked)}
-                      className="rounded text-secondary focus:ring-secondary w-4 h-4"
-                    />
-                    <span>{t.stocks.colBatch} ({t.stocks.detailsTitle})</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-xs text-on-surface font-medium cursor-pointer p-3 bg-surface-container/40 rounded-lg border border-outline-variant/20">
-                    <input
-                      type="checkbox"
-                      checked={artigoSerie}
-                      onChange={(e) => setArtigoSerie(e.target.checked)}
-                      className="rounded text-secondary focus:ring-secondary w-4 h-4"
-                    />
-                    <span>Série</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 text-xs text-on-surface font-medium cursor-pointer p-3 bg-surface-container/40 rounded-lg border border-outline-variant/20">
-                    <input
-                      type="checkbox"
-                      checked={artigoAtivo}
-                      onChange={(e) => setArtigoAtivo(e.target.checked)}
-                      className="rounded text-secondary focus:ring-secondary w-4 h-4"
-                    />
-                    <span>{t.configuracao.articleActive}</span>
-                  </label>
-                </div>
-
-                <div className="flex justify-end pt-3 border-t border-outline-variant/20">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="bg-secondary text-on-secondary hover:bg-secondary/90 px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm">add_circle</span>
-                    {loading ? t.common.loading : t.configuracao.addArticle}
-                  </button>
-                </div>
-              </form>
+                </form>
+              )}
             </div>
 
             {/* Janela de Importação em Lote de Artigos (TXT / XLSX) */}
@@ -1448,68 +1488,75 @@ export default function ConfiguracaoTabs({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
-                      <th className="py-2.5 px-3 rounded-l-lg">{t.configuracao.articleCode}</th>
+                      <th className="py-2.5 px-3 rounded-l-lg">Artigo CLI</th>
+                      <th className="py-2.5 px-3">{t.configuracao.articleCode}</th>
                       <th className="py-2.5 px-3">{t.configuracao.articleDesc}</th>
+                      <th className="py-2.5 px-3">Família</th>
                       <th className="py-2.5 px-3">{t.configuracao.articleType}</th>
+                      <th className="py-2.5 px-3">SubFamília</th>
                       <th className="py-2.5 px-3">{t.configuracao.articleStorage}</th>
-                      <th className="py-2.5 px-3 text-right">{t.configuracao.articlePva}</th>
                       <th className="py-2.5 px-3 text-center">{t.stocks.colBatch}</th>
                       <th className="py-2.5 px-3 text-center">Série</th>
+                      <th className="py-2.5 px-3">Cli Primavera</th>
                       <th className="py-2.5 px-3 text-right rounded-r-lg">{t.common.status}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                     {artigosList.length > 0 ? (
-                      artigosList.map((a) => (
-                        <tr key={a.artigo_id} className="hover:bg-surface-container/30 transition-colors">
-                          <td className="py-3 px-3 font-mono font-bold text-secondary">{a.artigo_id}</td>
-                          <td className="py-3 px-3 font-medium">{a.descricao}</td>
-                          <td className="py-3 px-3">
-                            <span className="text-[11px] text-on-surface-variant">
-                              {TIPO_ARTIGO_LABELS[a.tipo_artigo] || 'MH'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.tipo_armazenamento === 'TF'
-                                  ? 'bg-cyan-100 text-cyan-800'
-                                  : a.tipo_armazenamento === 'TC'
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-slate-100 text-slate-800'
-                                }`}
-                            >
-                              <span className="material-symbols-outlined text-[12px]">
-                                {a.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                      artigosList.map((a) => {
+                        const tipoCod = a.id_tipo_artigo || (a.tipo_artigo ? TIPO_ARTIGO_ID_MAP[a.tipo_artigo] : '80');
+                        const tipoLabel = ID_TIPO_ARTIGO_MAP[tipoCod] || a.tipo_artigo || 'MH';
+                        return (
+                          <tr key={a.artigo_cli || a.artigo_id} className="hover:bg-surface-container/30 transition-colors">
+                            <td className="py-3 px-3 font-mono font-bold text-secondary whitespace-nowrap">{a.artigo_cli || a.artigo_id}</td>
+                            <td className="py-3 px-3 font-mono font-semibold text-on-surface whitespace-nowrap">{a.artigo_id}</td>
+                            <td className="py-3 px-3 font-medium min-w-[200px]">{a.descricao}</td>
+                            <td className="py-3 px-3 font-mono text-on-surface-variant whitespace-nowrap">{a.familia || '-'}</td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-surface-container border border-outline-variant/30 text-on-surface">
+                                <span className="font-mono text-secondary">{tipoCod}</span>
+                                <span className="text-on-surface-variant">({tipoLabel})</span>
                               </span>
-                              {TIPO_ARMAZENAMENTO_LABELS[a.tipo_armazenamento] || a.tipo_armazenamento}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right font-mono font-semibold text-on-surface">
-                            {typeof a.pva === 'number' && a.pva > 0
-                              ? `${a.pva.toFixed(2)} €`
-                              : <span className="text-on-surface-variant/50">-</span>}
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`material-symbols-outlined text-sm ${a.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
-                              {a.tratamento_lote ? 'check_circle' : 'cancel'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`material-symbols-outlined text-sm ${a.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
-                              {a.tratamento_serie ? 'check_circle' : 'cancel'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <span className={`inline-flex items-center gap-1 font-medium ${a.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${a.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                              {a.ativo ? t.common.active : t.common.inactive}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="py-3 px-3 font-mono text-on-surface-variant whitespace-nowrap">{a.subfamilia || '-'}</td>
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${a.tipo_armazenamento === 'TF'
+                                    ? 'bg-cyan-100 text-cyan-800'
+                                    : a.tipo_armazenamento === 'TC'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-slate-100 text-slate-800'
+                                  }`}
+                              >
+                                <span className="material-symbols-outlined text-[12px]">
+                                  {a.tipo_armazenamento === 'TF' ? 'ac_unit' : 'thermostat'}
+                                </span>
+                                {TIPO_ARMAZENAMENTO_LABELS[a.tipo_armazenamento || 'TA'] || a.tipo_armazenamento || 'TA'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`material-symbols-outlined text-sm ${a.tratamento_lote ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                {a.tratamento_lote ? 'check_circle' : 'cancel'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`material-symbols-outlined text-sm ${a.tratamento_serie ? 'text-emerald-600' : 'text-slate-300'}`}>
+                                {a.tratamento_serie ? 'check_circle' : 'cancel'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 font-mono text-on-surface-variant whitespace-nowrap">{a.cli_primavera || '-'}</td>
+                            <td className="py-3 px-3 text-right whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 font-medium ${a.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${a.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                                {a.ativo ? t.common.active : t.common.inactive}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
-                        <td colSpan={8} className="py-12 text-center text-on-surface-variant">
+                        <td colSpan={11} className="py-12 text-center text-on-surface-variant">
                           <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
                             medication
                           </span>

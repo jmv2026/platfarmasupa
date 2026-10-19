@@ -57,13 +57,13 @@ export default async function HistoricoPedidosPage() {
 
   if (clients && clients.length > 0 && cfClientIds.length > 0) {
     const { data: cfMovimentos } = await supabase
-      .from('movimentos')
-      .select('documento_ref, ref_ser, cliente_id, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, nome, morada, cod_postal, cod_postal_localidade, requisicao')
-      .in('cliente_id', cfClientIds)
+      .from('movimentos_linhas')
+      .select('documento_ref, ref_ser, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, movimentos!inner(cliente_id, nome, morada, cod_postal, cod_postal_localidade, requisicao)')
+      .in('movimentos.cliente_id', cfClientIds)
     if (cfMovimentos && cfMovimentos.length > 0) {
       const grouped = cfMovimentos.reduce((acc: any, mov: any) => {
         const docRef = mov.documento_ref || `SEM_REF_${mov.created_at}`;
-        const currentMovClientId = mov.cliente_id;
+        const currentMovClientId = mov.movimentos?.cliente_id || mov.cliente_id;
         const key = `${currentMovClientId}_${docRef}_${mov.tipo_movimento}`;
 
         if (!acc[key]) {
@@ -78,13 +78,13 @@ export default async function HistoricoPedidosPage() {
             tipo_movimento: mov.tipo_movimento,
             ref_ser: mov.ref_ser,
             clientes: clients.find((c: any) => c.id === currentMovClientId),
-            destinos: { nome: mov.nome },
-            morada: mov.morada,
-            codigo_postal: mov.cod_postal,
-            cod_postal: mov.cod_postal,
-            cod_postal_localidade: mov.cod_postal_localidade,
-            localidade: mov.cod_postal_localidade || mov.localidade,
-            requisicao: mov.requisicao,
+            destinos: { nome: mov.movimentos?.nome || mov.nome },
+            morada: mov.movimentos?.morada || mov.morada,
+            codigo_postal: mov.movimentos?.cod_postal || mov.cod_postal,
+            cod_postal: mov.movimentos?.cod_postal || mov.cod_postal,
+            cod_postal_localidade: mov.movimentos?.cod_postal_localidade || mov.cod_postal_localidade,
+            localidade: mov.movimentos?.cod_postal_localidade || mov.cod_postal_localidade || mov.localidade,
+            requisicao: mov.movimentos?.requisicao || mov.requisicao,
             pedido_linhas: []
           };
         }

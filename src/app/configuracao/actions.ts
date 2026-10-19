@@ -510,13 +510,16 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
   }
 
   try {
-    // 1. Garantir deduplicação estrita de artigo_id para evitar erro de concorrência do Postgres (código 21000)
+    // 1. Garantir deduplicação estrita de artigo_cli para evitar erro de concorrência do Postgres (código 21000)
     const uniqueMap = new Map<string, ArtigoImportInput>();
     for (const r of rows) {
       const code = (r.artigo_id || '').trim().toUpperCase();
       if (code) {
         let cli = r.artigo_cli ? r.artigo_cli.trim() : '';
-        if (!cli && fallbackSigla) {
+        const cliprim = r.cli_primavera ? r.cli_primavera.trim() : '';
+        if (!cli && cliprim) {
+          cli = cliprim + '-' + code;
+        } else if (!cli && fallbackSigla) {
           cli = fallbackSigla + '-' + code;
         } else if (!cli) {
           cli = code; // Fallback se não houver sigla
@@ -527,6 +530,9 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
           artigo_id: code,
           descricao: (r.descricao || '').trim() || code,
           artigo_cli: cli,
+          cli_primavera: cliprim || undefined,
+          familia: (r.familia || '').trim() || undefined,
+          sub_familia: (r.sub_familia || r.subfamilia || '').trim() || undefined,
         });
       }
     }
@@ -543,16 +549,19 @@ export async function importarArtigosAction(rows: ArtigoImportInput[], fallbackS
     for (let i = 0; i < uniqueRows.length; i += BATCH_SIZE) {
       const batch = uniqueRows.slice(i, i + BATCH_SIZE).map((r) => ({
         artigo_id: r.artigo_id,
+        artigo_cli: r.artigo_cli,
         descricao: r.descricao,
         id_tipo_artigo: r.id_tipo_artigo || '80',
         tipo_armazenamento: r.tipo_armazenamento || 'TA',
         tratamento_lote: parseArtigoBoolean(r.tratamento_lote, true),
         tratamento_serie: parseArtigoBoolean(r.tratamento_serie, false),
+        familia: r.familia || null,
+        subfamilia: r.sub_familia || r.subfamilia || null,
+        cli_primavera: r.cli_primavera || null,
         pva: r.pva !== undefined && r.pva !== null
           ? Number(r.pva)
           : (r.pvp !== undefined && r.pvp !== null ? Number(r.pvp) : 0.00),
         ativo: parseArtigoBoolean(r.ativo, true),
-        artigo_cli: r.artigo_cli,
       }));
 
       const { data: upsertedBatch, error: upsertErr } = await supabase
@@ -840,9 +849,54 @@ export async function importarMovimentosAction(
         };
       });
 
-      const { error: insertErr } = await supabase.from('movimentos').insert(batch);
+      // Cabeçalhos únicos para movimentos
+      const headersMap = new Map<string, any>();
+      for (const item of batch) {
+        if (item.documento_ref && !headersMap.has(item.documento_ref)) {
+          headersMap.set(item.documento_ref, {
+            documento_ref: item.documento_ref,
+            cliente_id: item.cliente_id,
+            sigla: item.sigla,
+            data_movimento: item.data_movimento,
+            tipo_doc: item.tipo_doc,
+            total_iva: item.total_iva,
+            total_merc: item.total_merc,
+            total_outros: item.total_outros,
+            observacoes: item.observacoes,
+            created_by: user.id,
+          });
+        }
+      }
+
+      if (headersMap.size > 0) {
+        await supabase
+          .from('movimentos')
+          .upsert(Array.from(headersMap.values()), { onConflict: 'documento_ref' });
+      }
+
+      // Linhas em movimentos_linhas
+      const linhasBatch = batch.map((item: any) => ({
+        artigo_id: item.artigo_cli,
+        artigo_cli: item.artigo_cli,
+        sigla: item.sigla,
+        tipo_movimento: item.tipo_movimento,
+        quantidade: item.quantidade,
+        tipo_armazem: item.tipo_armazem,
+        armazem_loc: item.armazem_loc,
+        posicao: item.posicao,
+        lote: item.lote,
+        nr_serie: item.nr_serie,
+        validade: item.validade,
+        data_fabrico: item.data_fabrico,
+        data_movimento: item.data_movimento,
+        documento_ref: item.documento_ref,
+        observacoes: item.observacoes,
+        created_by: user.id,
+      }));
+
+      const { error: insertErr } = await supabase.from('movimentos_linhas').insert(linhasBatch);
       if (insertErr) {
-        console.error('Erro ao inserir lote em movimentos:', insertErr);
+        console.error('Erro ao inserir lote em movimentos_linhas:', insertErr);
         return {
           success: false,
           error: `Erro na gravação dos movimentos (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
@@ -864,7 +918,7 @@ export async function importarMovimentosAction(
   }
 }
 
-// 8. AÇÃO: Limpar Registos da tabela movimentos de um cliente específico (Acesso restrito a Admin)
+// 8. AÇÃO: Limpar Registos das tabelas movimentos e movimentos_linhas (Acesso restrito a Admin)
 export async function limparMovimentosAction(clienteId?: string) {
   const supabase = await createClient();
   const {
@@ -889,21 +943,18 @@ export async function limparMovimentosAction(clienteId?: string) {
     };
   }
 
-  if (!clienteId || clienteId === 'todos') {
-    return {
-      success: false,
-      error: 'É necessário selecionar um cliente no filtro para limpar os respetivos movimentos.',
-    };
-  }
-
   try {
-    const { error: deleteErr, count } = await supabase
-      .from('movimentos')
-      .delete({ count: 'exact' })
-      .eq('cliente_id', clienteId);
+    let query = supabase.from('movimentos').delete({ count: 'exact' });
+    if (clienteId && clienteId !== 'todos') {
+      query = query.eq('cliente_id', clienteId);
+    } else {
+      query = query.neq('documento_ref', '');
+    }
+
+    const { error: deleteErr, count } = await query;
 
     if (deleteErr) {
-      console.error('Erro ao limpar movimentos do cliente:', deleteErr);
+      console.error('Erro ao limpar movimentos:', deleteErr);
       return { success: false, error: `Erro ao limpar movimentos: ${deleteErr.message}` };
     }
 
@@ -967,7 +1018,7 @@ export async function importarPlatMovimentosAction(
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE).map((r) => {
         let resolvedClientId = fallbackClientId || null;
-        let inferredSigla = r.sigla_cliente || r.sub_familia || null;
+        let inferredSigla = r.sigla || r.sigla_cliente || r.sub_familia || null;
 
         if (!inferredSigla && r.chave2) {
           inferredSigla = r.chave2.replace(/[0-9]/g, '');
@@ -983,19 +1034,27 @@ export async function importarPlatMovimentosAction(
         }
 
         const resolvedSigla =
+          (r.sigla && r.sigla.toUpperCase()) ||
           (r.sigla_cliente && r.sigla_cliente.toUpperCase()) ||
           (resolvedClientId && clientMapById.get(resolvedClientId)) ||
           (inferredSigla && inferredSigla.toUpperCase()) ||
           null;
 
+        const dataMov = r.data_movimento || r.data || null;
+        const dataOnly = r.data || (dataMov ? dataMov.split(' ')[0] : null);
+        const dataFab = r.datafabrico ? r.datafabrico.split(' ')[0] : null;
+        const cleanDataFab = (!dataFab || dataFab === '1980-01-01' || dataFab.startsWith('1980-01-01')) ? null : dataFab;
+
         return {
           sigla: resolvedSigla,
-          data: r.data,
+          data: dataOnly,
+          data_movimento: dataMov,
           tipo_movimento: r.tipo_movimento,
           documento: r.documento,
+          documento_ref: r.documento_ref ?? r.documento ?? null,
+          tipo_doc: r.tipo_doc ?? null,
           num_linha: r.num_linha,
           doc_linha: r.doc_linha ?? (r.documento && r.num_linha ? `${r.documento}-${r.num_linha}` : null),
-          num_registo: r.num_registo ?? null,
           chave1: r.chave1,
           chave2: r.chave2,
           valor_unitario: r.valor_unitario ?? 0,
@@ -1007,15 +1066,11 @@ export async function importarPlatMovimentosAction(
           armazem: r.armazem,
           localizacao: r.localizacao,
           lote: r.lote,
-          estado_stock: r.estado_stock ?? null,
           quantidade: r.quantidade ?? 0,
           familia: r.familia,
           sub_familia: r.sub_familia,
-          num_chave1: r.num_chave1 ?? null,
-          num_chave2: r.num_chave2 ?? null,
-          datafabrico: r.datafabrico,
+          datafabrico: cleanDataFab,
           validade: r.validade,
-          sistema: r.sistema ?? false,
           entidade: r.entidade ?? null,
           total_iva: r.total_iva ?? 0,
           total_merc: r.total_merc ?? 0,
@@ -1028,8 +1083,12 @@ export async function importarPlatMovimentosAction(
           localidade: r.localidade ?? null,
           cod_postal: r.cod_postal ?? null,
           cod_postal_localidade: r.cod_postal_localidade ?? null,
-          ativa: r.ativa ?? true,
-          chave_ativa: r.chave_ativa ?? true,
+          pais: r.pais ?? null,
+          nome_entrega: r.nome_entrega ?? null,
+          morada_entrega: r.morada_entrega ?? null,
+          cod_postal_entrega: r.cod_postal_entrega ?? null,
+          cod_postal_localidade_entrega: r.cod_postal_localidade_entrega ?? null,
+          entidade_entrega: r.entidade_entrega ?? null,
         };
       });
 
@@ -1089,7 +1148,34 @@ export async function limparPlatMovimentosAction() {
 
 
 
-// 14. AÇÃO: Transferir de plat_movimentos para movimentos
+// 14. AÇÃO: Obter estado e contagens de plat_movimentos, movimentos e movimentos_linhas
+export async function getPlatMovimentosStatusAction() {
+  const supabase = await createClient();
+  try {
+    const { count: totalPlat } = await supabase
+      .from('plat_movimentos')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: totalLinhas } = await supabase
+      .from('movimentos_linhas')
+      .select('*', { count: 'exact', head: true });
+
+    const { count: totalDocs } = await supabase
+      .from('movimentos')
+      .select('*', { count: 'exact', head: true });
+
+    return {
+      success: true,
+      totalPlat: totalPlat ?? 0,
+      totalLinhas: totalLinhas ?? 0,
+      totalDocs: totalDocs ?? 0,
+    };
+  } catch (err: unknown) {
+    return { success: false, totalPlat: 0, totalLinhas: 0, totalDocs: 0 };
+  }
+}
+
+// 15. AÇÃO: Transferir de plat_movimentos para movimentos (cabeçalhos) e movimentos_linhas (linhas)
 export async function transferirPlatMovimentosParaMovimentosAction() {
   const supabase = await createClient();
   const {
@@ -1116,10 +1202,24 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     if (error) {
       return { success: false, error: error.message };
     }
+
     revalidatePath('/configuracao');
     revalidatePath('/stocks');
     revalidatePath('/dashboard');
-    return { success: true, count: data };
+    revalidatePath('/pedidos');
+
+    const linhas = typeof data === 'object' && data !== null ? Number((data as any).linhas ?? 0) : (typeof data === 'number' ? data : 0);
+    const cabecalhos = typeof data === 'object' && data !== null ? Number((data as any).cabecalhos ?? 0) : 0;
+    const artigos = typeof data === 'object' && data !== null ? Number((data as any).artigos ?? 0) : 0;
+
+    return { 
+      success: true, 
+      count: linhas, 
+      linhas, 
+      cabecalhos, 
+      artigos,
+      data 
+    };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao transferir movimentos';
     return { success: false, error: msg };

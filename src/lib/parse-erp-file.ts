@@ -104,12 +104,21 @@ export interface PlatSaidaRow {
 }
 
 function parseNum(v: any): number | null {
-  if (v === undefined || v === null) return null;
+  if (v === undefined || v === null || v === '') return null;
   if (typeof v === 'number') {
     return isNaN(v) ? null : v;
   }
-  const s = String(v).trim().replace(',', '.');
+  let s = String(v).trim().replace(/\s/g, '');
   if (s === '' || s.toLowerCase() === 'null') return null;
+  if (s.includes(',') && s.includes('.')) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      s = s.replace(/,/g, '');
+    }
+  } else if (s.includes(',')) {
+    s = s.replace(',', '.');
+  }
   const num = Number(s);
   return isNaN(num) ? null : num;
 }
@@ -118,7 +127,13 @@ function parseDate(v: any): string | null {
   if (!v) return null;
   if (v instanceof Date) {
     if (isNaN(v.getTime())) return null;
-    return v.toISOString().replace('T', ' ').substring(0, 19);
+    const year = v.getFullYear();
+    const month = String(v.getMonth() + 1).padStart(2, '0');
+    const day = String(v.getDate()).padStart(2, '0');
+    const hours = String(v.getHours()).padStart(2, '0');
+    const mins = String(v.getMinutes()).padStart(2, '0');
+    const secs = String(v.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${mins}:${secs}`;
   }
   if (typeof v === 'number' && v > 20000 && v < 60000) {
     // Excel serial number
@@ -524,10 +539,14 @@ export async function parseSaidasFile(file: File): Promise<PlatSaidaRow[]> {
 export interface PlatMovimentoRow {
   id?: number;
   cliente_id?: string | null;
+  sigla?: string | null;
   sigla_cliente?: string | null;
   data?: string | null;
+  data_movimento?: string | null;
   tipo_movimento?: string | null;
   documento?: string | null;
+  documento_ref?: string | null;
+  tipo_doc?: string | null;
   num_linha?: number | null;
   doc_linha?: string | null;
   num_registo?: number | null;
@@ -563,6 +582,12 @@ export interface PlatMovimentoRow {
   localidade?: string | null;
   cod_postal?: string | null;
   cod_postal_localidade?: string | null;
+  pais?: string | null;
+  nome_entrega?: string | null;
+  morada_entrega?: string | null;
+  cod_postal_entrega?: string | null;
+  cod_postal_localidade_entrega?: string | null;
+  entidade_entrega?: string | null;
   ativa?: boolean | null;
   chave_ativa?: boolean | null;
   created_at?: string;
@@ -578,6 +603,46 @@ function parseTipoMov(val: unknown): string | null {
   return String(val).trim().toLowerCase();
 }
 
+function cleanCell(val: any): string {
+  if (val === undefined || val === null) return '';
+  let s = String(val).trim();
+  if ((s.startsWith('"') && s.endsWith('"') && s.length >= 2) || (s.startsWith("'") && s.endsWith("'") && s.length >= 2)) {
+    s = s.slice(1, -1).trim();
+  }
+  return s;
+}
+
+function splitCsvLine(line: string, delimiter: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === delimiter && !inQuotes) {
+      result.push(cleanCell(current));
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(cleanCell(current));
+  return result;
+}
+
+function parseDateOnly(v: any): string | null {
+  const d = parseDate(v);
+  if (!d) return null;
+  return d.substring(0, 10);
+}
+
+function parseDataFabrico(v: any): string | null {
+  const d = parseDateOnly(v);
+  if (!d || d === '1980-01-01' || d.startsWith('1980-01-01')) return null;
+  return d;
+}
+
 export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length < 2) return [];
@@ -586,23 +651,34 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
   if (lines[0].includes(';')) delimiter = ';';
   else if (lines[0].includes('\t')) delimiter = '\t';
   else if (lines[0].includes(',')) delimiter = ',';
-  const header = lines[0].split(delimiter).map((c) => normalizeHeader(c));
+
+  const rawHeaders = splitCsvLine(lines[0], delimiter);
+  const header = rawHeaders.map((c) => normalizeHeader(c));
   const rows: PlatMovimentoRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(delimiter);
+    const cols = splitCsvLine(lines[i], delimiter);
     const r: Record<string, string> = {};
     header.forEach((h, idx) => {
-      r[h] = cols[idx] !== undefined ? cols[idx].trim() : '';
+      r[h] = cols[idx] !== undefined ? cleanCell(cols[idx]) : '';
     });
 
     const isRowEmpty = Object.values(r).every((v) => !v);
     if (isRowEmpty) continue;
 
+    const dataMov = parseDate(r['data_movimento'] || r['datamovimento'] || r['data']);
+    const dataOnly = parseDateOnly(r['data'] || r['data_movimento'] || r['datamovimento']);
+
     rows.push({
-      data: parseDate(r['data']),
+      data: dataOnly,
+      data_movimento: dataMov,
+      sigla: r['sigla'] ? String(r['sigla']).trim() : null,
       tipo_movimento: parseTipoMov(r['tipomovimento'] || r['tipo_movimento']),
       documento: r['documento'] ? String(r['documento']).trim() : null,
+      documento_ref: r['documentoref'] || r['documento_ref']
+        ? String(r['documentoref'] || r['documento_ref']).trim()
+        : (r['documento'] ? String(r['documento']).trim() : null),
+      tipo_doc: r['tipodoc'] || r['tipo_doc'] ? String(r['tipodoc'] || r['tipo_doc']).trim() : null,
       num_linha: parseNum(r['numlinha'] || r['num_linha']),
       doc_linha: r['doclinha'] || r['doc_linha'] ? String(r['doclinha'] || r['doc_linha']).trim() : null,
       num_registo: parseNum(r['numregisto'] || r['num_registo']),
@@ -623,8 +699,8 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
       sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
       num_chave1: parseNum(r['numchave1'] || r['num_chave1']),
       num_chave2: parseNum(r['numchave2'] || r['num_chave2']),
-      datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-      validade: parseDate(r['validade']),
+      datafabrico: parseDataFabrico(r['datafabrico'] || r['data_fabrico']),
+      validade: parseDateOnly(r['validade']),
       sistema: parseBool(r['sistema'], false),
       entidade: r['entidade'] ? String(r['entidade']).trim() : null,
       total_iva: parseNum(r['totaliva'] || r['total_iva']),
@@ -638,6 +714,12 @@ export function parseCsvTextToPlatMovimentos(text: string): PlatMovimentoRow[] {
       localidade: r['localidade'] ? String(r['localidade']).trim() : null,
       cod_postal: r['codpostal'] || r['cod_postal'] ? String(r['codpostal'] || r['cod_postal']).trim() : null,
       cod_postal_localidade: r['codpostallocalidade'] || r['cod_postal_localidade'] ? String(r['codpostallocalidade'] || r['cod_postal_localidade']).trim() : null,
+      pais: r['pais'] ? String(r['pais']).trim() : null,
+      nome_entrega: r['nomeentrega'] || r['nome_entrega'] ? String(r['nomeentrega'] || r['nome_entrega']).trim() : null,
+      morada_entrega: r['moradaentrega'] || r['morada_entrega'] ? String(r['moradaentrega'] || r['morada_entrega']).trim() : null,
+      cod_postal_entrega: r['codpostalentrega'] || r['cod_postal_entrega'] ? String(r['codpostalentrega'] || r['cod_postal_entrega']).trim() : null,
+      cod_postal_localidade_entrega: r['codpostallocalidadeentrega'] || r['cod_postal_localidade_entrega'] ? String(r['codpostallocalidadeentrega'] || r['cod_postal_localidade_entrega']).trim() : null,
+      entidade_entrega: r['entidadeentrega'] || r['entidade_entrega'] ? String(r['entidadeentrega'] || r['entidade_entrega']).trim() : null,
       ativa: parseBool(r['ativa'], true),
       chave_ativa: parseBool(r['chaveativa'] || r['chave_ativa'], true),
     });
@@ -657,23 +739,47 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
 
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) {
-      row.eachCell((cell, colNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         headers[colNumber] = normalizeHeader(cell.text || String(cell.value || ''));
       });
     } else {
       const r: Record<string, any> = {};
-      row.eachCell((cell, colNumber) => {
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const h = headers[colNumber];
-        if (h) r[h] = cell.value;
+        if (h) {
+          let val = cell.value;
+          if (val && typeof val === 'object') {
+            if (val instanceof Date) {
+              // keep as Date
+            } else if ('text' in val) {
+              val = (val as any).text;
+            } else if ('result' in val) {
+              val = (val as any).result;
+            }
+          }
+          if (typeof val === 'string') {
+            val = cleanCell(val);
+          }
+          r[h] = val;
+        }
       });
 
       const isEmpty = Object.values(r).every((v) => v === null || v === undefined || v === '');
       if (isEmpty) return;
 
+      const dataMov = parseDate(r['data_movimento'] || r['datamovimento'] || r['data']);
+      const dataOnly = parseDateOnly(r['data'] || r['data_movimento'] || r['datamovimento']);
+
       rows.push({
-        data: parseDate(r['data']),
+        data: dataOnly,
+        data_movimento: dataMov,
+        sigla: r['sigla'] ? String(r['sigla']).trim() : null,
         tipo_movimento: parseTipoMov(r['tipomovimento'] || r['tipo_movimento']),
         documento: r['documento'] ? String(r['documento']).trim() : null,
+        documento_ref: r['documentoref'] || r['documento_ref']
+          ? String(r['documentoref'] || r['documento_ref']).trim()
+          : (r['documento'] ? String(r['documento']).trim() : null),
+        tipo_doc: r['tipodoc'] || r['tipo_doc'] ? String(r['tipodoc'] || r['tipo_doc']).trim() : null,
         num_linha: parseNum(r['numlinha'] || r['num_linha']),
         doc_linha: r['doclinha'] || r['doc_linha'] ? String(r['doclinha'] || r['doc_linha']).trim() : null,
         num_registo: parseNum(r['numregisto'] || r['num_registo']),
@@ -694,8 +800,8 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         sub_familia: r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null,
         num_chave1: parseNum(r['numchave1'] || r['num_chave1']),
         num_chave2: parseNum(r['numchave2'] || r['num_chave2']),
-        datafabrico: parseDate(r['datafabrico'] || r['data_fabrico']),
-        validade: parseDate(r['validade']),
+        datafabrico: parseDataFabrico(r['datafabrico'] || r['data_fabrico']),
+        validade: parseDateOnly(r['validade']),
         sistema: parseBool(r['sistema'], false),
         entidade: r['entidade'] ? String(r['entidade']).trim() : null,
         total_iva: parseNum(r['totaliva'] || r['total_iva']),
@@ -709,6 +815,12 @@ export async function parseExcelToPlatMovimentos(arrayBuffer: ArrayBuffer): Prom
         localidade: r['localidade'] ? String(r['localidade']).trim() : null,
         cod_postal: r['codpostal'] || r['cod_postal'] ? String(r['codpostal'] || r['cod_postal']).trim() : null,
         cod_postal_localidade: r['codpostallocalidade'] || r['cod_postal_localidade'] ? String(r['codpostallocalidade'] || r['cod_postal_localidade']).trim() : null,
+        pais: r['pais'] ? String(r['pais']).trim() : null,
+        nome_entrega: r['nomeentrega'] || r['nome_entrega'] ? String(r['nomeentrega'] || r['nome_entrega']).trim() : null,
+        morada_entrega: r['moradaentrega'] || r['morada_entrega'] ? String(r['moradaentrega'] || r['morada_entrega']).trim() : null,
+        cod_postal_entrega: r['codpostalentrega'] || r['cod_postal_entrega'] ? String(r['codpostalentrega'] || r['cod_postal_entrega']).trim() : null,
+        cod_postal_localidade_entrega: r['codpostallocalidadeentrega'] || r['cod_postal_localidade_entrega'] ? String(r['codpostallocalidadeentrega'] || r['cod_postal_localidade_entrega']).trim() : null,
+        entidade_entrega: r['entidadeentrega'] || r['entidade_entrega'] ? String(r['entidadeentrega'] || r['entidade_entrega']).trim() : null,
         ativa: parseBool(r['ativa'], true),
         chave_ativa: parseBool(r['chaveativa'] || r['chave_ativa'], true),
       });
@@ -744,58 +856,372 @@ export async function parsePlatMovimentosFile(file: File): Promise<PlatMovimento
   }
 }
 
+export const PLAT_MOVIMENTOS_ERP_HEADERS = [
+  'data_movimento',
+  'sigla',
+  'tipo_movimento',
+  'documento',
+  'documento-ref',
+  'tipo_doc',
+  'num_linha',
+  'doc_linha',
+  'Chave1',
+  'Chave2',
+  'valor_unitario',
+  'valor_adicional',
+  'valor_abater',
+  'artigo',
+  'descricao',
+  'tipo_artigo',
+  'armazem',
+  'localizacao',
+  'lote',
+  'quantidade',
+  'familia',
+  'sub_familia',
+  'datafabrico',
+  'validade',
+  'entidade',
+  'total_iva',
+  'total_merc',
+  'total_outros',
+  'total_desc',
+  'requisicao',
+  'num_contribuinte',
+  'morada',
+  'nome',
+  'localidade',
+  'cod_Postal',
+  'cod_postal_localidade',
+  'pais',
+  'nome_entrega',
+  'morada_entrega',
+  'cod_postal_entrega',
+  'cod_postal_localidade_entrega',
+  'entidade_entrega',
+] as const;
+
+export const PLAT_MOVIMENTOS_SAMPLE_DATA: Record<string, any>[] = [
+  {
+    data_movimento: '03/09/2026',
+    sigla: 'MAX',
+    tipo_movimento: 'ES',
+    documento: 'ES 26MAX/2',
+    'documento-ref': 'MAX-ES 26MAX/2',
+    tipo_doc: '',
+    num_linha: 2,
+    doc_linha: 'MAX-ES 26MAX/2-2',
+    Chave1: 'ES',
+    Chave2: '26MAX',
+    valor_unitario: '0',
+    valor_adicional: '0',
+    valor_abater: '0',
+    artigo: '7774273',
+    descricao: 'AUDIOVIT PLUS 60 CAPS.',
+    tipo_artigo: '84',
+    armazem: 'MAX01',
+    localizacao: 'MAX01.22B21',
+    lote: 'Z701',
+    quantidade: 9,
+    familia: 'MED',
+    sub_familia: 'SER',
+    datafabrico: '01/01/1980',
+    validade: '31/03/2029',
+    entidade: '',
+    total_iva: '',
+    total_merc: '',
+    total_outros: '',
+    total_desc: '',
+    requisicao: '',
+    num_contribuinte: '',
+    morada: '',
+    nome: '',
+    localidade: '',
+    cod_Postal: '',
+    cod_postal_localidade: '',
+    pais: '',
+    nome_entrega: '',
+    morada_entrega: '',
+    cod_postal_entrega: '',
+    cod_postal_localidade_entrega: '',
+    entidade_entrega: '',
+  },
+  {
+    data_movimento: '17/09/2026',
+    sigla: 'MAX',
+    tipo_movimento: 'SS',
+    documento: 'FA 26MAX/144',
+    'documento-ref': 'MAX-FA 26MAX/144',
+    tipo_doc: 'FA',
+    num_linha: 2,
+    doc_linha: 'MAX-FA 26MAX/144-2',
+    Chave1: 'FA',
+    Chave2: '26MAX',
+    valor_unitario: '7,04',
+    valor_adicional: '0',
+    valor_abater: '0',
+    artigo: '5755533',
+    descricao: 'CETRAXAL DUO 10 ML GOTAS AUR. FRSC.',
+    tipo_artigo: '80',
+    armazem: 'MAX01',
+    localizacao: 'MAX01.22C14',
+    lote: '26037',
+    quantidade: 200,
+    familia: 'MED',
+    sub_familia: 'SER',
+    datafabrico: '',
+    validade: '01/04/2028',
+    entidade: '10012',
+    total_iva: '128,45',
+    total_merc: '2042,35',
+    total_outros: '0',
+    total_desc: '0',
+    requisicao: 'M.CMPF260916.033',
+    num_contribuinte: '500364877',
+    morada: 'Rua do Barreiro nº235',
+    nome: 'OCP Portugal-Prod. Farm. S.A.',
+    localidade: 'Moreira - Maia',
+    cod_Postal: '4470-573',
+    cod_postal_localidade: 'Maia',
+    pais: 'PT',
+    nome_entrega: '',
+    morada_entrega: 'Rua do Barreiro nº235',
+    cod_postal_entrega: '4470-573',
+    cod_postal_localidade_entrega: 'Maia',
+    entidade_entrega: '10012',
+  },
+  {
+    data_movimento: '15/09/2026',
+    sigla: 'MAX',
+    tipo_movimento: 'SS',
+    documento: 'FA 26MAX/143',
+    'documento-ref': 'MAX-FA 26MAX/143',
+    tipo_doc: 'FA',
+    num_linha: 6,
+    doc_linha: 'MAX-FA 26MAX/143-6',
+    Chave1: 'FA',
+    Chave2: '26MAX',
+    valor_unitario: '4,7',
+    valor_adicional: '0',
+    valor_abater: '0',
+    artigo: '5868401',
+    descricao: 'CRISTALMINA 10 MG/ML 25 ML SOL. P/ PULV. CUT. FRSC.',
+    tipo_artigo: '80',
+    armazem: 'MAX01',
+    localizacao: 'MAX01.23A23',
+    lote: 'V713',
+    quantidade: 70,
+    familia: 'MED',
+    sub_familia: 'SER',
+    datafabrico: '01/01/1980',
+    validade: '01/05/2027',
+    entidade: '10421',
+    total_iva: '767,84',
+    total_merc: '4994,48',
+    total_outros: '0',
+    total_desc: '178,68',
+    requisicao: '939/1',
+    num_contribuinte: '511029632',
+    morada: 'RUA DAS HORTAS, 2-APARTADO 23 EC ZARCO',
+    nome: 'CFARMA - CENTRO FARMACEUTICO DA MADEIRA, LDA',
+    localidade: 'Funchal',
+    cod_Postal: '9001-901',
+    cod_postal_localidade: 'Funchal - Madeira',
+    pais: 'PT',
+    nome_entrega: '',
+    morada_entrega: 'RUA DAS HORTAS, 2-APARTADO 23 EC ZARCO',
+    cod_postal_entrega: '9001-901',
+    cod_postal_localidade_entrega: 'Funchal - Madeira',
+    entidade_entrega: '10421',
+  },
+  {
+    data_movimento: '05/08/2026',
+    sigla: 'MAX',
+    tipo_movimento: 'SS',
+    documento: 'FA 26MAX/14',
+    'documento-ref': 'MAX-FA 26MAX/14',
+    tipo_doc: 'FA',
+    num_linha: 2,
+    doc_linha: 'MAX-FA 26MAX/14-2',
+    Chave1: 'FA',
+    Chave2: '26MAX',
+    valor_unitario: '11,6',
+    valor_adicional: '0',
+    valor_abater: '0',
+    artigo: '6268128',
+    descricao: 'HERPIX GRAN. P/ SOL. ORAL 8 SAQ.',
+    tipo_artigo: '84',
+    armazem: 'MAX01',
+    localizacao: 'MAX01.22A21',
+    lote: 'Z703',
+    quantidade: 25,
+    familia: 'MED',
+    sub_familia: 'SER',
+    datafabrico: '01/01/1980',
+    validade: '30/04/2029',
+    entidade: '10425',
+    total_iva: '66,7',
+    total_merc: '580',
+    total_outros: '0',
+    total_desc: '290',
+    requisicao: 'LC310726/4',
+    num_contribuinte: '506959490',
+    morada: 'PRAÇA MACHADO DOS SANTOS, 24',
+    nome: 'FPCA - FARMÁCIA, LDA',
+    localidade: 'SETÚBAL',
+    cod_Postal: '2900-178',
+    cod_postal_localidade: 'SETÚBAL',
+    pais: 'PT',
+    nome_entrega: 'FARMÁCIA LUISA TODI',
+    morada_entrega: 'PRAÇA MACHADO DOS SANTOS, 24',
+    cod_postal_entrega: '2900-457',
+    cod_postal_localidade_entrega: 'SETUBAL',
+    entidade_entrega: '10425',
+  },
+  {
+    data_movimento: '22/09/2026',
+    sigla: 'MAX',
+    tipo_movimento: 'ES',
+    documento: 'VDV 26MAX/1',
+    'documento-ref': 'MAX-VDV 26MAX/1',
+    tipo_doc: 'VDV',
+    num_linha: 1,
+    doc_linha: 'MAX-VDV 26MAX/1-1',
+    Chave1: 'VDV',
+    Chave2: '26MAX',
+    valor_unitario: '5,5',
+    valor_adicional: '0',
+    valor_abater: '9',
+    artigo: '5596424',
+    descricao: 'TEBARAT 0.125 MG/0.25 ML 30 UNID.',
+    tipo_artigo: '80',
+    armazem: 'MAX01',
+    localizacao: 'MAX01',
+    lote: 'X001',
+    quantidade: 2,
+    familia: 'MED',
+    sub_familia: 'SER',
+    datafabrico: '',
+    validade: '01/09/2027',
+    entidade: '10004',
+    total_iva: '-0,66',
+    total_merc: '-20',
+    total_outros: '0',
+    total_desc: '-9',
+    requisicao: 'FA 26MAX/99',
+    num_contribuinte: '500046921',
+    morada: 'Rua Quinta dos Grilos nº 30',
+    nome: 'Botelho  e Rodrigues, Lda',
+    localidade: 'Carnaxide',
+    cod_Postal: '2795-514',
+    cod_postal_localidade: 'Carnaxide',
+    pais: 'PT',
+    nome_entrega: '',
+    morada_entrega: 'Rua da Argila, 388',
+    cod_postal_entrega: '4445-027',
+    cod_postal_localidade_entrega: 'Valongo',
+    entidade_entrega: '10004',
+  },
+];
+
 /**
- * Gera um ficheiro CSV de exemplo/modelo para a tabela plat_movimentos com a estrutura exata do ERP.
+ * Gera um ficheiro CSV de exemplo/modelo para a tabela plat_movimentos com a estrutura exata do perfil ERP (42 campos).
+ * O formato emitido corresponde 100% ao ficheiro modelo delimitado por ponto e vírgula (;).
  */
 export function generatePlatMovimentosSampleCSV(): string {
-  const headers = [
-    'Data',
-    'tipo_movimento',
-    'Documento',
-    'NumLinha',
-    'doc_linha',
-    'NumRegisto',
-    'Chave1',
-    'Chave2',
-    'ValorUnitario',
-    'ValorAdicional',
-    'ValorAbater',
-    'Artigo',
-    'Descricao',
-    'TipoArtigo',
-    'Armazem',
-    'Localizacao',
-    'Lote',
-    'EstadoStock',
-    'Quantidade',
-    'Familia',
-    'SubFamilia',
-    'NumChave1',
-    'NumChave2',
-    'DataFabrico',
-    'Validade',
-    'Sistema',
-    'Entidade',
-    'TotalIva',
-    'TotalMerc',
-    'TotalOutros',
-    'TotalDesc',
-    'Requisicao',
-    'NumContribuinte',
-    'Morada',
-    'Nome',
-    'Localidade',
-    'CodPostal',
-    'CodPostalLocalidade',
-    'ativa',
-    'chave_ativa',
-  ];
+  const headerLine = PLAT_MOVIMENTOS_ERP_HEADERS.join(';');
+  const rowLines = PLAT_MOVIMENTOS_SAMPLE_DATA.map((row) => {
+    return PLAT_MOVIMENTOS_ERP_HEADERS.map((key) => {
+      const val = row[key];
+      if (val === undefined || val === null || val === '') return '';
+      const str = String(val).trim();
+      if (str.includes(';') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }).join(';');
+  });
 
-  const sampleRows = [
-    '28/08/2026;ES;ES 26MAX/1;1;ES 26MAX/1-1;38489;ES;26MAX;0;0;0;5755533;CETRAXAL DUO 10 ML GOTAS AUR. FRSC.;80;MAX01;MAX01.22C14;26037;DISP;50;MED;SER;1;0;;01/04/2028;FALSO;;;;;;;;;;;;;VERDADEIRO;VERDADEIRO',
-    '03/09/2026;ES;ES 26MAX/2;1;ES 26MAX/2-1;39316;ES;26MAX;0;0;0;7764696;MEGALEVURE BANANA 10 STICKS;84;MAX01;MAX01.22B13;J12184;DISP;220;MED;SER;2;0;01/01/1980;30/11/2027;FALSO;;;;;;;;;;;;;VERDADEIRO;VERDADEIRO',
-  ];
-
-  return [headers.join(';'), ...sampleRows].join('\r\n');
+  return [headerLine, ...rowLines].join('\r\n');
 }
+
+/**
+ * Gera um ficheiro Excel (.xlsx) de exemplo/modelo para a tabela plat_movimentos com a estrutura exata do perfil ERP (42 campos formatados).
+ */
+export async function generatePlatMovimentosSampleExcel(): Promise<Blob> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Movimentos ERP');
+
+  const columnWidths: Record<string, number> = {
+    data_movimento: 16,
+    sigla: 8,
+    tipo_movimento: 14,
+    documento: 18,
+    'documento-ref': 22,
+    tipo_doc: 10,
+    num_linha: 10,
+    doc_linha: 24,
+    Chave1: 10,
+    Chave2: 12,
+    valor_unitario: 14,
+    valor_adicional: 14,
+    valor_abater: 14,
+    artigo: 14,
+    descricao: 45,
+    tipo_artigo: 12,
+    armazem: 12,
+    localizacao: 16,
+    lote: 14,
+    quantidade: 12,
+    familia: 10,
+    sub_familia: 12,
+    datafabrico: 14,
+    validade: 14,
+    entidade: 12,
+    total_iva: 12,
+    total_merc: 12,
+    total_outros: 12,
+    total_desc: 12,
+    requisicao: 18,
+    num_contribuinte: 16,
+    morada: 40,
+    nome: 40,
+    localidade: 20,
+    cod_Postal: 12,
+    cod_postal_localidade: 22,
+    pais: 8,
+    nome_entrega: 30,
+    morada_entrega: 40,
+    cod_postal_entrega: 14,
+    cod_postal_localidade_entrega: 24,
+    entidade_entrega: 16,
+  };
+
+  worksheet.columns = PLAT_MOVIMENTOS_ERP_HEADERS.map((h) => ({
+    header: h,
+    key: h,
+    width: columnWidths[h] || 16,
+  }));
+
+  // Estilo de cabeçalho com fundo Indigo e texto branco em negrito
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4338CA' },
+  };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  PLAT_MOVIMENTOS_SAMPLE_DATA.forEach((row) => {
+    worksheet.addRow(row);
+  });
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+
 

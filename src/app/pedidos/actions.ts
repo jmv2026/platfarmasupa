@@ -255,18 +255,36 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       return { success: false, error: `Erro ao registar linha ${linha.artigo_codigo}: ${linhaErr.message}` };
     }
 
-    // Gerar movimento de saída de stock SS correspondente
-    const { error: movErr } = await supabase.from('movimentos').insert({
-      artigo_id: finalArtigoId,
+    // Assegurar cabeçalho em movimentos (1:N)
+    await supabase.from('movimentos').upsert({
+      documento_ref: nrPedido,
       cliente_id: targetClientId,
+      sigla: client.sigla,
+      data_movimento: new Date().toISOString(),
+      entidade: input.nome_destinatario,
+      nome: input.nome_destinatario,
+      morada: input.morada,
+      localidade: input.localidade,
+      cod_postal: input.codigo_postal,
+      observacoes: input.observacoes || null,
+      created_by: user.id,
+    }, { onConflict: 'documento_ref' });
+
+    // Gerar linha de movimento SS em movimentos_linhas
+    const { error: movErr } = await supabase.from('movimentos_linhas').insert({
+      artigo_id: finalArtigoId,
+      artigo_cli: finalArtigoId,
+      
+      sigla: client.sigla,
       tipo_movimento: 'ss',
       quantidade: linha.quantidade,
-      tipo_armazem: '01', // Armazém Venda
+      tipo_armazem: '01',
       armazem_loc: armazemLoc,
       posicao: '01A01',
       lote: linha.lote,
       validade: linha.validade || null,
       documento_ref: nrPedido,
+      doc_linha: `${nrPedido}-${linha.artigo_codigo}`,
       observacoes: `Expedição para ${input.nome_destinatario} (${input.localidade}) - Pedido ${nrPedido}`,
       created_by: user.id,
       data_movimento: new Date().toISOString(),
