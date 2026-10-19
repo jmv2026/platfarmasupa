@@ -5,6 +5,9 @@ import ConfiguracaoTabs from './configuracao-tabs';
 import { UserProfile, Client, Artigo, Perfil, ImpStk, Armazem, Tempo } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function ConfiguracaoPage() {
   const supabase = await createClient();
   const {
@@ -33,8 +36,7 @@ export default async function ConfiguracaoPage() {
     { data: clientsList },
     { data: artigosList },
     { data: perfisList },
-    { data: impStkList },
-    { data: movimentosList },
+    { data: movimentosListRaw },
     { data: armazensList },
     { data: temposList },
     { data: trackingListRaw },
@@ -43,12 +45,7 @@ export default async function ConfiguracaoPage() {
     supabase.from('clientes').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
     supabase.from('perfis').select('*').order('codigo'),
-    supabase.from('imp_stk').select('*').order('created_at', { ascending: false }).limit(200),
-    supabase
-      .from('vw_movimentos_detalhe')
-      .select('*')
-      .order('data_movimento', { ascending: false })
-      .limit(10000),
+    supabase.rpc('get_todos_movimentos_detalhe'),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
     supabase
@@ -58,7 +55,9 @@ export default async function ConfiguracaoPage() {
       .limit(1000),
   ]);
 
+  const impStkList: ImpStk[] = [];
   const trackingList = trackingListRaw || [];
+  const movimentosList = Array.isArray(movimentosListRaw) ? movimentosListRaw : [];
 
   const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
     ...m,

@@ -37,7 +37,7 @@ BEGIN
             p.tipo_movimento,
             p.documento,
             COALESCE(p.documento_ref, UPPER(TRIM(p.sigla)) || '-' || p.documento) AS documento_ref,
-            p.tipo_doc,
+            COALESCE(p.tipo_doc, p.chave1, split_part(p.documento, ' ', 1)) AS tipo_doc,
             p.chave1,
             p.chave2,
             p.entidade,

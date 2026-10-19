@@ -174,6 +174,7 @@ export interface Translations {
     tabConsolidado: string;
     tabArtigos: string;
     tabValidades: string;
+    tabStockZero: string;
     searchPlaceholder: string;
     filterClient: string;
     filterStorage: string;
@@ -563,6 +564,7 @@ export const translations: Record<Language, Translations> = {
       tabConsolidado: 'Stock Consolidado (Geral)',
       tabArtigos: 'Agrupado por Artigo',
       tabValidades: 'Validades & Alertas',
+      tabStockZero: 'Artigos com Stock 0',
       searchPlaceholder: 'Pesquisar por código, descrição, lote ou cliente...',
       filterClient: 'Cliente',
       filterStorage: 'Armazenamento',
@@ -950,6 +952,7 @@ export const translations: Record<Language, Translations> = {
       tabConsolidado: 'Stock Consolidado (General)',
       tabArtigos: 'Agrupado por Artículo',
       tabValidades: 'Caducidades y Alertas',
+      tabStockZero: 'Artículos con Stock 0',
       searchPlaceholder: 'Buscar por código, descripción, lote o cliente...',
       filterClient: 'Cliente',
       filterStorage: 'Almacenamiento',
@@ -1337,6 +1340,7 @@ export const translations: Record<Language, Translations> = {
       tabConsolidado: 'Consolidated Stock (General)',
       tabArtigos: 'Grouped by Article',
       tabValidades: 'Expirations & Alerts',
+      tabStockZero: 'Zero Stock Articles',
       searchPlaceholder: 'Search by code, description, batch or client...',
       filterClient: 'Client',
       filterStorage: 'Storage',

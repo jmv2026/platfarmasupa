@@ -317,6 +317,23 @@ export interface StockPedido {
   ultimo_movimento: string;
 }
 
+export interface StockZero {
+  cliente_id: string;
+  cliente_nome: string;
+  cliente_sigla: string;
+  artigo_id: string;
+  artigo_codigo: string;
+  artigo_descricao: string;
+  tipo_artigo?: TipoArtigo | string;
+  tipo_armazenamento?: TipoArmazenamento | string;
+  familia?: string | null;
+  subfamilia?: string | null;
+  stock: number;
+  ultimo_movimento: string | null;
+  total_movimentos: number;
+  lotes_historico: string;
+}
+
 export type StatusPedido = 'pendente' | 'confirmado' | 'em_preparacao' | 'expedido' | 'entregue' | 'cancelado';
 
 export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {

@@ -268,15 +268,20 @@ export default function ImportacaoMovimentosTab({
           message: `Transferência concluída com sucesso! Foram transferidos ${res.documentos ?? 0} documentos para a tabela movimentos e ${res.linhas ?? res.count ?? 0} linhas para a tabela movimentos_linhas.` 
         });
         carregarStatusPlat();
-        // Recarregar os movimentos atualizados da base de dados
+        // Recarregar os movimentos atualizados da base de dados sem limite de 1000 registos
         const supabase = createClient();
-        const { data: updatedMovs } = await supabase
-          .from('vw_movimentos_detalhe')
-          .select('*')
-          .order('data_movimento', { ascending: false })
-          .limit(10000);
-        if (updatedMovs && updatedMovs.length > 0) {
-          setMovimentosList(updatedMovs as MovimentoWithDetails[]);
+        const { data: rpcMovs, error: rpcErr } = await supabase.rpc('get_todos_movimentos_detalhe');
+        if (!rpcErr && Array.isArray(rpcMovs) && rpcMovs.length > 0) {
+          setMovimentosList(rpcMovs as MovimentoWithDetails[]);
+        } else {
+          const { data: fallbackMovs } = await supabase
+            .from('vw_movimentos_detalhe')
+            .select('*')
+            .order('data_movimento', { ascending: false })
+            .limit(10000);
+          if (fallbackMovs && fallbackMovs.length > 0) {
+            setMovimentosList(fallbackMovs as MovimentoWithDetails[]);
+          }
         }
         if (onRefresh) onRefresh();
       } else {

@@ -2,7 +2,10 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import StocksView from './stocks-view';
-import { Client, StockAtual, StockPedido, UserProfile, Tempo } from '@/lib/supabase/types';
+import { Client, StockAtual, StockPedido, StockZero, UserProfile, Tempo } from '@/lib/supabase/types';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function StocksPage() {
   const supabase = await createClient();
@@ -30,12 +33,14 @@ export default async function StocksPage() {
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let stockZeroQuery = supabase.from('vw_stock_zero').select('*').order('cliente_sigla');
   let temposQuery = supabase.from('tempos').select('*');
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
     stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
+    stockZeroQuery = stockZeroQuery.eq('cliente_id', userClientId);
     temposQuery = temposQuery.eq('id_cliente', userClientId);
   }
 
@@ -44,11 +49,13 @@ export default async function StocksPage() {
     { data: clients },
     { data: stockAtual },
     { data: stockPedidos },
+    { data: stockZero },
     { data: tempos },
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     stockPedidosQuery,
+    stockZeroQuery,
     temposQuery,
   ]);
 
@@ -65,6 +72,7 @@ export default async function StocksPage() {
       <StocksView
         stockAtual={(stockAtual as StockAtual[]) || []}
         stockPedidos={(stockPedidos as StockPedido[]) || []}
+        stockZero={(stockZero as StockZero[]) || []}
         clients={(clients as Client[]) || []}
         currentUserProfile={(profile as UserProfile) || null}
         tempos={(tempos as Tempo[]) || []}
@@ -72,4 +80,3 @@ export default async function StocksPage() {
     </div>
   );
 }
-

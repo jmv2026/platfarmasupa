@@ -6,10 +6,12 @@ import { useLanguage } from '@/lib/i18n/context';
 import {
   StockAtual,
   StockPedido,
+  StockZero,
   Client,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
   TIPO_ARMAZEM_LABELS,
+  ID_TIPO_ARTIGO_MAP,
   TipoArtigo,
   TipoArmazenamento,
   TipoArmazem,
@@ -22,16 +24,18 @@ interface StocksViewProps {
   stockAtual: StockAtual[];
   stockPedidos: StockPedido[];
   clients: Client[];
+  stockZero?: StockZero[];
   currentUserProfile: UserProfile | null;
   tempos: Tempo[];
 }
 
-type TabType = 'pedidos' | 'consolidado' | 'artigos' | 'validade';
+type TabType = 'pedidos' | 'consolidado' | 'artigos' | 'validade' | 'stock_zero';
 
 export default function StocksView({
   stockAtual,
   stockPedidos,
   clients,
+  stockZero = [],
   currentUserProfile,
   tempos,
 }: StocksViewProps) {
@@ -285,6 +289,40 @@ export default function StocksView({
       });
   }, [filteredStockAtual]);
 
+
+  // Filtragem para Artigos com Stock 0 (vw_stock_zero)
+  const filteredStockZero = useMemo(() => {
+    return (stockZero || []).filter((item) => {
+      if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
+        return false;
+      }
+      if (
+        selectedArmazenamento !== 'todos' &&
+        item.tipo_armazenamento !== selectedArmazenamento
+      ) {
+        return false;
+      }
+      if (
+        selectedTipoArtigo !== 'todos' &&
+        item.tipo_artigo !== selectedTipoArtigo &&
+        ID_TIPO_ARTIGO_MAP[item.tipo_artigo || ''] !== selectedTipoArtigo
+      ) {
+        return false;
+      }
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        return (
+          item.artigo_codigo?.toLowerCase().includes(q) ||
+          item.artigo_descricao?.toLowerCase().includes(q) ||
+          item.cliente_sigla?.toLowerCase().includes(q) ||
+          item.cliente_nome?.toLowerCase().includes(q) ||
+          item.lotes_historico?.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [stockZero, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm]);
+
   // Exportar CSV
   const handleExportCSV = () => {
     try {
@@ -305,6 +343,11 @@ export default function StocksView({
         rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Stock Venda,Stock Outros,Stock Total,Lotes');
         resumoArtigos.forEach((r) => {
           rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}`);
+        });
+      } else if (activeTab === 'stock_zero') {
+        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Familia,Stock,Ultimo Movimento,Total Movimentos,Lotes Historico');
+        filteredStockZero.forEach((r) => {
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo || '')},${sanitize(r.tipo_armazenamento || '')},${sanitize(r.familia || '')},${r.stock},${sanitize(r.ultimo_movimento || '')},${r.total_movimentos},${sanitize(r.lotes_historico || '')}`);
         });
       } else {
         rows.push('Cliente,Codigo Artigo,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock');
@@ -337,6 +380,7 @@ export default function StocksView({
       consolidado: 'Stock Consolidado',
       artigos: 'Resumo por Artigo',
       validade: 'Controlo de Validades',
+      stock_zero: 'Artigos Stock 0',
     };
 
     const worksheet = workbook.addWorksheet(sheetTitles[activeTab] || 'Stocks');
@@ -415,6 +459,33 @@ export default function StocksView({
           stockOutros: r.stockOutros,
           stockTotal: r.stockTotal,
           lotesCount: r.lotesCount.size,
+        });
+      });
+    } else if (activeTab === 'stock_zero') {
+      worksheet.columns = [
+        { header: 'Cliente', key: 'cliente_sigla', width: 12 },
+        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
+        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
+        { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
+        { header: 'Família', key: 'familia', width: 16 },
+        { header: 'Stock Atual', key: 'stock', width: 14 },
+        { header: 'Último Movimento', key: 'ultimo_movimento', width: 22 },
+        { header: 'Total Movimentos', key: 'total_movimentos', width: 16 },
+        { header: 'Lotes Histórico', key: 'lotes_historico', width: 28 },
+      ];
+      filteredStockZero.forEach((item) => {
+        worksheet.addRow({
+          cliente_sigla: item.cliente_sigla,
+          artigo_codigo: item.artigo_codigo,
+          artigo_descricao: item.artigo_descricao,
+          tipo_artigo: item.tipo_artigo || '-',
+          tipo_armazenamento: item.tipo_armazenamento || '-',
+          familia: item.familia || '-',
+          stock: item.stock,
+          ultimo_movimento: item.ultimo_movimento ? new Date(item.ultimo_movimento).toLocaleString('pt-PT') : 'Sem movimentos',
+          total_movimentos: item.total_movimentos,
+          lotes_historico: item.lotes_historico,
         });
       });
     } else {
@@ -841,6 +912,23 @@ export default function StocksView({
                   {lotesValidade.length}
                 </span>
               </button>
+              <button
+                onClick={() => setActiveTab('stock_zero')}
+                className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+                  activeTab === 'stock_zero'
+                    ? 'border-rose-600 text-rose-700 bg-white rounded-t-xl shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60 rounded-t-xl'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-base ${activeTab === 'stock_zero' ? 'text-rose-600' : 'text-slate-400'}`}>
+                  remove_shopping_cart
+                </span>
+                {t.stocks.tabStockZero || 'Artigos com Stock 0'}
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                  {filteredStockZero.length}
+                </span>
+              </button>
+
             </div>
           </div>
         </div>
@@ -1313,6 +1401,114 @@ export default function StocksView({
                       <tr>
                         <td colSpan={9} className="py-8 text-center text-on-surface-variant">
                           Nenhum lote com data de validade registada.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: Artigos com Stock 0 (vw_stock_zero) */}
+          {activeTab === 'stock_zero' && (
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-outline-variant/15 gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-rose-600">remove_shopping_cart</span>
+                    Catálogo de Artigos com Stock 0 (Sem Existências / Esgotados)
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Artigos com saldo nulo em armazém — inclui artigos que esgotaram após expedições e artigos do catálogo sem lotes ativos.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
+                  <span>Total listado:</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                    {filteredStockZero.length} artigos
+                  </span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-200/80 rounded-xl shadow-2xs">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50/80 text-slate-700 font-semibold border-b border-slate-200/80">
+                    <tr>
+                      <th className="py-3 px-3">Estado</th>
+                      <th className="py-3 px-3">Cliente</th>
+                      <th className="py-3 px-3">Código</th>
+                      <th className="py-3 px-3">Descrição do Artigo</th>
+                      <th className="py-3 px-3">Tipo Artigo</th>
+                      <th className="py-3 px-3">Conservação</th>
+                      <th className="py-3 px-3 text-right">Stock Atual</th>
+                      <th className="py-3 px-3 text-center">Atividade</th>
+                      <th className="py-3 px-3">Último Movimento</th>
+                      <th className="py-3 px-3">Histórico de Lotes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {filteredStockZero.length > 0 ? (
+                      filteredStockZero.map((item, idx) => (
+                        <tr key={item.artigo_codigo || idx} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                              STOCK 0
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-semibold whitespace-nowrap">
+                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                              {item.cliente_sigla}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            {item.artigo_codigo}
+                          </td>
+                          <td className="py-3 px-3 font-medium text-slate-900 max-w-[280px] truncate" title={item.artigo_descricao}>
+                            {item.artigo_descricao}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {item.tipo_artigo ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo as TipoArtigo] || item.tipo_artigo : '-'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
+                              {item.tipo_armazenamento ? TIPO_ARMAZENAMENTO_LABELS[item.tipo_armazenamento as TipoArmazenamento] || item.tipo_armazenamento : '-'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-bold text-sm text-rose-700 font-mono whitespace-nowrap">
+                            0 <span className="text-xs font-normal text-slate-500">un</span>
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            {Number(item.total_movimentos || 0) > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200" title="Artigo já movimentado mas atualmente com stock esgotado">
+                                <span className="material-symbols-outlined text-xs">history</span>
+                                {item.total_movimentos} mov. (Esgotado)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600" title="Artigo cadastrado no catálogo sem histórico de movimentos no período">
+                                <span className="material-symbols-outlined text-xs">inventory_2</span>
+                                Sem entradas
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                            {item.ultimo_movimento ? new Date(item.ultimo_movimento).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-700 max-w-[200px] truncate" title={item.lotes_historico || '-'}>
+                            {item.lotes_historico || '-'}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={10} className="py-12 text-center text-slate-500">
+                          <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">
+                            check_circle
+                          </span>
+                          <p className="text-sm font-semibold">Nenhum artigo com stock zero encontrado para os filtros selecionados.</p>
                         </td>
                       </tr>
                     )}
