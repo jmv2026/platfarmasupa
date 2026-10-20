@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Client, UserProfile } from '@/lib/supabase/types';
+import { Client } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import GraficoPrevisaoStock, {
   PeriodoRunRate,
@@ -21,7 +21,6 @@ interface PrevisaoStockViewProps {
   stockAtual: DashboardStockItem[];
   stockPedidos: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
-  currentUserProfile: UserProfile | null;
   isManagerOrAdmin: boolean;
 }
 
@@ -30,7 +29,6 @@ export default function PrevisaoStockView({
   stockAtual,
   stockPedidos,
   pedidos,
-  currentUserProfile,
   isManagerOrAdmin,
 }: PrevisaoStockViewProps) {
   const searchParams = useSearchParams();

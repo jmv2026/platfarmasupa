@@ -156,7 +156,7 @@ async function enviarMensagemResend(params: {
 /**
  * Gera o template HTML moderno e responsivo com os dados completos do pedido
  */
-export function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
+function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
   const totalUnidades = dados.linhas.reduce((acc, l) => acc + l.quantidade, 0);
   const dataFormatada = new Date(dados.data_pedido).toLocaleDateString('pt-PT');
   const entregaFormatada = dados.data_entrega
@@ -322,7 +322,7 @@ export function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
 /**
  * Gera a versão em texto simples do email
  */
-export function gerarEmailPedidoTexto(dados: EmailPedidoDados): string {
+function gerarEmailPedidoTexto(dados: EmailPedidoDados): string {
   const totalUnidades = dados.linhas.reduce((acc, l) => acc + l.quantidade, 0);
   const linhasTexto = dados.linhas
     .map(
@@ -416,7 +416,7 @@ export interface EmailTesteAdminDados {
 /**
  * Gera o template HTML para o email de teste administrativo
  */
-export function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: string): string {
+function gerarEmailTesteHtml(dados: EmailTesteAdminDados, timestamp: string): string {
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
   const listDestinatarios = dados.destinatarios && dados.destinatarios.length > 0
     ? dados.destinatarios.join(', ')

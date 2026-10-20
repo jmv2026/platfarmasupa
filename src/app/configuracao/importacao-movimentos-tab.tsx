@@ -8,7 +8,6 @@ import {
   limparPlatMovimentosAction, 
   criarArtigosAPartirPlatMovimentosAction,
   transferirPlatMovimentosParaMovimentosAction,
-  getPlatMovimentosStatusAction,
 } from './actions';
 
 export type MovimentoWithDetails = Movimento & {
@@ -119,12 +118,6 @@ export default function ImportacaoMovimentosTab({
   // Modal de Detalhes do Documento (Cabeçalho de movimentos)
   const [selectedDocModal, setSelectedDocModal] = useState<string | null>(null);
 
-  // Estado das contagens de plat_movimentos
-  const [platStatus, setPlatStatus] = useState<{
-    totalPlat: number;
-    totalLinhas: number;
-    totalDocs: number;
-  } | null>(null);
 
   // Lista local de Movimentos (linhas com detalhe do cabeçalho)
   const [movimentosList, setMovimentosList] = useState<MovimentoWithDetails[]>(initialMovimentos);
@@ -138,25 +131,6 @@ export default function ImportacaoMovimentosTab({
     setMovimentosList(initialMovimentos);
   }, [initialMovimentos]);
 
-  // Carregar status da plat_movimentos quando abrir o modal de transferência
-  const carregarStatusPlat = async () => {
-    try {
-      const res = await getPlatMovimentosStatusAction();
-      if (res.success) {
-        setPlatStatus({
-          totalPlat: res.totalPlat,
-          totalLinhas: res.totalLinhas,
-          totalDocs: res.totalDocs,
-        });
-      }
-    } catch {
-      // Ignorar erros secundários
-    }
-  };
-
-  useEffect(() => {
-    carregarStatusPlat();
-  }, [initialMovimentos]);
 
   // Cliente selecionado no filtro de clientes
   const selectedClient = useMemo(() => {
@@ -267,7 +241,6 @@ export default function ImportacaoMovimentosTab({
           type: 'success', 
           message: `Transferência concluída com sucesso! Foram transferidos ${res.documentos ?? 0} documentos para a tabela movimentos e ${res.linhas ?? res.count ?? 0} linhas para a tabela movimentos_linhas.` 
         });
-        carregarStatusPlat();
         // Recarregar os movimentos atualizados da base de dados sem limite de 1000 registos
         const supabase = createClient();
         const { data: rpcMovs, error: rpcErr } = await supabase.rpc('get_todos_movimentos_detalhe');
@@ -323,7 +296,6 @@ export default function ImportacaoMovimentosTab({
       if (res.success) {
         setFeedback({ type: 'success', message: 'Tabela plat_movimentos limpa com sucesso.' });
         setConfirmClearPlatMovModal(false);
-        carregarStatusPlat();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao limpar plat_movimentos.' });
       }
@@ -363,7 +335,6 @@ export default function ImportacaoMovimentosTab({
           });
         }
         setConfirmClearMovModal(false);
-        carregarStatusPlat();
         if (onRefresh) onRefresh();
       } else {
         setFeedback({ type: 'error', message: res.error || 'Erro ao limpar movimentos.' });

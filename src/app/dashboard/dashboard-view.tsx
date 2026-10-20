@@ -80,7 +80,6 @@ export interface DashboardSaidaItem {
 interface DashboardViewProps {
   clients: Client[];
   stockAtual: DashboardStockItem[];
-  stockPedidos: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
   saidas: DashboardSaidaItem[];
   faturacao: DashboardFaturacaoItem[];
@@ -91,15 +90,13 @@ interface DashboardViewProps {
 export default function DashboardView({
   clients,
   stockAtual,
-  stockPedidos,
   pedidos,
   saidas = [],
   faturacao,
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
-  const { t, language } = useLanguage();
-  const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
+  const { t } = useLanguage();
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao'>('pedidos');
@@ -162,12 +159,6 @@ export default function DashboardView({
     return stockAtual.filter((s) => s.cliente_id === selectedClientId);
   }, [stockAtual, selectedClientId, isManagerOrAdmin]);
 
-  const filteredStockPedidos = useMemo(() => {
-    if (!isManagerOrAdmin || selectedClientId === 'todos') {
-      return stockPedidos;
-    }
-    return stockPedidos.filter((s) => s.cliente_id === selectedClientId);
-  }, [stockPedidos, selectedClientId, isManagerOrAdmin]);
 
   const filteredPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
@@ -196,10 +187,6 @@ export default function DashboardView({
     );
   }, [faturacao, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
-  // 1. Stock Venda
-  const totalStockVenda = useMemo(() => {
-    return filteredStockPedidos.reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
-  }, [filteredStockPedidos]);
 
   // 2. Artigos em Risco (> 60d e < 180d - apenas MH) & 3. Artigos Bloqueados (> 0d e <= 60d)
   const { totalArtigosEmRisco, totalArtigosBloqueados } = useMemo(() => {

@@ -10,11 +10,9 @@ import {
   Client,
   TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
-  TIPO_ARMAZEM_LABELS,
   ID_TIPO_ARTIGO_MAP,
   TipoArtigo,
   TipoArmazenamento,
-  TipoArmazem,
   UserProfile,
   Tempo,
 } from '@/lib/supabase/types';
@@ -64,9 +62,6 @@ export default function StocksView({
   };
 
   // KPIs
-  const totalStockVenda = useMemo(() => {
-    return stockPedidos.reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
-  }, [stockPedidos]);
 
   const totalStockOutros = useMemo(() => {
     return stockAtual
@@ -74,19 +69,6 @@ export default function StocksView({
       .reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
   }, [stockAtual]);
 
-  const totalLotes = useMemo(() => {
-    const lotesSet = new Set<string>();
-    stockAtual.forEach((s) => {
-      if (s.lote) lotesSet.add(`${s.artigo_id}_${s.lote}`);
-    });
-    return lotesSet.size;
-  }, [stockAtual]);
-
-  const artigosDistintos = useMemo(() => {
-    const artigosSet = new Set<string>();
-    stockAtual.forEach((s) => artigosSet.add(s.artigo_id));
-    return artigosSet.size;
-  }, [stockAtual]);
 
   const artigosAlertaValidadeMH = useMemo(() => {
     const artigosSet = new Set<string>();

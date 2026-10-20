@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { UserRole, TipoArtigo, TipoArmazenamento, TipoCliente, ID_TIPO_ARTIGO_MAP } from '@/lib/supabase/types';
+import { UserRole, TipoArmazenamento, TipoCliente } from '@/lib/supabase/types';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import { PlatMovimentoRow } from '@/lib/parse-erp-file';
 
@@ -861,32 +861,6 @@ export async function limparPlatMovimentosAction() {
 
 
 
-// 14. AÇÃO: Obter estado e contagens de plat_movimentos, movimentos e movimentos_linhas
-export async function getPlatMovimentosStatusAction() {
-  const supabase = await createClient();
-  try {
-    const { count: totalPlat } = await supabase
-      .from('plat_movimentos')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: totalLinhas } = await supabase
-      .from('movimentos_linhas')
-      .select('*', { count: 'exact', head: true });
-
-    const { count: totalDocs } = await supabase
-      .from('movimentos')
-      .select('*', { count: 'exact', head: true });
-
-    return {
-      success: true,
-      totalPlat: totalPlat ?? 0,
-      totalLinhas: totalLinhas ?? 0,
-      totalDocs: totalDocs ?? 0,
-    };
-  } catch (err: unknown) {
-    return { success: false, totalPlat: 0, totalLinhas: 0, totalDocs: 0 };
-  }
-}
 
 // 15. AÇÃO: Transferir de plat_movimentos para movimentos (1º Passo: Cabeçalhos/Documentos)
 export async function transferirPlatMovimentosParaMovimentosAction() {

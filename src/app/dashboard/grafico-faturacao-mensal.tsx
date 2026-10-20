@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { DashboardFaturacaoItem } from './dashboard-view';
 import { useLanguage } from '@/lib/i18n/context';
 
@@ -679,7 +679,6 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
             {(tipoGrafico === 'barras' || tipoGrafico === 'combinado') &&
               points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
-                const isPeak = estatisticas.pico?.key === p.data.key && p.data.total_liquido > 0;
 
                 const slotWidth = Math.min(chartWidth / points.length, 64);
                 const hasTwoBars = tipoMetrica === 'faturacao';

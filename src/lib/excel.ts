@@ -55,7 +55,6 @@ export async function gerarExcelPedido(dados: ExcelPedidoDados): Promise<Buffer>
   const primaryColor = 'FF0284C7'; // #0284c7 (Azul Farma)
   const darkNavy = 'FF0F172A'; // #0f172a (Slate 900)
   const headerBg = 'FF0369A1'; // #0369a1
-  const subBg = 'FFF0F9FF'; // Light blue
   const borderLight = {
     top: { style: 'thin' as const, color: { argb: 'FFE2E8F0' } },
     left: { style: 'thin' as const, color: { argb: 'FFE2E8F0' } },

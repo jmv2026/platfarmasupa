@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
-import { UserProfile, Client, Artigo, Perfil, Armazem, Tempo } from '@/lib/supabase/types';
+import { UserProfile, Client, Artigo, Armazem, Tempo } from '@/lib/supabase/types';
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export const dynamic = 'force-dynamic';
@@ -30,12 +30,11 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Perfis, Movimentos, Armazéns, Importações, Tempos e Tracking em paralelo
+  // Carregar dados de Utilizadores, Clientes, Artigos, Movimentos, Armazéns, Importações, Tempos e Tracking em paralelo
   const [
     { data: usersList },
     { data: clientsList },
     { data: artigosList },
-    { data: perfisList },
     { data: movimentosListRaw },
     { data: armazensList },
     { data: temposList },
@@ -44,7 +43,6 @@ export default async function ConfiguracaoPage() {
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clientes').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
-    supabase.from('perfis').select('*').order('codigo'),
     supabase.rpc('get_todos_movimentos_detalhe'),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
@@ -93,7 +91,6 @@ export default async function ConfiguracaoPage() {
         users={(usersList as UserProfile[]) || []}
         clients={(clientsList as Client[]) || []}
         artigos={(artigosList as Artigo[]) || []}
-        perfis={(perfisList as Perfil[]) || []}
         initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
         tempos={(temposList as Tempo[]) || []}

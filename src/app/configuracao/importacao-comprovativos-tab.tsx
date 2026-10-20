@@ -2,10 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useLanguage } from '@/lib/i18n/context';
-
 export default function ImportacaoComprovativosTab() {
-  const { t, language } = useLanguage();
   const supabase = createClient();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);

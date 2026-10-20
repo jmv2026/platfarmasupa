@@ -9,7 +9,6 @@ import {
   UserProfile,
 } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
-import { atualizarEstadoPedido } from './actions';
 import { createClient } from '@/lib/supabase/client';
 import UTIF from 'utif';
 
@@ -22,41 +21,6 @@ interface HistoricoPedidosViewProps {
 type DateFilterType = 'todos' | 'hoje' | '7dias' | '30dias' | 'este_mes';
 type ViewModeType = 'detalhado' | 'tabela';
 
-const STATUS_CONFIG: Record<
-  StatusPedido,
-  { bg: string; dot: string; icon: string }
-> = {
-  pendente: {
-    bg: 'bg-blue-100 text-blue-800 border-blue-200',
-    dot: 'bg-blue-600',
-    icon: 'pending',
-  },
-  confirmado: {
-    bg: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    dot: 'bg-indigo-600',
-    icon: 'check_circle',
-  },
-  em_preparacao: {
-    bg: 'bg-amber-100 text-amber-800 border-amber-200',
-    dot: 'bg-amber-600',
-    icon: 'inventory',
-  },
-  expedido: {
-    bg: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-    dot: 'bg-cyan-600',
-    icon: 'local_shipping',
-  },
-  entregue: {
-    bg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    dot: 'bg-emerald-600',
-    icon: 'task_alt',
-  },
-  cancelado: {
-    bg: 'bg-rose-100 text-rose-800 border-rose-200',
-    dot: 'bg-rose-600',
-    icon: 'cancel',
-  },
-};
 
 export default function HistoricoPedidosView({
   pedidos,
@@ -66,7 +30,6 @@ export default function HistoricoPedidosView({
   const supabase = createClient();
   const { t, language } = useLanguage();
   const [pedidosList, setPedidosList] = useState<PedidoComLinhas[]>(pedidos);
-  const [updatingPedidoId, setUpdatingPedidoId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
@@ -94,13 +57,6 @@ export default function HistoricoPedidosView({
     setPedidosList(pedidos);
   }, [pedidos]);
 
-  const getRefStr = (nr_pedido: string | undefined | null) => {
-    let refStr = (nr_pedido || '').trim();
-    if (refStr.includes(' ')) {
-      refStr = refStr.substring(refStr.indexOf(' ') + 1).trim();
-    }
-    return refStr.replace(/^0+/, '');
-  };
 
   const getStatusLabel = (status: StatusPedido | string) => {
     switch (status) {
@@ -132,43 +88,6 @@ export default function HistoricoPedidosView({
       return new Date(dStr).toLocaleDateString(locale);
     } catch {
       return dStr;
-    }
-  };
-
-  // Alteração de Estado do Pedido
-  const handleStatusChange = async (pedidoId: string, novoStatus: StatusPedido) => {
-    const pedido = pedidosList.find((p) => p.id === pedidoId);
-    if (!pedido || pedido.status === novoStatus) return;
-
-    const statusAnterior = pedido.status as StatusPedido;
-
-    // Atualização otimista
-    setPedidosList((prev) =>
-      prev.map((p) => (p.id === pedidoId ? { ...p, status: novoStatus } : p))
-    );
-    setUpdatingPedidoId(pedidoId);
-    setFeedback(null);
-
-    const res = await atualizarEstadoPedido(pedidoId, novoStatus);
-
-    setUpdatingPedidoId(null);
-    if (res.success) {
-      setFeedback({
-        type: 'success',
-        message: `${language === 'pt' ? 'Estado do pedido' : language === 'es' ? 'Estado del pedido' : 'Order status'} ${pedido.nr_pedido} ${language === 'pt' ? 'alterado para' : language === 'es' ? 'cambiado a' : 'changed to'} "${getStatusLabel(novoStatus)}".`,
-      });
-      setTimeout(() => {
-        setFeedback((curr) => (curr?.message.includes(pedido.nr_pedido) ? null : curr));
-      }, 4500);
-    } else {
-      // Reverter alteração otimista em caso de erro
-      setPedidosList((prev) =>
-        prev.map((p) => (p.id === pedidoId ? { ...p, status: statusAnterior } : p))
-      );
-      setFeedback({
-        type: 'error',
-        message: res.error || t.common.error,
-      });
     }
   };
 
@@ -710,9 +629,6 @@ export default function HistoricoPedidosView({
               {filteredPedidos.map((ped) => {
                 const totalQtd =
                   ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
-                const statusKey = (ped.status as StatusPedido) || 'pendente';
-                const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
-                const isUpdating = updatingPedidoId === ped.id;
 
                 return (
                   <div
@@ -880,15 +796,10 @@ export default function HistoricoPedidosView({
                 <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                   {filteredPedidos.map((ped) => {
                     const totalQtd =
-                      ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) ||
-                      0;
-                    const statusKey = (ped.status as StatusPedido) || 'pendente';
-                    const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
-                    const isUpdating = updatingPedidoId === ped.id;
+                      ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
 
                     return (
                       <tr key={ped.id} className="hover:bg-emerald-50 transition-colors">
-                        {/* {console.log(`Pedido ${ped.nr_pedido} status: ${ped.status} url: ${(ped as any).url_comprovativo}`)} */}
                         <td className="py-3 px-3 font-mono font-bold text-secondary">
                           <button
                             onClick={() => setSelectedModalPedido(ped)}
@@ -970,9 +881,6 @@ export default function HistoricoPedidosView({
       {selectedModalPedido && (() => {
         const ped = selectedModalPedido;
         const totalQtd = ped.pedido_linhas?.reduce((acc, l) => acc + Number(l.quantidade || 0), 0) || 0;
-        const statusKey = (ped.status as StatusPedido) || 'pendente';
-        const statusCfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.pendente;
-        const isUpdating = updatingPedidoId === ped.id;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedModalPedido(null)}>

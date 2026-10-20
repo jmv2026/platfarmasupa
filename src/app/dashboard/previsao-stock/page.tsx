@@ -112,7 +112,6 @@ export default async function PrevisaoStockPage() {
           stockAtual={stockAtual || []}
           stockPedidos={stockPedidos || []}
           pedidos={pedidos || []}
-          currentUserProfile={profile}
           isManagerOrAdmin={isManagerOrAdmin}
         />
       </Suspense>

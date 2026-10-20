@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { TipoArtigo, TipoArmazenamento } from './supabase/types';
+import type { TipoArmazenamento } from './supabase/types';
 
 export interface ArtigoImportInput {
   artigo_id: string;
@@ -23,7 +23,7 @@ export interface ArtigoImportInput {
  * Ordem estrita: descrições, códigos específicos e famílias são avaliados ANTES de 'artigo'
  * para não haver colisões de prefixo/sufixo.
  */
-export function normalizeArtigoHeaderKey(key: string): string {
+function normalizeArtigoHeaderKey(key: string): string {
   if (!key) return '';
 
   const clean = key
@@ -211,7 +211,7 @@ export function normalizeArtigoHeaderKey(key: string): string {
 /**
  * Extrai texto limpo de uma célula do ExcelJS (suporta RichText, fórmulas, hyperlinks, números, etc.)
  */
-export function extractExcelCellValue(val: unknown): string {
+function extractExcelCellValue(val: unknown): string {
   if (val === null || val === undefined) return '';
   if (typeof val === 'string') return val.trim();
   if (typeof val === 'number') return String(val);
@@ -249,7 +249,7 @@ export function extractExcelCellValue(val: unknown): string {
 /**
  * Normaliza valores numéricos/decimais (ex: '12,50', '12.50', '12.50 €', 12.5)
  */
-export function parseArtigoNumeric(val: unknown, defaultValue = 0): number {
+function parseArtigoNumeric(val: unknown, defaultValue = 0): number {
   if (val === undefined || val === null || val === '') return defaultValue;
   if (typeof val === 'number') return isNaN(val) ? defaultValue : val;
 
@@ -310,7 +310,7 @@ export function parseArtigoBoolean(val: unknown, defaultValue = false): boolean 
  * 84: SA (Suplemento alimentar)
  * 85: SC (Substância controlada)
  */
-export function normalizeTipoArtigo(val: unknown): string {
+function normalizeTipoArtigo(val: unknown): string {
   if (!val) return '80'; // MH
   const clean = extractExcelCellValue(val).toUpperCase().trim();
 
@@ -361,7 +361,7 @@ export function normalizeTipoArtigo(val: unknown): string {
 /**
  * Normaliza o Tipo de Armazenamento para valores válidos ('TA' | 'TC' | 'TF')
  */
-export function normalizeTipoArmazenamento(val: unknown): TipoArmazenamento {
+function normalizeTipoArmazenamento(val: unknown): TipoArmazenamento {
   if (!val) return 'TA';
   const clean = extractExcelCellValue(val).toUpperCase().trim();
 

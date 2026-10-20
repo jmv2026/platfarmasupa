@@ -7,15 +7,12 @@ import {
   UserProfile,
   Client,
   Artigo,
-  Perfil,
   UserRole,
   TipoArtigo,
   TipoArmazenamento,
   TipoCliente,
-  TIPO_CLIENTE_LABELS,
   Armazem,
   Tempo,
-  TIPO_ARTIGO_LABELS,
   TIPO_ARMAZENAMENTO_LABELS,
   ID_TIPO_ARTIGO_MAP,
   TIPO_ARTIGO_ID_MAP,
@@ -47,7 +44,6 @@ interface ConfiguracaoTabsProps {
   users: UserProfile[];
   clients: Client[];
   artigos: Artigo[];
-  perfis: Perfil[];
   initialMovimentos?: MovimentoWithDetails[];
   armazens?: Armazem[];
   tempos?: Tempo[];
@@ -59,7 +55,6 @@ export default function ConfiguracaoTabs({
   users,
   clients,
   artigos,
-  perfis,
   initialMovimentos = [],
   armazens = [],
   tempos = [],

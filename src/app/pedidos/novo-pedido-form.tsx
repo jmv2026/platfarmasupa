@@ -79,7 +79,7 @@ export default function NovoPedidoForm({
   const [codigoPostal, setCodigoPostal] = useState('');
   const [localidade, setLocalidade] = useState('');
   const [pais, setPais] = useState('Portugal');
-  const [dataPedido, setDataPedido] = useState(new Date().toISOString().split('T')[0]);
+  const dataPedido = new Date().toISOString().split('T')[0];
   const [dataEntrega, setDataEntrega] = useState('');
   const [refDocumento, setRefDocumento] = useState('');
   const [observacoes, setObservacoes] = useState('');

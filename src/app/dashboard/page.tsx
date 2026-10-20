@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import DashboardView from './dashboard-view';
-import { Client, UserProfile } from '@/lib/supabase/types';
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -29,7 +28,6 @@ export default async function DashboardPage() {
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
   let faturacaoQuery = supabase
     .from('vw_fact_mes')
     .select('sigla_cliente, cliente_id, data, total_docs, total_quantidade, total_merc, total_iva, total_desc');
@@ -37,7 +35,6 @@ export default async function DashboardPage() {
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
-    stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
     faturacaoQuery = faturacaoQuery.eq('cliente_id', userClientId);
   }
 
@@ -95,14 +92,12 @@ export default async function DashboardPage() {
   const [
     { data: clients },
     { data: stockAtual },
-    { data: stockPedidos },
     pedidosRaw,
     { data: faturacao },
     saidasRaw,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
-    stockPedidosQuery,
     fetchPedidos(),
     faturacaoQuery,
     fetchSaidas(),
@@ -125,7 +120,6 @@ export default async function DashboardPage() {
       <DashboardView
         clients={clients || []}
         stockAtual={stockAtual || []}
-        stockPedidos={stockPedidos || []}
         pedidos={finalPedidos}
         saidas={finalSaidas}
         faturacao={finalFaturacao}

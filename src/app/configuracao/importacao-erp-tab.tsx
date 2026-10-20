@@ -13,13 +13,11 @@ import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './acti
 
 interface ImportacaoErpTabProps {
   clients?: Client[];
-  initialCount?: number;
   onRefresh?: () => void;
 }
 
 export default function ImportacaoErpTab({
   clients = [],
-  initialCount = 0,
   onRefresh,
 }: ImportacaoErpTabProps) {
   const [clientsList, setClientsList] = useState<Client[]>(clients);
@@ -41,7 +39,6 @@ export default function ImportacaoErpTab({
     }
   }, [clients]);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<PlatMovimentoRow[]>([]);
   const [selectedDefaultClient, setSelectedDefaultClient] = useState<string>('');
   const [parsingLoading, setParsingLoading] = useState(false);
@@ -57,7 +54,6 @@ export default function ImportacaoErpTab({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setSelectedFile(file);
     setParsingLoading(true);
     setFeedback(null);
 
@@ -103,7 +99,6 @@ export default function ImportacaoErpTab({
           message: `Importação ERP concluída com sucesso! ${result.count} registos inseridos na tabela plat_movimentos.`,
         });
         setParsedRows([]);
-        setSelectedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (onRefresh) onRefresh();
       }

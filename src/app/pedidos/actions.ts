@@ -82,30 +82,6 @@ export async function criarDestinoAction(input: NovoDestinoInput) {
   return { success: true, destino: destino as Destino };
 }
 
-export async function obterDestinosPorClienteAction(clientId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, error: 'Utilizador não autenticado', destinos: [] };
-  }
-
-  const { data, error } = await supabase
-    .from('destinos')
-    .select('*')
-    .eq('cliente_id', clientId)
-    .eq('ativo', true)
-    .order('codigo', { ascending: true });
-
-  if (error) {
-    return { success: false, error: error.message, destinos: [] };
-  }
-
-  return { success: true, destinos: (data as Destino[]) || [] };
-}
-
 export async function criarPedidoAction(input: NovoPedidoInput) {
   const supabase = await createClient();
   const {
