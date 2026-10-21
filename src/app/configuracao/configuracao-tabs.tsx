@@ -31,6 +31,7 @@ import ImportacaoErpTab from './importacao-erp-tab';
 import ImportacaoArtigosCard from './importacao-artigos-card';
 import ImportacaoTransporteTab from './importacao-transporte-tab';
 import ImportacaoComprovativosTab from './importacao-comprovativos-tab';
+import ImportacaoStockTab from './importacao-stock-tab';
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -63,7 +64,7 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'erp' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'erp' | 'stocks' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -550,6 +551,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">hub</span>
             ERP
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('stocks');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'stocks'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">inventory_2</span>
+            {t.configuracao.tabStocks}
           </button>
 
           <button
@@ -1795,6 +1811,16 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {activeTab === 'erp' && (
           <ImportacaoErpTab
+            clients={clients}
+            onRefresh={() => router.refresh()}
+          />
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: STOCKS (IMPORTAÇÃO TABELA STOCK) */}
+        {/* ========================================================================= */}
+        {activeTab === 'stocks' && (
+          <ImportacaoStockTab
             clients={clients}
             onRefresh={() => router.refresh()}
           />

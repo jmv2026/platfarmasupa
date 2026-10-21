@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { UserRole, TipoArmazenamento, TipoCliente } from '@/lib/supabase/types';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import { PlatMovimentoRow } from '@/lib/parse-erp-file';
+import type { StockImportRow } from '@/lib/parse-stock-file';
 
 // Helper para validar de forma resiliente permissões de Admin e Gestor
 function checkUserRole(
@@ -1037,5 +1038,145 @@ export async function importarTransporteAction(rows: any[]) {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de transporte';
     return { success: false, error: msg };
+  }
+}
+
+// 13. AÇÃO: Importar registos para a tabela public.stock
+export async function importarStockAction(rows: StockImportRow[], defaultCliente?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+
+  if (!isManagerOrAdmin) {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar stock.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'Nenhum registo de stock válido para importar.' };
+  }
+
+  try {
+    const BATCH_SIZE = 500;
+    let totalUpserted = 0;
+
+    // Normalizar registos
+    const preparedRows = rows.map((r) => {
+      let cleanId = r.id?.trim();
+      if (cleanId && cleanId.startsWith('{') && cleanId.endsWith('}')) {
+        cleanId = cleanId.slice(1, -1).trim();
+      }
+      return {
+        id: cleanId || undefined,
+        cliente_ser: (r.cliente_ser || defaultCliente || '').trim(),
+        entidade: r.entidade ? r.entidade.trim() : null,
+        sigla: r.sigla ? r.sigla.trim() : (r.cliente_ser ? r.cliente_ser.trim() : null),
+        artigo: (r.artigo || '').trim(),
+        armazem: (r.armazem || '').trim(),
+        localizacao: r.localizacao ? r.localizacao.trim() : null,
+        lote: r.lote ? r.lote.trim() : null,
+        stock: Number(r.stock) || 0,
+        data_stock: r.data_stock || null,
+      };
+    }).filter((r) => r.cliente_ser && r.artigo && r.armazem);
+
+    if (preparedRows.length === 0) {
+      return { success: false, error: 'Nenhum registo continha os campos obrigatórios (cliente_ser, artigo, armazem).' };
+    }
+
+    for (let i = 0; i < preparedRows.length; i += BATCH_SIZE) {
+      const batch = preparedRows.slice(i, i + BATCH_SIZE);
+      const { error: upsertErr } = await supabase
+        .from('stock')
+        .upsert(batch, { onConflict: 'id' });
+
+      if (upsertErr) {
+        console.error('Erro ao gravar lote na tabela stock:', upsertErr);
+        return {
+          success: false,
+          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${upsertErr.message}`,
+        };
+      }
+      totalUpserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    return { success: true, count: totalUpserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na gravação de stock';
+    return { success: false, error: msg };
+  }
+}
+
+// 14. AÇÃO: Limpar registos da tabela public.stock
+export async function limparStockAction(cliente_ser?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const { isAdmin } = checkUserRole(user, profile);
+
+  if (!isAdmin) {
+    return { success: false, error: 'Acesso negado: Apenas administradores podem limpar a tabela de stock.' };
+  }
+
+  try {
+    let query = supabase.from('stock').delete();
+    if (cliente_ser && cliente_ser !== 'all') {
+      query = query.eq('cliente_ser', cliente_ser);
+    } else {
+      query = query.neq('id', '00000000-0000-0000-0000-000000000000');
+    }
+
+    const { error: delErr } = await query;
+    if (delErr) {
+      return { success: false, error: `Erro ao limpar tabela stock: ${delErr.message}` };
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/stocks');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao limpar tabela stock';
+    return { success: false, error: msg };
+  }
+}
+
+// 15. AÇÃO: Obter resumo estatístico da tabela public.stock
+export async function obterStockStatsAction() {
+  const supabase = await createClient();
+  try {
+    const { count, error } = await supabase
+      .from('stock')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return { success: true, count: count ?? 0 };
+  } catch (err: unknown) {
+    return { success: false, count: 0 };
   }
 }
