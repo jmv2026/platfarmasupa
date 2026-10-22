@@ -8,6 +8,7 @@ import {
   parsePlatMovimentosFile,
   generatePlatMovimentosSampleCSV,
   generatePlatMovimentosSampleExcel,
+  preparePlatMovimentoForDb,
 } from '@/lib/parse-erp-file';
 import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './actions';
 
@@ -21,6 +22,25 @@ export default function ImportacaoErpTab({
   onRefresh,
 }: ImportacaoErpTabProps) {
   const [clientsList, setClientsList] = useState<Client[]>(clients);
+  const [existingCount, setExistingCount] = useState<number | null>(null);
+
+  const loadExistingCount = async () => {
+    try {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from('plat_movimentos')
+        .select('*', { count: 'exact', head: true });
+      if (!error && count !== null) {
+        setExistingCount(count);
+      }
+    } catch {
+      // Ignora erro silencioso
+    }
+  };
+
+  useEffect(() => {
+    loadExistingCount();
+  }, []);
 
   useEffect(() => {
     if (clients && clients.length > 0) {
@@ -44,6 +64,7 @@ export default function ImportacaoErpTab({
   const [parsingLoading, setParsingLoading] = useState(false);
   const [importingLoading, setImportingLoading] = useState(false);
   const [clearingLoading, setClearingLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'warning' | 'error'; message: string } | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -87,26 +108,82 @@ export default function ImportacaoErpTab({
 
     setImportingLoading(true);
     setFeedback(null);
+    setImportProgress(null);
 
     try {
-      const result = await importarPlatMovimentosAction(parsedRows, selectedDefaultClient || undefined);
+      const CHUNK_SIZE = 250;
+      let totalImported = 0;
+      const totalChunks = Math.ceil(parsedRows.length / CHUNK_SIZE);
 
-      if (!result.success) {
-        setFeedback({ type: 'error', message: result.error || 'Erro desconhecido na gravação de movimentos ERP.' });
-      } else {
-        setFeedback({
-          type: 'success',
-          message: `Importação ERP concluída com sucesso! ${result.count} registos inseridos na tabela plat_movimentos.`,
-        });
-        setParsedRows([]);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        if (onRefresh) onRefresh();
+      for (let i = 0; i < parsedRows.length; i += CHUNK_SIZE) {
+        const chunk = parsedRows.slice(i, i + CHUNK_SIZE);
+        const chunkIndex = Math.floor(i / CHUNK_SIZE) + 1;
+        setImportProgress(
+          `A gravar lote ${chunkIndex} de ${totalChunks} (${Math.min(
+            i + CHUNK_SIZE,
+            parsedRows.length
+          )} / ${parsedRows.length} registos)...`
+        );
+
+        let chunkCount = chunk.length;
+
+        try {
+          const result = await importarPlatMovimentosAction(
+            chunk,
+            selectedDefaultClient || undefined
+          );
+
+          if (result.success) {
+            chunkCount = result.count ?? chunk.length;
+          } else {
+            throw new Error(result.error || `Erro no lote ${chunkIndex}`);
+          }
+        } catch (actionErr: unknown) {
+          const errMsg = actionErr instanceof Error ? actionErr.message : String(actionErr);
+          // Se for erro de rede / Failed to fetch / body size limit na Server Action, realiza fallback direto no cliente via Supabase
+          if (
+            errMsg.includes('fetch') ||
+            errMsg.includes('Failed') ||
+            errMsg.includes('Network') ||
+            errMsg.includes('Body exceeded')
+          ) {
+            console.warn(
+              `Lote ${chunkIndex}: fallback para inserção direta via Supabase client (${errMsg})`
+            );
+            const supabase = createClient();
+            const preparedBatch = chunk.map((r) =>
+              preparePlatMovimentoForDb(r, selectedDefaultClient || undefined)
+            );
+            const { error: dbErr } = await supabase
+              .from('plat_movimentos')
+              .upsert(preparedBatch, { onConflict: 'doc_linha' });
+
+            if (dbErr) {
+              throw new Error(`Erro na gravação (lote ${chunkIndex}): ${dbErr.message}`);
+            }
+          } else {
+            throw actionErr;
+          }
+        }
+
+        totalImported += chunkCount;
       }
+
+      setFeedback({
+        type: 'success',
+        message: `Importação ERP concluída com sucesso! ${totalImported} registos gravados na tabela plat_movimentos.`,
+      });
+      setImportProgress(null);
+      setParsedRows([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      await loadExistingCount();
+      if (onRefresh) onRefresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro no envio';
+      const msg = err instanceof Error ? err.message : 'Erro na importação';
       setFeedback({ type: 'error', message: `Ocorreu um erro: ${msg}` });
     } finally {
       setImportingLoading(false);
+      setImportProgress(null);
     }
   };
 
@@ -121,6 +198,9 @@ export default function ImportacaoErpTab({
           message: 'Tabela plat_movimentos limpa com sucesso.',
         });
         setShowClearConfirm(false);
+        setParsedRows([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        await loadExistingCount();
         if (onRefresh) onRefresh();
       } else {
         setFeedback({
@@ -172,17 +252,18 @@ export default function ImportacaoErpTab({
     return parsedRows
       .filter(
         (r) =>
-          r.artigo?.toLowerCase().includes(q) ||
+          r.artigo_id?.toLowerCase().includes(q) ||
+          r.artigo_cli?.toLowerCase().includes(q) ||
           r.descricao?.toLowerCase().includes(q) ||
           r.documento?.toLowerCase().includes(q) ||
-          r.documento_ref?.toLowerCase().includes(q) ||
-          r.tipo_doc?.toLowerCase().includes(q) ||
+          r.doc_linha?.toLowerCase().includes(q) ||
+          r.cli_primavera?.toLowerCase().includes(q) ||
+          r.cliente_ser?.toLowerCase().includes(q) ||
           r.lote?.toLowerCase().includes(q) ||
           r.armazem?.toLowerCase().includes(q) ||
           r.localizacao?.toLowerCase().includes(q) ||
-          r.sigla?.toLowerCase().includes(q) ||
           r.nome?.toLowerCase().includes(q) ||
-          r.nome_entrega?.toLowerCase().includes(q) ||
+          r.nomeentrega?.toLowerCase().includes(q) ||
           r.entidade?.toLowerCase().includes(q) ||
           r.chave1?.toLowerCase().includes(q) ||
           r.chave2?.toLowerCase().includes(q)
@@ -193,10 +274,16 @@ export default function ImportacaoErpTab({
   // Estatísticas do ficheiro em memória
   const stats = useMemo(() => {
     const totalQtd = parsedRows.reduce((acc, r) => acc + (r.quantidade || 0), 0);
-    const totalArtigos = new Set(parsedRows.map((r) => r.artigo).filter(Boolean)).size;
+    const totalArtigos = new Set(parsedRows.map((r) => r.artigo_cli || r.artigo_id).filter(Boolean)).size;
     const totalLotes = new Set(parsedRows.map((r) => r.lote).filter(Boolean)).size;
-    const entradas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'ES').length;
-    const saidas = parsedRows.filter((r) => (r.tipo_movimento || '').toUpperCase() === 'SS').length;
+    const entradas = parsedRows.filter((r) => {
+      const t = (r.tipomovimento || '').toUpperCase();
+      return t === 'E' || t === 'ES' || t === 'ET';
+    }).length;
+    const saidas = parsedRows.filter((r) => {
+      const t = (r.tipomovimento || '').toUpperCase();
+      return t === 'S' || t === 'SS' || t === 'ST';
+    }).length;
 
     return { totalQtd, totalArtigos, totalLotes, entradas, saidas };
   }, [parsedRows]);
@@ -224,6 +311,13 @@ export default function ImportacaoErpTab({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {existingCount !== null && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="material-symbols-outlined text-sm">database</span>
+                Base de dados: <strong>{existingCount.toLocaleString('pt-PT')}</strong> registos
+              </span>
+            )}
+
             <button
               type="button"
               onClick={handleDownloadExcelSample}
@@ -326,6 +420,14 @@ export default function ImportacaoErpTab({
             </div>
           </div>
 
+          {/* Indicador de Progresso em Lotes */}
+          {importProgress && (
+            <div className="p-4 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200 flex items-center gap-3 animate-in fade-in shadow-xs">
+              <span className="w-4 h-4 border-2 border-indigo-700 border-t-transparent rounded-full animate-spin shrink-0"></span>
+              <span>{importProgress}</span>
+            </div>
+          )}
+
           {/* Feedback Toast */}
           {feedback && (
             <div
@@ -395,18 +497,18 @@ export default function ImportacaoErpTab({
                 <button
                   type="button"
                   onClick={handleConfirmImport}
-                  disabled={importingLoading}
+                  disabled={importingLoading || parsingLoading}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-secondary text-on-secondary hover:bg-secondary/90 font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-50"
                 >
                   {importingLoading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-on-secondary border-t-transparent rounded-full animate-spin" />
-                      <span>A importar {parsedRows.length} registos...</span>
+                      <span>{importProgress || `A importar ${parsedRows.length} registos...`}</span>
                     </>
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-sm">cloud_upload</span>
-                      <span>Confirmar Importação para plat_movimentos</span>
+                      <span>Confirmar Importação de {parsedRows.length.toLocaleString('pt-PT')} registos</span>
                     </>
                   )}
                 </button>
@@ -418,13 +520,14 @@ export default function ImportacaoErpTab({
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-surface-container text-on-surface-variant text-[11px] font-bold sticky top-0 z-10 border-b border-outline-variant/30">
                       <tr>
-                        <th className="py-2.5 px-3">Linha</th>
-                        <th className="py-2.5 px-3">Data/Hora</th>
-                        <th className="py-2.5 px-3">Sigla</th>
+                        <th className="py-2.5 px-3">doc_linha (PK)</th>
+                        <th className="py-2.5 px-3">Data</th>
+                        <th className="py-2.5 px-3">cli_primavera</th>
+                        <th className="py-2.5 px-3">cliente_ser</th>
                         <th className="py-2.5 px-3">Documento</th>
-                        <th className="py-2.5 px-3">Doc. Ref</th>
-                        <th className="py-2.5 px-3">Tipo Doc</th>
-                        <th className="py-2.5 px-3">Artigo</th>
+                        <th className="py-2.5 px-3">Nº Linha</th>
+                        <th className="py-2.5 px-3">artigo_cli</th>
+                        <th className="py-2.5 px-3">artigo_id</th>
                         <th className="py-2.5 px-3">Descrição</th>
                         <th className="py-2.5 px-3">Armazém</th>
                         <th className="py-2.5 px-3">Localização</th>
@@ -438,13 +541,14 @@ export default function ImportacaoErpTab({
                     <tbody className="divide-y divide-outline-variant/20 font-mono text-[11px]">
                       {filteredPreviewRows.map((row, idx) => (
                         <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
-                          <td className="py-2 px-3 text-on-surface-variant">{row.num_linha ?? idx + 1}</td>
-                          <td className="py-2 px-3 whitespace-nowrap text-[10px]">{row.data_movimento || row.data || '-'}</td>
-                          <td className="py-2 px-3 font-bold text-indigo-700">{row.sigla || '-'}</td>
-                          <td className="py-2 px-3 font-semibold text-secondary whitespace-nowrap">{row.documento || '-'}</td>
-                          <td className="py-2 px-3 text-on-surface-variant whitespace-nowrap">{row.documento_ref || '-'}</td>
-                          <td className="py-2 px-3 text-center">{row.tipo_doc || '-'}</td>
-                          <td className="py-2 px-3 font-bold text-on-surface">{row.artigo || '-'}</td>
+                          <td className="py-2 px-3 font-bold text-indigo-700 whitespace-nowrap">{row.doc_linha || '-'}</td>
+                          <td className="py-2 px-3 whitespace-nowrap text-[10px]">{row.data || '-'}</td>
+                          <td className="py-2 px-3 font-semibold text-on-surface">{row.cli_primavera || '-'}</td>
+                          <td className="py-2 px-3 font-semibold text-secondary whitespace-nowrap">{row.cliente_ser || '-'}</td>
+                          <td className="py-2 px-3 text-on-surface whitespace-nowrap">{row.documento || '-'}</td>
+                          <td className="py-2 px-3 text-center">{row.numlinha ?? '-'}</td>
+                          <td className="py-2 px-3 font-bold text-emerald-700 whitespace-nowrap">{row.artigo_cli || '-'}</td>
+                          <td className="py-2 px-3 font-semibold text-on-surface">{row.artigo_id || '-'}</td>
                           <td className="py-2 px-3 font-sans truncate max-w-[180px]" title={row.descricao || ''}>
                             {row.descricao || '-'}
                           </td>
@@ -454,20 +558,20 @@ export default function ImportacaoErpTab({
                           <td className="py-2 px-3 text-center">
                             <span
                               className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
-                                (row.tipo_movimento || '').toUpperCase() === 'ES'
+                                (row.tipomovimento || '').toUpperCase() === 'E' || (row.tipomovimento || '').toUpperCase() === 'ES'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : 'bg-amber-100 text-amber-800'
                               }`}
                             >
-                              {row.tipo_movimento || '-'}
+                              {row.tipomovimento || '-'}
                             </span>
                           </td>
                           <td className="py-2 px-3 text-right font-bold text-on-surface">
                             {row.quantidade?.toLocaleString() || 0}
                           </td>
                           <td className="py-2 px-3 text-on-surface-variant">{row.entidade || '-'}</td>
-                          <td className="py-2 px-3 font-sans truncate max-w-[150px]" title={`${row.nome_entrega || ''} ${row.morada_entrega || ''}`}>
-                            {row.nome_entrega || row.cod_postal_localidade_entrega || row.localidade || '-'}
+                          <td className="py-2 px-3 font-sans truncate max-w-[150px]" title={`${row.nomeentrega || ''} ${row.moradaentrega || ''}`}>
+                            {row.nomeentrega || row.localidadeentrega || row.localidade || '-'}
                           </td>
                         </tr>
                       ))}
@@ -476,7 +580,7 @@ export default function ImportacaoErpTab({
                 </div>
                 <div className="bg-surface-container/20 px-3 py-2 text-[11px] text-on-surface-variant border-t border-outline-variant/20 flex justify-between items-center">
                   <span>A mostrar {filteredPreviewRows.length} de {parsedRows.length} linhas</span>
-                  <span>Perfil Padrão ERP: 42 colunas delimitadas por ponto e vírgula (;)</span>
+                  <span>Perfil Padrão ERP: 42 colunas delimitadas por ponto e vírgula (;) | PK: doc_linha</span>
                 </div>
               </div>
             </div>
@@ -489,31 +593,31 @@ export default function ImportacaoErpTab({
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
             <span className="material-symbols-outlined text-indigo-600 text-base">tune</span>
-            Campos Mapeados na Tabela plat_movimentos (42 Campos - Perfil Padrão ERP)
+            Campos Mapeados na Tabela plat_movimentos (42 Campos - Perfil ERP)
           </div>
           <p className="text-xs text-on-surface-variant">
-            A tabela e os analisadores (.csv, .txt, .xlsx, .xls) acolhem integralmente a estrutura de 42 colunas extraída do ERP:
+            A tabela e os analisadores (.csv, .txt, .xlsx, .xls) acolhem integralmente a estrutura de 42 colunas com Primary Key em <code>doc_linha</code>:
           </p>
           <div className="text-[11px] font-mono bg-surface-container/40 rounded-xl p-3.5 text-on-surface space-y-1.5 divide-y divide-outline-variant/15">
             <div className="pb-1">
-              <span className="text-indigo-600 font-bold">1. Documento & Registo (10):</span>{' '}
-              <span className="text-on-surface-variant">data_movimento, sigla, tipo_movimento, documento, documento-ref, tipo_doc, num_linha, doc_linha, Chave1, Chave2</span>
+              <span className="text-indigo-600 font-bold">1. Documento & Registo (9):</span>{' '}
+              <span className="text-on-surface-variant">data, cli_primavera, cliente_ser, tipomovimento, documento, numlinha, doc_linha (PK), chave1, chave2</span>
             </div>
             <div className="py-1">
-              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (11):</span>{' '}
-              <span className="text-on-surface-variant">artigo, descricao, tipo_artigo, armazem, localizacao, lote, quantidade, familia, sub_familia, data_fabrico, validade</span>
+              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (12):</span>{' '}
+              <span className="text-on-surface-variant">artigo_id, artigo_cli, descricao, tipoartigo, armazem, localizacao, lote, quantidade, familia, subFamilia, datafabrico, validade</span>
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais (7):</span>{' '}
-              <span className="text-on-surface-variant">valor_unitario, valor_adicional, valor_abater, total_iva, total_merc, total_outros, total_desc</span>
+              <span className="text-on-surface-variant">valorunitario, valoradicional, valorabater, totaliva, totalmerc, totaloutros, totaldesc</span>
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">4. Entidade & Faturação (9):</span>{' '}
-              <span className="text-on-surface-variant">entidade, requisicao, num_contribuinte, morada, nome, localidade, cod_Postal, cod_postal_localidade, pais</span>
+              <span className="text-on-surface-variant">entidade, requisicao, numcontribuinte, nome, morada, localidade, codpostal, codpostallocalidade, pais</span>
             </div>
             <div className="pt-1">
               <span className="text-indigo-600 font-bold">5. Destino de Entrega (5):</span>{' '}
-              <span className="text-on-surface-variant">nome_entrega, morada_entrega, cod_postal_entrega, cod_postal_localidade_entrega, entidade_entrega</span>
+              <span className="text-on-surface-variant">nomeentrega, entidadeentrega, moradaentrega, localidadeentrega, codpostalentrega</span>
             </div>
           </div>
         </div>

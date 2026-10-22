@@ -6,6 +6,7 @@ export interface StockImportRow {
   entidade?: string | null;
   sigla?: string | null;
   artigo: string;
+  descricao?: string | null;
   armazem: string;
   localizacao?: string | null;
   lote?: string | null;
@@ -147,6 +148,18 @@ function normalizeHeader(key: string): string {
   )
     return 'artigo';
   if (
+    clean === 'descricao' ||
+    clean === 'designacao' ||
+    clean === 'desc' ||
+    clean === 'descartigo' ||
+    clean === 'descricaodoartigo' ||
+    clean === 'descricaoproduto' ||
+    clean === 'produto' ||
+    clean === 'nome' ||
+    clean === 'nomedoartigo'
+  )
+    return 'descricao';
+  if (
     clean === 'armazem' ||
     clean === 'codarmazem' ||
     clean === 'tipoarmazem' ||
@@ -231,6 +244,7 @@ export function parseStockTextFile(text: string, defaultCliente?: string): Stock
     const clienteSer = r['cliente_ser'] || sigla || defaultCliente || '';
     const entidade = r['entidade'] ? r['entidade'].trim() : null;
     const artigo = r['artigo'] || '';
+    const descricao = r['descricao'] ? r['descricao'].trim() : null;
     const armazem = r['armazem'] || '';
 
     // Artigo e armazém são essenciais para uma linha de stock
@@ -242,6 +256,7 @@ export function parseStockTextFile(text: string, defaultCliente?: string): Stock
       entidade,
       sigla: sigla || (clienteSer ? clienteSer.trim() : null),
       artigo: artigo.trim(),
+      descricao: descricao || null,
       armazem: armazem.trim(),
       localizacao: r['localizacao'] ? r['localizacao'].trim() : null,
       lote: r['lote'] ? r['lote'].trim() : null,
@@ -304,6 +319,7 @@ export async function parseStockExcelFile(
       const clienteSer = r['cliente_ser'] || sigla || defaultCliente || '';
       const entidade = r['entidade'] ? String(r['entidade']).trim() : null;
       const artigo = r['artigo'] || '';
+      const descricao = r['descricao'] ? String(r['descricao']).trim() : null;
       const armazem = r['armazem'] || '';
 
       if (!artigo && !armazem && !clienteSer) return;
@@ -314,6 +330,7 @@ export async function parseStockExcelFile(
         entidade,
         sigla: sigla || (clienteSer ? String(clienteSer).trim() : null),
         artigo: String(artigo).trim(),
+        descricao: descricao || null,
         armazem: String(armazem).trim(),
         localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
         lote: r['lote'] ? String(r['lote']).trim() : null,
@@ -367,6 +384,7 @@ export const STOCK_HEADERS = [
   'Entidade',
   'Sigla',
   'artigo',
+  'descricao',
   'armazem',
   'localizacao',
   'lote',
@@ -381,6 +399,7 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     Entidade: '6159',
     Sigla: 'AOP',
     artigo: '5781331',
+    descricao: 'Paracetamol 500mg 20 Comprimidos',
     armazem: 'AOP01',
     localizacao: 'AOP01',
     lote: '<L01>',
@@ -393,6 +412,7 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     Entidade: '6159',
     Sigla: 'AOP',
     artigo: '5856216',
+    descricao: 'Ibuprofeno 400mg 30 Comprimidos',
     armazem: 'AOP05',
     localizacao: 'AOP05.12B56',
     lote: '<L01>',
@@ -405,6 +425,7 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     Entidade: '6159',
     Sigla: 'AOP',
     artigo: '5831235',
+    descricao: 'Amoxicilina 500mg 16 Cápsulas',
     armazem: 'AOP05',
     localizacao: 'AOP05.16C12',
     lote: 'TREC0186',
@@ -417,6 +438,7 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     Entidade: '6159',
     Sigla: 'AOP',
     artigo: '5781349',
+    descricao: 'Omeprazol 20mg 28 Cápsulas',
     armazem: 'AOP01',
     localizacao: 'AOP01.14B34',
     lote: 'TREP1812',
@@ -429,6 +451,7 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     Entidade: '6159',
     Sigla: 'AOP',
     artigo: '5781323',
+    descricao: 'Cetirizina 10mg 20 Comprimidos',
     armazem: 'AOP06',
     localizacao: 'AOP06.01R01',
     lote: 'TREP1394',
@@ -470,6 +493,7 @@ export async function generateStockSampleExcel(): Promise<Blob> {
     Entidade: 14,
     Sigla: 12,
     artigo: 16,
+    descricao: 32,
     armazem: 14,
     localizacao: 18,
     lote: 18,

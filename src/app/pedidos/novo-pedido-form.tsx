@@ -129,12 +129,15 @@ export default function NovoPedidoForm({
   const availableArtigos = useMemo(() => {
     const map = new Map<string, { id: string; codigo: string; descricao: string }>();
     clientStock.forEach((s) => {
-      if (!map.has(s.artigo_id)) {
+      const existing = map.get(s.artigo_id);
+      if (!existing) {
         map.set(s.artigo_id, {
           id: s.artigo_id,
-          codigo: s.artigo_codigo,
-          descricao: s.artigo_descricao,
+          codigo: s.artigo_cli || s.artigo_id,
+          descricao: s.descricao || '',
         });
+      } else if (!existing.descricao && s.descricao) {
+        existing.descricao = s.descricao;
       }
     });
     return Array.from(map.values());
@@ -374,8 +377,8 @@ export default function NovoPedidoForm({
     } else {
       const novaLinha: NovaLinhaPedidoInput = {
         artigo_id: selectedArtigoId,
-        artigo_codigo: currentLoteObj.artigo_codigo,
-        descricao: currentLoteObj.artigo_descricao,
+        artigo_codigo: currentLoteObj.artigo_cli || selectedArtigoId,
+        descricao: currentLoteObj.descricao || '',
         lote: currentLoteObj.lote || '',
         validade: currentLoteObj.validade,
         quantidade: quantidade,

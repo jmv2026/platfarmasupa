@@ -146,8 +146,10 @@ export default function StocksView({
       }
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
-        const matchCod = item.artigo_codigo?.toLowerCase().includes(query);
-        const matchDesc = item.artigo_descricao?.toLowerCase().includes(query);
+        const matchCod =
+          item.artigo_id?.toLowerCase().includes(query) ||
+          item.artigo_cli?.toLowerCase().includes(query);
+        const matchDesc = item.descricao?.toLowerCase().includes(query);
         const matchLote = item.lote?.toLowerCase().includes(query);
         const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
         if (!matchCod && !matchDesc && !matchLote && !matchCli) {
@@ -184,8 +186,10 @@ export default function StocksView({
       }
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
-        const matchCod = item.artigo_codigo?.toLowerCase().includes(query);
-        const matchDesc = item.artigo_descricao?.toLowerCase().includes(query);
+        const matchCod =
+          item.artigo_id?.toLowerCase().includes(query) ||
+          item.artigo_cli?.toLowerCase().includes(query);
+        const matchDesc = item.descricao?.toLowerCase().includes(query);
         const matchLote = item.lote?.toLowerCase().includes(query);
         const matchArmLoc = item.armazem_loc?.toLowerCase().includes(query);
         const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
@@ -203,8 +207,8 @@ export default function StocksView({
       string,
       {
         artigo_id: string;
-        artigo_codigo: string;
-        artigo_descricao: string;
+        artigo_cli: string;
+        descricao: string | null;
         cliente_sigla: string;
         cliente_id: string;
 
@@ -224,8 +228,8 @@ export default function StocksView({
       if (!map.has(key)) {
         map.set(key, {
           artigo_id: item.artigo_id,
-          artigo_codigo: item.artigo_codigo,
-          artigo_descricao: item.artigo_descricao,
+          artigo_cli: item.artigo_cli,
+          descricao: item.descricao,
           cliente_sigla: item.cliente_sigla,
           cliente_id: currentClientId,
 
@@ -240,6 +244,9 @@ export default function StocksView({
       }
 
       const obj = map.get(key)!;
+      if (!obj.descricao && item.descricao) {
+        obj.descricao = item.descricao;
+      }
       const qtd = Number(item.stock || 0);
       obj.stockTotal += qtd;
       if (item.tipo_armazem === '01') {
@@ -294,8 +301,9 @@ export default function StocksView({
       if (searchTerm) {
         const q = searchTerm.toLowerCase();
         return (
-          item.artigo_codigo?.toLowerCase().includes(q) ||
-          item.artigo_descricao?.toLowerCase().includes(q) ||
+          item.artigo_id?.toLowerCase().includes(q) ||
+          item.artigo_cli?.toLowerCase().includes(q) ||
+          item.descricao?.toLowerCase().includes(q) ||
           item.cliente_sigla?.toLowerCase().includes(q) ||
           item.cliente_nome?.toLowerCase().includes(q) ||
           item.lotes_historico?.toLowerCase().includes(q)
@@ -312,30 +320,30 @@ export default function StocksView({
       const rows: string[] = [];
 
       if (activeTab === 'pedidos') {
-        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Lote,Validade,Stock Disponivel');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Tipo Artigo,Conservacao,Lote,Validade,Stock Disponivel');
         filteredStockPedidos.forEach((r) => {
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${r.stock}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${r.stock}`);
         });
       } else if (activeTab === 'consolidado') {
-        rows.push('Cliente,Codigo Artigo,Descricao,Lote,Validade,Armazem Loc,Tipo Armazem,Descricao Armazem,Stock');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Lote,Validade,Armazem Loc,Tipo Armazem,Descricao Armazem,Stock');
         filteredStockAtual.forEach((r) => {
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${sanitize(r.armazem_loc)},${sanitize(r.tipo_armazem)},${sanitize(r.armazem_descricao || '')},${r.stock}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${sanitize(r.armazem_loc)},${sanitize(r.tipo_armazem)},${sanitize(r.armazem_descricao || '')},${r.stock}`);
         });
       } else if (activeTab === 'artigos') {
-        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Stock Venda,Stock Outros,Stock Total,Lotes');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Tipo Artigo,Conservacao,Stock Venda,Stock Outros,Stock Total,Lotes');
         resumoArtigos.forEach((r) => {
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}`);
         });
       } else if (activeTab === 'stock_zero') {
-        rows.push('Cliente,Codigo Artigo,Descricao,Tipo Artigo,Conservacao,Familia,Stock,Ultimo Movimento,Total Movimentos,Lotes Historico');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Tipo Artigo,Conservacao,Familia,Stock,Ultimo Movimento,Total Movimentos,Lotes Historico');
         filteredStockZero.forEach((r) => {
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.tipo_artigo || '')},${sanitize(r.tipo_armazenamento || '')},${sanitize(r.familia || '')},${r.stock},${sanitize(r.ultimo_movimento || '')},${r.total_movimentos},${sanitize(r.lotes_historico || '')}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo || '')},${sanitize(r.tipo_armazenamento || '')},${sanitize(r.familia || '')},${r.stock},${sanitize(r.ultimo_movimento || '')},${r.total_movimentos},${sanitize(r.lotes_historico || '')}`);
         });
       } else {
-        rows.push('Cliente,Codigo Artigo,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock');
         lotesValidade.forEach((r) => {
           const days = getDaysUntilExpiry(r.validade);
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_codigo)},${sanitize(r.artigo_descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${days ?? ''},${sanitize(r.armazem_loc)},${r.stock}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.lote || '')},${sanitize(r.validade || '')},${days ?? ''},${sanitize(r.armazem_loc)},${r.stock}`);
         });
       }
 
@@ -370,8 +378,9 @@ export default function StocksView({
     if (activeTab === 'pedidos') {
       worksheet.columns = [
         { header: 'Cliente', key: 'cliente_sigla', width: 12 },
-        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
-        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Artigo', key: 'artigo_id', width: 16 },
+        { header: 'Artigo Cli', key: 'artigo_cli', width: 18 },
+        { header: 'Descrição Artigo', key: 'descricao', width: 38 },
         { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
         { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
         { header: 'Lote', key: 'lote', width: 18 },
@@ -382,8 +391,9 @@ export default function StocksView({
       filteredStockPedidos.forEach((r) => {
         worksheet.addRow({
           cliente_sigla: r.cliente_sigla,
-          artigo_codigo: r.artigo_codigo,
-          artigo_descricao: r.artigo_descricao,
+          artigo_id: r.artigo_id,
+          artigo_cli: r.artigo_cli,
+          descricao: r.descricao || '-',
           tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
           tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
           lote: r.lote || '-',
@@ -394,8 +404,9 @@ export default function StocksView({
     } else if (activeTab === 'consolidado') {
       worksheet.columns = [
         { header: 'Cliente', key: 'cliente_sigla', width: 12 },
-        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
-        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Artigo', key: 'artigo_id', width: 16 },
+        { header: 'Artigo Cli', key: 'artigo_cli', width: 18 },
+        { header: 'Descrição Artigo', key: 'descricao', width: 38 },
         { header: 'Lote', key: 'lote', width: 18 },
         { header: 'Validade', key: 'validade', width: 14 },
         { header: 'Armazém Loc', key: 'armazem_loc', width: 16 },
@@ -407,8 +418,9 @@ export default function StocksView({
       filteredStockAtual.forEach((r) => {
         worksheet.addRow({
           cliente_sigla: r.cliente_sigla,
-          artigo_codigo: r.artigo_codigo,
-          artigo_descricao: r.artigo_descricao,
+          artigo_id: r.artigo_id,
+          artigo_cli: r.artigo_cli,
+          descricao: r.descricao || '-',
           lote: r.lote || '-',
           validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
           armazem_loc: r.armazem_loc,
@@ -420,8 +432,9 @@ export default function StocksView({
     } else if (activeTab === 'artigos') {
       worksheet.columns = [
         { header: 'Cliente', key: 'cliente_sigla', width: 12 },
-        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
-        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Artigo', key: 'artigo_id', width: 16 },
+        { header: 'Artigo Cli', key: 'artigo_cli', width: 18 },
+        { header: 'Descrição Artigo', key: 'descricao', width: 38 },
         { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
         { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
         { header: 'Stock Venda (01)', key: 'stockVenda', width: 18 },
@@ -433,8 +446,9 @@ export default function StocksView({
       resumoArtigos.forEach((r) => {
         worksheet.addRow({
           cliente_sigla: r.cliente_sigla,
-          artigo_codigo: r.artigo_codigo,
-          artigo_descricao: r.artigo_descricao,
+          artigo_id: r.artigo_id,
+          artigo_cli: r.artigo_cli,
+          descricao: r.descricao || '-',
           tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
           tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
           stockVenda: r.stockVenda,
@@ -446,8 +460,9 @@ export default function StocksView({
     } else if (activeTab === 'stock_zero') {
       worksheet.columns = [
         { header: 'Cliente', key: 'cliente_sigla', width: 12 },
-        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
-        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Artigo', key: 'artigo_id', width: 16 },
+        { header: 'Artigo Cli', key: 'artigo_cli', width: 18 },
+        { header: 'Descrição Artigo', key: 'descricao', width: 38 },
         { header: 'Tipo Artigo', key: 'tipo_artigo', width: 16 },
         { header: 'Conservação', key: 'tipo_armazenamento', width: 16 },
         { header: 'Família', key: 'familia', width: 16 },
@@ -459,8 +474,9 @@ export default function StocksView({
       filteredStockZero.forEach((item) => {
         worksheet.addRow({
           cliente_sigla: item.cliente_sigla,
-          artigo_codigo: item.artigo_codigo,
-          artigo_descricao: item.artigo_descricao,
+          artigo_id: item.artigo_id,
+          artigo_cli: item.artigo_cli,
+          descricao: item.descricao || '-',
           tipo_artigo: item.tipo_artigo || '-',
           tipo_armazenamento: item.tipo_armazenamento || '-',
           familia: item.familia || '-',
@@ -473,8 +489,9 @@ export default function StocksView({
     } else {
       worksheet.columns = [
         { header: 'Cliente', key: 'cliente_sigla', width: 12 },
-        { header: 'Código Artigo', key: 'artigo_codigo', width: 18 },
-        { header: 'Descrição Artigo', key: 'artigo_descricao', width: 38 },
+        { header: 'Artigo', key: 'artigo_id', width: 16 },
+        { header: 'Artigo Cli', key: 'artigo_cli', width: 18 },
+        { header: 'Descrição Artigo', key: 'descricao', width: 38 },
         { header: 'Lote', key: 'lote', width: 18 },
         { header: 'Validade', key: 'validade', width: 14 },
         { header: 'Dias Restantes', key: 'dias_restantes', width: 16 },
@@ -486,8 +503,9 @@ export default function StocksView({
         const days = getDaysUntilExpiry(r.validade);
         worksheet.addRow({
           cliente_sigla: r.cliente_sigla,
-          artigo_codigo: r.artigo_codigo,
-          artigo_descricao: r.artigo_descricao,
+          artigo_id: r.artigo_id,
+          artigo_cli: r.artigo_cli,
+          descricao: r.descricao || '-',
           lote: r.lote || '-',
           validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
           dias_restantes: days ?? '-',
@@ -938,7 +956,7 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
@@ -978,8 +996,8 @@ export default function StocksView({
                                 {item.cliente_sigla}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                            <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
+                            <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
                             <td className="py-3 px-3">
                               <span className="text-[11px] text-on-surface-variant">
                                 {TIPO_ARTIGO_LABELS[item.tipo_artigo as TipoArtigo] || item.tipo_artigo}
@@ -1065,7 +1083,7 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
@@ -1102,8 +1120,8 @@ export default function StocksView({
                               {item.cliente_sigla}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                          <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
+                          <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
                           <td className="py-3 px-3 font-mono text-secondary font-semibold">
                             {item.lote}
                           </td>
@@ -1175,7 +1193,7 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
@@ -1213,8 +1231,8 @@ export default function StocksView({
                               {item.cliente_sigla}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                          <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
+                          <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
                           <td className="py-3 px-3">
                             <span className="text-[11px] text-on-surface-variant">
                               {TIPO_ARTIGO_LABELS[item.tipo_artigo] || item.tipo_artigo}
@@ -1290,7 +1308,7 @@ export default function StocksView({
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Estado</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Código</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Data Validade</th>
@@ -1354,8 +1372,8 @@ export default function StocksView({
                                 {item.cliente_sigla}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_codigo}</td>
-                            <td className="py-3 px-3 font-medium">{item.artigo_descricao}</td>
+                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
+                            <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
                             <td className="py-3 px-3 font-mono font-bold text-secondary">{item.lote}</td>
                             <td className="py-3 px-3 font-mono font-semibold">
                               {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
@@ -1419,7 +1437,7 @@ export default function StocksView({
                     <tr>
                       <th className="py-3 px-3">Estado</th>
                       <th className="py-3 px-3">Cliente</th>
-                      <th className="py-3 px-3">Código</th>
+                      <th className="py-3 px-3">Artigo</th>
                       <th className="py-3 px-3">Descrição do Artigo</th>
                       <th className="py-3 px-3">Tipo Artigo</th>
                       <th className="py-3 px-3">Conservação</th>
@@ -1432,7 +1450,7 @@ export default function StocksView({
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {filteredStockZero.length > 0 ? (
                       filteredStockZero.map((item, idx) => (
-                        <tr key={item.artigo_codigo || idx} className="hover:bg-slate-50/70 transition-colors">
+                        <tr key={item.artigo_cli || item.artigo_id || idx} className="hover:bg-slate-50/70 transition-colors">
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
@@ -1445,10 +1463,10 @@ export default function StocksView({
                             </span>
                           </td>
                           <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                            {item.artigo_codigo}
+                            {item.artigo_id}
                           </td>
-                          <td className="py-3 px-3 font-medium text-slate-900 max-w-[280px] truncate" title={item.artigo_descricao}>
-                            {item.artigo_descricao}
+                          <td className="py-3 px-3 font-medium text-slate-900 max-w-[280px] truncate" title={item.descricao || ''}>
+                            {item.descricao || '-'}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
                             <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">

@@ -6,7 +6,7 @@ import { UserProfile, Client, Artigo, Armazem, Tempo } from '@/lib/supabase/type
 import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 30;
 
 export default async function ConfiguracaoPage() {
   const supabase = await createClient();
@@ -30,12 +30,11 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Movimentos, Armazéns, Importações, Tempos e Tracking em paralelo
+  // Carregar dados de Utilizadores, Clientes, Artigos, Armazéns, Tempos e Tracking em paralelo
   const [
     { data: usersList },
     { data: clientsList },
     { data: artigosList },
-    { data: movimentosListRaw },
     { data: armazensList },
     { data: temposList },
     { data: trackingListRaw },
@@ -43,7 +42,6 @@ export default async function ConfiguracaoPage() {
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clientes').select('*').order('name'),
     supabase.from('artigos').select('*').order('artigo_id'),
-    supabase.rpc('get_todos_movimentos_detalhe'),
     supabase.from('armazens').select('*').order('tipo_armazem'),
     supabase.from('tempos').select('*').order('sigla'),
     supabase
@@ -54,15 +52,7 @@ export default async function ConfiguracaoPage() {
   ]);
 
   const trackingList = trackingListRaw || [];
-  const movimentosList = Array.isArray(movimentosListRaw) ? movimentosListRaw : [];
-
-  const formattedMovimentos: MovimentoWithDetails[] = (movimentosList || []).map((m: any) => ({
-    ...m,
-    id: m.id || m.doc_linha,
-    cliente_nome: m.cliente_nome || m.sigla,
-    cliente_sigla: m.sigla || m.cliente_sigla,
-    artigo_descricao: m.artigo_descricao || m.artigo_cli,
-  }));
+  const formattedMovimentos: MovimentoWithDetails[] = [];
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;

@@ -9,7 +9,15 @@ VALUES
   ('PHS', 'PHS', '6450', 'SF', true)
 ON CONFLICT (sigla) DO NOTHING;
 
--- 2. vw_stock_atual (Stock Consolidado com stock > 0)
+-- 2. Coluna descricao na tabela stock
+ALTER TABLE public.stock 
+ADD COLUMN IF NOT EXISTS descricao TEXT;
+
+COMMENT ON COLUMN public.stock.descricao IS 'Descrição / designação do produto';
+
+CREATE INDEX IF NOT EXISTS idx_stock_descricao ON public.stock(descricao);
+
+-- 3. vw_stock_atual (Stock Consolidado com stock > 0)
 DROP VIEW IF EXISTS public.vw_stock_atual CASCADE;
 
 CREATE VIEW public.vw_stock_atual WITH (security_invoker = true) AS
@@ -19,7 +27,7 @@ SELECT
     COALESCE(c.sigla, s.sigla, s.cliente_ser) AS cliente_sigla,
     COALESCE(a.artigo_id, s.artigo) AS artigo_id,
     COALESCE(a.artigo_cli, (s.sigla || '-' || s.artigo), s.artigo) AS artigo_codigo,
-    COALESCE(a.descricao, s.artigo) AS artigo_descricao,
+    COALESCE(NULLIF(TRIM(a.descricao), ''), NULLIF(TRIM(s.descricao), '')) AS artigo_descricao,
     COALESCE(a.id_tipo_artigo, '')::text AS tipo_artigo,
     COALESCE(a.tipo_armazenamento, 'TA')::text AS tipo_armazenamento,
     CASE 
@@ -59,6 +67,8 @@ LEFT JOIN LATERAL (
        OR a1.artigo_cli = s.artigo
        OR a1.artigo_cli = (s.entidade || '-' || s.artigo)
        OR a1.artigo_cli = (s.sigla || '-' || s.artigo)
+       OR (c.sigla IS NOT NULL AND a1.artigo_cli = (c.sigla || '-' || s.artigo))
+       OR (c.cli_primavera IS NOT NULL AND a1.artigo_cli = (c.cli_primavera || '-' || s.artigo))
     ORDER BY 
         CASE WHEN a1.cli_primavera = s.entidade THEN 1 
              WHEN a1.cli_primavera = s.sigla THEN 2 
@@ -90,7 +100,7 @@ GROUP BY
     COALESCE(c.sigla, s.sigla, s.cliente_ser),
     COALESCE(a.artigo_id, s.artigo),
     COALESCE(a.artigo_cli, (s.sigla || '-' || s.artigo), s.artigo),
-    COALESCE(a.descricao, s.artigo),
+    COALESCE(NULLIF(TRIM(a.descricao), ''), NULLIF(TRIM(s.descricao), '')),
     COALESCE(a.id_tipo_artigo, '')::text,
     COALESCE(a.tipo_armazenamento, 'TA')::text,
     CASE 
@@ -106,7 +116,7 @@ HAVING SUM(s.stock) > 0;
 
 GRANT SELECT ON public.vw_stock_atual TO authenticated, anon, service_role;
 
--- 3. vw_stock_pedidos (Stock de Venda Livre - Armazém 01)
+-- 4. vw_stock_pedidos (Stock de Venda Livre - Armazém 01)
 DROP VIEW IF EXISTS public.vw_stock_pedidos CASCADE;
 
 CREATE VIEW public.vw_stock_pedidos WITH (security_invoker = true) AS
@@ -116,7 +126,7 @@ SELECT
     COALESCE(c.sigla, s.sigla, s.cliente_ser) AS cliente_sigla,
     COALESCE(a.artigo_id, s.artigo) AS artigo_id,
     COALESCE(a.artigo_cli, (s.sigla || '-' || s.artigo), s.artigo) AS artigo_codigo,
-    COALESCE(a.descricao, s.artigo) AS artigo_descricao,
+    COALESCE(NULLIF(TRIM(a.descricao), ''), NULLIF(TRIM(s.descricao), '')) AS artigo_descricao,
     COALESCE(a.id_tipo_artigo, '')::text AS tipo_artigo,
     COALESCE(a.tipo_armazenamento, 'TA')::text AS tipo_armazenamento,
     COALESCE(s.lote, 'S/LOTE'::text) AS lote,
@@ -149,6 +159,8 @@ LEFT JOIN LATERAL (
        OR a1.artigo_cli = s.artigo
        OR a1.artigo_cli = (s.entidade || '-' || s.artigo)
        OR a1.artigo_cli = (s.sigla || '-' || s.artigo)
+       OR (c.sigla IS NOT NULL AND a1.artigo_cli = (c.sigla || '-' || s.artigo))
+       OR (c.cli_primavera IS NOT NULL AND a1.artigo_cli = (c.cli_primavera || '-' || s.artigo))
     ORDER BY 
         CASE WHEN a1.cli_primavera = s.entidade THEN 1 
              WHEN a1.cli_primavera = s.sigla THEN 2 
@@ -180,7 +192,7 @@ GROUP BY
     COALESCE(c.sigla, s.sigla, s.cliente_ser),
     COALESCE(a.artigo_id, s.artigo),
     COALESCE(a.artigo_cli, (s.sigla || '-' || s.artigo), s.artigo),
-    COALESCE(a.descricao, s.artigo),
+    COALESCE(NULLIF(TRIM(a.descricao), ''), NULLIF(TRIM(s.descricao), '')),
     COALESCE(a.id_tipo_artigo, '')::text,
     COALESCE(a.tipo_armazenamento, 'TA')::text,
     COALESCE(s.lote, 'S/LOTE'::text),
@@ -189,7 +201,7 @@ HAVING SUM(s.stock) > 0;
 
 GRANT SELECT ON public.vw_stock_pedidos TO authenticated, anon, service_role;
 
--- 4. vw_stock_zero (Artigos sem stock / saldo nulo ou esgotado)
+-- 5. vw_stock_zero (Artigos sem stock / saldo nulo ou esgotado)
 DROP VIEW IF EXISTS public.vw_stock_zero CASCADE;
 
 CREATE VIEW public.vw_stock_zero WITH (security_invoker = true) AS
@@ -198,6 +210,7 @@ WITH stock_agg AS (
         s.sigla,
         s.entidade,
         s.artigo,
+        MAX(s.descricao) AS stock_descricao,
         SUM(s.stock) AS total_stock,
         MAX(s.created_at) AS ultimo_movimento,
         COUNT(s.id) AS total_registos,
@@ -228,7 +241,7 @@ all_zero_candidates AS (
         COALESCE(c.sigla, sa.sigla) AS cliente_sigla,
         sa.artigo AS artigo_id,
         COALESCE(ca.artigo_cli, (sa.sigla || '-' || sa.artigo)) AS artigo_codigo,
-        COALESCE(ca.descricao, sa.artigo) AS artigo_descricao,
+        COALESCE(NULLIF(TRIM(ca.descricao), ''), NULLIF(TRIM(sa.stock_descricao), '')) AS artigo_descricao,
         COALESCE(ca.id_tipo_artigo, '')::text AS tipo_artigo,
         COALESCE(ca.tipo_armazenamento, 'TA')::text AS tipo_armazenamento,
         ca.familia,
@@ -251,6 +264,8 @@ all_zero_candidates AS (
            OR ca1.artigo_cli = sa.artigo
            OR ca1.artigo_cli = (sa.entidade || '-' || sa.artigo)
            OR ca1.artigo_cli = (sa.sigla || '-' || sa.artigo)
+           OR (c.sigla IS NOT NULL AND ca1.artigo_cli = (c.sigla || '-' || sa.artigo))
+           OR (c.cli_primavera IS NOT NULL AND ca1.artigo_cli = (c.cli_primavera || '-' || sa.artigo))
         LIMIT 1
     ) ca ON true
     WHERE sa.total_stock <= 0
@@ -269,17 +284,34 @@ all_zero_candidates AS (
         ca.familia,
         ca.subfamilia,
         0::numeric AS stock,
-        NULL::timestamptz AS ultimo_movimento,
+        NULL::timestamp with time zone AS ultimo_movimento,
         0::bigint AS total_movimentos,
         '-'::text AS lotes_historico
     FROM catalog_artigos ca
     WHERE NOT EXISTS (
-        SELECT 1 FROM stock_agg sa 
-        WHERE (sa.sigla = ca.cliente_sigla OR sa.entidade = ca.cli_primavera)
-          AND (sa.artigo = ca.artigo_id OR ca.artigo_cli = (sa.entidade || '-' || sa.artigo) OR ca.artigo_cli = (sa.sigla || '-' || sa.artigo))
+        SELECT 1 FROM stock_agg sa2
+        WHERE sa2.artigo = ca.artigo_id
+           OR sa2.artigo = ca.artigo_cli
+           OR (sa2.sigla || '-' || sa2.artigo) = ca.artigo_cli
+           OR (sa2.entidade || '-' || sa2.artigo) = ca.artigo_cli
     )
 )
-SELECT * FROM all_zero_candidates az
+SELECT DISTINCT ON (cliente_id, artigo_id)
+    cliente_id,
+    cliente_nome,
+    cliente_sigla,
+    artigo_id,
+    artigo_codigo,
+    artigo_descricao,
+    tipo_artigo,
+    tipo_armazenamento,
+    familia,
+    subfamilia,
+    stock,
+    ultimo_movimento,
+    total_movimentos,
+    lotes_historico
+FROM all_zero_candidates
 WHERE (
     auth.uid() IS NULL
     OR EXISTS (
@@ -287,10 +319,11 @@ WHERE (
         WHERE u.id = auth.uid() 
           AND (u.role IN ('admin', 'gestor') OR u.cliente_id IS NULL)
     )
-    OR az.cliente_id = (
+    OR cliente_id = (
         SELECT u.cliente_id FROM public.users u 
         WHERE u.id = auth.uid()
     )
-);
+)
+ORDER BY cliente_id, artigo_id;
 
 GRANT SELECT ON public.vw_stock_zero TO authenticated, anon, service_role;

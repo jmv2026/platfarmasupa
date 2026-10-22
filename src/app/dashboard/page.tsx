@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   const userClientId = profile?.cliente_id;
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_codigo, artigo_descricao, validade, stock, cliente_id, tipo_artigo');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_cli, descricao, validade, stock, cliente_id, tipo_artigo');
   let faturacaoQuery = supabase
     .from('vw_fact_mes')
     .select('sigla_cliente, cliente_id, data, total_docs, total_quantidade, total_merc, total_iva, total_desc');
@@ -38,36 +38,53 @@ export default async function DashboardPage() {
     faturacaoQuery = faturacaoQuery.eq('cliente_id', userClientId);
   }
 
-  // Função auxiliar para paginação transparente (PostgREST tem limite padrão de 1000 registos por pedido)
-  async function fetchAllRows<T>(
-    fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+  // Função auxiliar otimizada para paginação paralela ultra-rápida
+  async function fetchAllRowsFast<T>(
+    fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
     pageSize = 1000
   ): Promise<T[]> {
-    const allRows: T[] = [];
-    let from = 0;
+    // 1ª página com contagem exata para determinar total de páginas
+    const firstPage = await fetchPage(0, pageSize - 1, 'exact');
+    if (firstPage.error || !firstPage.data) {
+      if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
+      return [];
+    }
 
-    while (true) {
-      const { data, error } = await fetchPage(from, from + pageSize - 1);
-      if (error) {
-        console.error('Erro ao buscar dados paginados:', error);
-        break;
+    const allRows: T[] = [...firstPage.data];
+    const total = firstPage.count ?? allRows.length;
+
+    if (total <= pageSize || firstPage.data.length < pageSize) {
+      return allRows;
+    }
+
+    // Lança todas as restantes páginas em paralelo simultâneo
+    const numRemainingPages = Math.ceil((total - pageSize) / pageSize);
+    const remainingPromises = Array.from({ length: numRemainingPages }, (_, i) => {
+      const pageIndex = i + 1;
+      const from = pageIndex * pageSize;
+      const to = from + pageSize - 1;
+      return fetchPage(from, to);
+    });
+
+    const remainingResults = await Promise.all(remainingPromises);
+    for (const res of remainingResults) {
+      if (res.data) {
+        allRows.push(...res.data);
       }
-      if (!data || data.length === 0) break;
-
-      allRows.push(...data);
-      if (data.length < pageSize) break;
-      from += pageSize;
     }
 
     return allRows;
   }
 
-  // Buscar todas as saídas (vw_saidas ultrapassa 1000 registos e sem paginação trunca clientes como a Varimpulse)
+  // Buscar todas as saídas de forma paralela (sem bloquear sequencialmente)
   const fetchSaidas = () =>
-    fetchAllRows<any>((from, to) => {
+    fetchAllRowsFast<any>((from, to, countMode) => {
       let q = supabase
         .from('vw_saidas')
-        .select('id, cliente_id, sigla, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote')
+        .select(
+          'id, cliente_id, sigla, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote',
+          countMode ? { count: countMode } : undefined
+        )
         .range(from, to);
       if (!isManagerOrAdmin && userClientId) {
         q = q.eq('cliente_id', userClientId);
@@ -75,12 +92,15 @@ export default async function DashboardPage() {
       return q;
     });
 
-  // Buscar pedidos com suporte a paginação transparente
+  // Buscar pedidos de forma paralela
   const fetchPedidos = () =>
-    fetchAllRows<any>((from, to) => {
+    fetchAllRowsFast<any>((from, to, countMode) => {
       let q = supabase
         .from('vw_pedidos')
-        .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc')
+        .select(
+          'id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc',
+          countMode ? { count: countMode } : undefined
+        )
         .range(from, to);
       if (!isManagerOrAdmin && userClientId) {
         q = q.eq('cliente_id', userClientId);

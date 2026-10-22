@@ -5,7 +5,7 @@ import StocksView from './stocks-view';
 import { Client, StockAtual, StockPedido, StockZero, UserProfile, Tempo } from '@/lib/supabase/types';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 30;
 
 export default async function StocksPage() {
   const supabase = await createClient();

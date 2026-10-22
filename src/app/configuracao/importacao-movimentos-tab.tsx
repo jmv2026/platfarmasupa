@@ -120,7 +120,8 @@ export default function ImportacaoMovimentosTab({
 
 
   // Lista local de Movimentos (linhas com detalhe do cabeçalho)
-  const [movimentosList, setMovimentosList] = useState<MovimentoWithDetails[]>(initialMovimentos);
+  const [movimentosList, setMovimentosList] = useState<MovimentoWithDetails[]>(initialMovimentos || []);
+  const [loadingMovimentos, setLoadingMovimentos] = useState(false);
   const [movSearchTerm, setMovSearchTerm] = useState('');
   const [movFilterTipo, setMovFilterTipo] = useState<string>('todos');
   const [movFilterClient, setMovFilterClient] = useState<string>('todos');
@@ -128,7 +129,45 @@ export default function ImportacaoMovimentosTab({
   const [movFilterArmazem, setMovFilterArmazem] = useState<string>('todos');
 
   useEffect(() => {
-    setMovimentosList(initialMovimentos);
+    if (initialMovimentos && initialMovimentos.length > 0) {
+      setMovimentosList(initialMovimentos);
+      return;
+    }
+
+    let isMounted = true;
+    async function carregarMovimentos() {
+      setLoadingMovimentos(true);
+      try {
+        const supabase = createClient();
+        const { data: rpcMovs, error: rpcErr } = await supabase.rpc('get_todos_movimentos_detalhe');
+        if (!isMounted) return;
+
+        if (!rpcErr && Array.isArray(rpcMovs) && rpcMovs.length > 0) {
+          setMovimentosList(rpcMovs as MovimentoWithDetails[]);
+        } else {
+          const { data: fallbackMovs } = await supabase
+            .from('vw_movimentos_detalhe')
+            .select('*')
+            .order('data_movimento', { ascending: false })
+            .limit(10000);
+          if (isMounted && fallbackMovs) {
+            setMovimentosList(fallbackMovs as MovimentoWithDetails[]);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar movimentos em background:', err);
+      } finally {
+        if (isMounted) {
+          setLoadingMovimentos(false);
+        }
+      }
+    }
+
+    carregarMovimentos();
+
+    return () => {
+      isMounted = false;
+    };
   }, [initialMovimentos]);
 
 
@@ -893,10 +932,21 @@ export default function ImportacaoMovimentosTab({
                   ) : (
                     <tr>
                       <td colSpan={14} className="py-12 text-center text-on-surface-variant">
-                        <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
-                          swap_horiz
-                        </span>
-                        <p className="text-xs font-semibold">Nenhuma linha de movimento encontrada.</p>
+                        {loadingMovimentos ? (
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <span className="material-symbols-outlined text-4xl text-sermail-green animate-spin">
+                              progress_activity
+                            </span>
+                            <p className="text-xs font-bold text-slate-700">A carregar registos de movimentos em segundo plano...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-4xl text-outline-variant mb-2 block">
+                              swap_horiz
+                            </span>
+                            <p className="text-xs font-semibold">Nenhuma linha de movimento encontrada.</p>
+                          </>
+                        )}
                       </td>
                     </tr>
                   )}

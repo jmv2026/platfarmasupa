@@ -248,6 +248,7 @@ export default function ImportacaoStockTab({
         (r.entidade && r.entidade.toLowerCase().includes(term)) ||
         (r.sigla && r.sigla.toLowerCase().includes(term)) ||
         (r.artigo && r.artigo.toLowerCase().includes(term)) ||
+        (r.descricao && r.descricao.toLowerCase().includes(term)) ||
         (r.armazem && r.armazem.toLowerCase().includes(term)) ||
         (r.lote && r.lote.toLowerCase().includes(term)) ||
         (r.localizacao && r.localizacao.toLowerCase().includes(term)) ||
@@ -553,6 +554,7 @@ export default function ImportacaoStockTab({
                   <th className="py-2.5 px-3">Entidade</th>
                   <th className="py-2.5 px-3">Sigla</th>
                   <th className="py-2.5 px-3">Artigo</th>
+                  <th className="py-2.5 px-3">Descrição</th>
                   <th className="py-2.5 px-3">Armazém</th>
                   <th className="py-2.5 px-3">Localização</th>
                   <th className="py-2.5 px-3">Lote</th>
@@ -580,6 +582,9 @@ export default function ImportacaoStockTab({
                     </td>
                     <td className="py-2.5 px-3 font-mono font-semibold">
                       {r.artigo}
+                    </td>
+                    <td className="py-2.5 px-3 font-sans text-xs text-on-surface truncate max-w-[200px]" title={r.descricao || ''}>
+                      {r.descricao || '-'}
                     </td>
                     <td className="py-2.5 px-3">
                       <span className="px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant font-mono font-medium text-[11px]">

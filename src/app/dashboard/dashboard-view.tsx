@@ -23,12 +23,11 @@ export interface DashboardFaturacaoItem {
 
 export interface DashboardStockItem {
   artigo_id: string;
-  artigo_codigo?: string | null;
-  artigo_descricao?: string | null;
+  artigo_cli?: string | null;
+  descricao?: string | null;
   validade: string | null;
   stock: number;
   cliente_id?: string;
-
   tipo_artigo?: string | null;
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserProfile } from '@/lib/supabase/types';
@@ -19,8 +20,15 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
+  const [optimisticTab, setOptimisticTab] = useState<string | null>(null);
+
+  // Limpa o estado otimista quando o caminho oficial muda
+  useEffect(() => {
+    setOptimisticTab(null);
+  }, [pathname]);
 
   const currentTab =
+    optimisticTab ||
     activeTab ||
     (pathname.includes('/stocks')
       ? 'stocks'
@@ -58,11 +66,12 @@ export default function AppHeader({
             </div>
           </div>
 
-          {/* Navigation Links */}
+          {/* Navigation Links com feedback visual instantâneo */}
           <nav className="flex items-center gap-1.5" aria-label="Menu Principal">
             <Link
               href="/dashboard"
               prefetch={true}
+              onClick={() => setOptimisticTab('dashboard')}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'dashboard'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -76,6 +85,7 @@ export default function AppHeader({
             <Link
               href="/stocks"
               prefetch={true}
+              onClick={() => setOptimisticTab('stocks')}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'stocks'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -89,6 +99,7 @@ export default function AppHeader({
             <Link
               href="/pedidos"
               prefetch={true}
+              onClick={() => setOptimisticTab('pedidos')}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'pedidos'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -102,6 +113,7 @@ export default function AppHeader({
             <Link
               href="/historico-pedidos"
               prefetch={true}
+              onClick={() => setOptimisticTab('historico-pedidos')}
               className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                 currentTab === 'historico-pedidos'
                   ? 'bg-sermail-green text-white shadow-xs font-bold'
@@ -116,6 +128,7 @@ export default function AppHeader({
               <Link
                 href="/configuracao"
                 prefetch={true}
+                onClick={() => setOptimisticTab('configuracao')}
                 className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
                   currentTab === 'configuracao'
                     ? 'bg-sermail-green text-white shadow-xs font-bold'

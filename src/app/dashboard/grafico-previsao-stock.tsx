@@ -195,8 +195,8 @@ export default function GraficoPrevisaoStock({
     > = {};
 
     stockAtual.forEach((item) => {
-      const artId = (item.artigo_codigo || item.artigo_id || 'N/A').trim();
-      const desc = item.artigo_descricao?.trim();
+      const artId = (item.artigo_cli || item.artigo_id || 'N/A').trim();
+      const desc = item.descricao?.trim();
 
       if (!stockPorArtigo[artId]) {
         stockPorArtigo[artId] = {
@@ -209,7 +209,7 @@ export default function GraficoPrevisaoStock({
         stockPorArtigo[artId].descricao = desc;
       }
 
-      // Se item.artigo_id for diferente de artigo_codigo, mapear também como alias
+      // Se item.artigo_id for diferente de artigo_cli, mapear também como alias
       if (item.artigo_id && item.artigo_id.trim() !== artId) {
         const idAlt = item.artigo_id.trim();
         if (!stockPorArtigo[idAlt]) {

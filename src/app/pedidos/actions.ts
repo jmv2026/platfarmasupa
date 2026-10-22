@@ -132,7 +132,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
   // 1. Obter a sigla do cliente para compor o armazem_loc
   const { data: client, error: clientErr } = await supabase
     .from('clientes')
-    .select('id, sigla, name')
+    .select('id, sigla, name, cli_primavera')
     .eq('id', targetClientId)
     .single();
 
@@ -246,10 +246,13 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       created_by: user.id,
     }, { onConflict: 'documento_ref' });
 
+    const prefixo = client.cli_primavera?.trim() || client.sigla;
+    const artigoCliFormatado = prefixo ? `${prefixo}-${finalArtigoId}` : finalArtigoId;
+
     // Gerar linha de movimento SS em movimentos_linhas
     const { error: movErr } = await supabase.from('movimentos_linhas').insert({
       artigo_id: finalArtigoId,
-      artigo_cli: finalArtigoId,
+      artigo_cli: artigoCliFormatado,
       
       sigla: client.sigla,
       tipo_movimento: 'ss',

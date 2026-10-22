@@ -13,7 +13,7 @@ const STORAGE_KEY = 'sermail_platfarma_lang';
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'pt',
-  setLanguage: () => {},
+  setLanguage: () => { },
   t: translations.pt,
 });
 
