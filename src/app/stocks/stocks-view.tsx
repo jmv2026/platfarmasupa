@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ExcelJS from 'exceljs';
 import { useLanguage } from '@/lib/i18n/context';
+import { apagarLinhaStockAction, editarLinhaStockAction } from './actions';
 import {
   StockAtual,
   StockPedido,
@@ -38,6 +40,13 @@ export default function StocksView({
   tempos,
 }: StocksViewProps) {
   const { t } = useLanguage();
+  const router = useRouter();
+  const [stockAtualList, setStockAtualList] = useState<StockAtual[]>(stockAtual);
+
+  useEffect(() => {
+    setStockAtualList(stockAtual);
+  }, [stockAtual]);
+
   const [activeTab, setActiveTab] = useState<TabType>('pedidos');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
@@ -45,11 +54,119 @@ export default function StocksView({
   const [selectedTipoArtigo, setSelectedTipoArtigo] = useState<string>('todos');
   const [selectedTipoArmazem, setSelectedTipoArmazem] = useState<string>('todos');
 
+  const isAdmin =
+    currentUserProfile?.role === 'admin' ||
+    currentUserProfile?.email === 'admin@sermail.pt';
 
   const isManagerOrAdmin =
     currentUserProfile?.role === 'admin' ||
     currentUserProfile?.role === 'gestor' ||
     currentUserProfile?.email === 'admin@sermail.pt';
+
+  // Estados de Edição e Remoção de Linha de Stock (Apenas Administrador)
+  const [editingStock, setEditingStock] = useState<StockAtual | null>(null);
+  const [editForm, setEditForm] = useState({
+    artigo_id: '',
+    lote: '',
+    validade: '',
+    armazem_loc: '',
+    stock: 0,
+  });
+  const [deletingStock, setDeletingStock] = useState<StockAtual | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [stockFeedback, setStockFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleOpenEdit = (item: StockAtual) => {
+    setEditingStock(item);
+    setEditForm({
+      artigo_id: item.artigo_id,
+      lote: item.lote || '',
+      validade: item.validade ? item.validade.split('T')[0] : '',
+      armazem_loc: item.armazem_loc || '',
+      stock: Number(item.stock) || 0,
+    });
+    setStockFeedback(null);
+  };
+
+  const handleConfirmEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStock || !editingStock.stock_id) {
+      setStockFeedback({ type: 'error', message: 'Identificador do registo de stock não encontrado.' });
+      return;
+    }
+
+    setActionLoading(true);
+    setStockFeedback(null);
+
+    try {
+      const res = await editarLinhaStockAction({
+        stockId: editingStock.stock_id,
+        artigo_id: editForm.artigo_id,
+        lote: editForm.lote || null,
+        validade: editForm.validade || null,
+        armazem_loc: editForm.armazem_loc || null,
+        stock: editForm.stock,
+      });
+
+      if (res.success) {
+        setStockFeedback({ type: 'success', message: `Linha de stock [${editForm.artigo_id}] atualizada com sucesso.` });
+        setStockAtualList((prev) =>
+          prev.map((s) =>
+            s.stock_id === editingStock.stock_id
+              ? {
+                  ...s,
+                  artigo_id: editForm.artigo_id.trim().toUpperCase(),
+                  lote: editForm.lote ? editForm.lote.trim() : null,
+                  validade: editForm.validade || null,
+                  armazem_loc: editForm.armazem_loc ? editForm.armazem_loc.trim() : s.armazem_loc,
+                  stock: editForm.stock,
+                }
+              : s
+          )
+        );
+        setEditingStock(null);
+        router.refresh();
+      } else {
+        setStockFeedback({ type: 'error', message: res.error || 'Erro ao editar linha de stock.' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado ao editar linha de stock.';
+      setStockFeedback({ type: 'error', message: msg });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingStock || !deletingStock.stock_id) {
+      setStockFeedback({ type: 'error', message: 'Identificador do registo de stock não encontrado.' });
+      return;
+    }
+
+    setActionLoading(true);
+    setStockFeedback(null);
+
+    try {
+      const res = await apagarLinhaStockAction(deletingStock.stock_id);
+
+      if (res.success) {
+        setStockFeedback({
+          type: 'success',
+          message: `Linha de stock [${deletingStock.artigo_id} - ${deletingStock.lote || 'S/L'}] eliminada com sucesso.`,
+        });
+        setStockAtualList((prev) => prev.filter((s) => s.stock_id !== deletingStock.stock_id));
+        setDeletingStock(null);
+        router.refresh();
+      } else {
+        setStockFeedback({ type: 'error', message: res.error || 'Erro ao apagar linha de stock.' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro inesperado ao apagar linha de stock.';
+      setStockFeedback({ type: 'error', message: msg });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Helper para calcular dias até à validade
   const getDaysUntilExpiry = (dateStr: string | null) => {
@@ -64,15 +181,15 @@ export default function StocksView({
   // KPIs
 
   const totalStockOutros = useMemo(() => {
-    return stockAtual
+    return stockAtualList
       .filter((s) => s.tipo_armazem !== '01')
       .reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
-  }, [stockAtual]);
+  }, [stockAtualList]);
 
 
   const artigosAlertaValidadeMH = useMemo(() => {
     const artigosSet = new Set<string>();
-    stockAtual.forEach((s) => {
+    stockAtualList.forEach((s) => {
       // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
       const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
       const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
@@ -84,11 +201,11 @@ export default function StocksView({
       }
     });
     return artigosSet.size;
-  }, [stockAtual]);
+  }, [stockAtualList]);
 
   const artigosAlertaValidadeDM = useMemo(() => {
     const artigosSet = new Set<string>();
-    stockAtual.forEach((s) => {
+    stockAtualList.forEach((s) => {
       // Contabilizar todos os artigos do tipo DM cuja validade esteja expirada (<= 0 dias)
       const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
       const isDM = tipo === 'DM' || tipo.startsWith('DM') || tipo.includes('DISPOSITIVO');
@@ -100,11 +217,11 @@ export default function StocksView({
       }
     });
     return artigosSet.size;
-  }, [stockAtual]);
+  }, [stockAtualList]);
 
   const artigosAlertaValidadeDCSA = useMemo(() => {
     const artigosSet = new Set<string>();
-    stockAtual.forEach((s) => {
+    stockAtualList.forEach((s) => {
       // Contabilizar todos os artigos do tipo DC e SA cuja validade esteja expirada (<= 0 dias)
       const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
       const isDCSA =
@@ -124,7 +241,7 @@ export default function StocksView({
       }
     });
     return artigosSet.size;
-  }, [stockAtual]);
+  }, [stockAtualList]);
 
   // Filtragem para Stock de Venda (vw_stock_pedidos)
   const filteredStockPedidos = useMemo(() => {
@@ -162,7 +279,7 @@ export default function StocksView({
 
   // Filtragem para Stock Consolidado (vw_stock_atual)
   const filteredStockAtual = useMemo(() => {
-    return stockAtual.filter((item) => {
+    return stockAtualList.filter((item) => {
       if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
         return false;
       }
@@ -199,7 +316,7 @@ export default function StocksView({
       }
       return true;
     });
-  }, [stockAtual, selectedClientId, selectedArmazenamento, selectedTipoArtigo, selectedTipoArmazem, searchTerm]);
+  }, [stockAtualList, selectedClientId, selectedArmazenamento, selectedTipoArtigo, selectedTipoArmazem, searchTerm]);
 
   // Agrupamento por Artigo
   const resumoArtigos = useMemo(() => {
@@ -1068,15 +1185,45 @@ export default function StocksView({
           {/* TAB 2: Stock Consolidado (vw_stock_atual) */}
           {activeTab === 'consolidado' && (
             <div className="space-y-4">
-              <div className="pb-3 border-b border-outline-variant/15">
-                <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-secondary">warehouse</span>
-                  Visão Consolidada por Armazém Físico e Localização
-                </h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">
-                  Registo detalhado de todos os lotes por armazém (<code className="text-xs bg-surface-container px-1 py-0.5 rounded font-mono text-secondary">armazem_loc</code>), incluindo Venda, Quarentena, Devoluções e Expirados.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-outline-variant/15">
+                <div>
+                  <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary">warehouse</span>
+                    Visão Consolidada por Armazém Físico e Localização
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Registo detalhado de todos os lotes por armazém (<code className="text-xs bg-surface-container px-1 py-0.5 rounded font-mono text-secondary">armazem_loc</code>), incluindo Venda, Quarentena, Devoluções e Expirados.
+                  </p>
+                </div>
+                {isAdmin && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold bg-primary/10 text-primary border border-primary/20 shrink-0">
+                    <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+                    Modo Administrador (Edição e Remoção Ativas)
+                  </span>
+                )}
               </div>
+
+              {stockFeedback && (
+                <div
+                  className={`p-3.5 rounded-xl flex items-center gap-2.5 text-xs font-semibold ${
+                    stockFeedback.type === 'success'
+                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-base">
+                    {stockFeedback.type === 'success' ? 'check_circle' : 'error'}
+                  </span>
+                  <p className="flex-1">{stockFeedback.message}</p>
+                  <button
+                    type="button"
+                    onClick={() => setStockFeedback(null)}
+                    className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              )}
 
               <div className="overflow-x-auto overflow-y-auto max-h-[650px] rounded-xl border border-outline-variant/30 shadow-2xs relative">
                 <table className="w-full text-left text-xs border-collapse">
@@ -1090,6 +1237,9 @@ export default function StocksView({
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Armazém</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
+                      {isAdmin && (
+                        <th className="py-3 px-3 bg-surface-container sticky top-0 text-center">Ações</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1114,7 +1264,7 @@ export default function StocksView({
                           : "hover:bg-surface-container/30 transition-colors";
 
                         return (
-                        <tr key={idx} className={rowClass}>
+                        <tr key={item.stock_id || idx} className={rowClass}>
                           <td className="py-3 px-3">
                             <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                               {item.cliente_sigla}
@@ -1156,12 +1306,34 @@ export default function StocksView({
                             {Number(item.stock).toLocaleString('pt-PT')}{' '}
                             <span className="text-xs font-normal text-on-surface-variant">un</span>
                           </td>
+                          {isAdmin && (
+                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(item)}
+                                  className="w-7 h-7 rounded-lg text-slate-500 hover:text-secondary hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Editar linha de stock"
+                                >
+                                  <span className="material-symbols-outlined text-base">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingStock(item)}
+                                  className="w-7 h-7 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                                  title="Apagar linha de stock"
+                                >
+                                  <span className="material-symbols-outlined text-base">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                         );
                       })
                     ) : (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-on-surface-variant">
+                        <td colSpan={isAdmin ? 9 : 8} className="py-8 text-center text-on-surface-variant">
                           <span className="material-symbols-outlined text-3xl mb-1 text-on-surface-variant/40 block">
                             warehouse
                           </span>
@@ -1519,6 +1691,217 @@ export default function StocksView({
           )}
         </div>
       </div>
+
+      {/* Modal de Edição de Linha de Stock (Apenas Administrador) */}
+      {isAdmin && editingStock && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-xl">edit_note</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-on-surface">Editar Linha de Stock</h4>
+                  <p className="text-xs text-on-surface-variant">
+                    Cliente: <strong>{editingStock.cliente_sigla}</strong> ({editingStock.cliente_nome})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingStock(null)}
+                disabled={actionLoading}
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                    Código do Artigo <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.artigo_id}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, artigo_id: e.target.value.toUpperCase() }))}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                  {editingStock.descricao && (
+                    <p className="text-[11px] text-on-surface-variant mt-1 truncate">
+                      Descrição: {editingStock.descricao}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                    Lote
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.lote}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, lote: e.target.value }))}
+                    placeholder="Ex: 240501A"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                    Validade
+                  </label>
+                  <input
+                    type="date"
+                    value={editForm.validade}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, validade: e.target.value }))}
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                    Armazém / Localização
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.armazem_loc}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, armazem_loc: e.target.value }))}
+                    placeholder="Ex: 01.12C15"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-on-surface mb-1">
+                    Quantidade de Stock (un) <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editForm.stock}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, stock: parseFloat(e.target.value) || 0 }))}
+                    required
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setEditingStock(null)}
+                  disabled={actionLoading}
+                  className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="px-4 py-2 bg-secondary text-on-secondary hover:bg-secondary/90 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>A gravar...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">save</span>
+                      <span>Guardar Alterações</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmação para Apagar Linha de Stock (Apenas Administrador) */}
+      {isAdmin && deletingStock && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-xl">delete_forever</span>
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-on-surface">Apagar Linha de Stock?</h4>
+                <p className="text-xs text-on-surface-variant mt-0.5">Esta ação não pode ser revertida.</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-surface-container/40 rounded-xl border border-outline-variant/20 text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-on-surface-variant">Cliente:</span>
+                <span className="font-bold text-on-surface">{deletingStock.cliente_sigla} - {deletingStock.cliente_nome}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-on-surface-variant">Artigo:</span>
+                <span className="font-mono font-bold text-secondary">{deletingStock.artigo_id}</span>
+              </div>
+              {deletingStock.descricao && (
+                <div className="flex items-center justify-between">
+                  <span className="text-on-surface-variant">Designação:</span>
+                  <span className="text-on-surface font-medium truncate max-w-[200px]" title={deletingStock.descricao}>{deletingStock.descricao}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-on-surface-variant">Lote:</span>
+                <span className="font-mono text-on-surface">{deletingStock.lote || 'S/LOTE'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-on-surface-variant">Armazém / Localização:</span>
+                <span className="font-mono text-on-surface">{deletingStock.armazem_loc}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-on-surface-variant">Stock atual:</span>
+                <span className="font-mono font-bold text-rose-700">{Number(deletingStock.stock).toLocaleString('pt-PT')} un</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              Tem a certeza de que deseja eliminar permanentemente este registo da tabela <code className="font-mono font-bold text-rose-700">public.stock</code>?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-outline-variant/20">
+              <button
+                type="button"
+                onClick={() => setDeletingStock(null)}
+                disabled={actionLoading}
+                className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {actionLoading ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>A eliminar...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                    <span>Confirmar e Apagar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -137,6 +137,14 @@ export default function ImportacaoStockTab({
     setFeedback(null);
 
     try {
+      // 1. Limpar tabela de stocks existente antes de iniciar a importação
+      setImportProgress('A limpar tabela de stock existente antes de importar...');
+      const clearRes = await limparStockAction();
+      if (!clearRes.success) {
+        throw new Error(clearRes.error || 'Falha ao limpar tabela stock antes de importar.');
+      }
+
+      // 2. Gravar os novos registos em lotes
       const CHUNK_SIZE = 500;
       let totalImported = 0;
       const totalChunks = Math.ceil(parsedRows.length / CHUNK_SIZE);
@@ -165,7 +173,7 @@ export default function ImportacaoStockTab({
 
       setFeedback({
         type: 'success',
-        message: `Importação de stock concluída com sucesso! ${totalImported} registos gravados na tabela stock.`,
+        message: `Importação de stock concluída com sucesso! Tabela de stock limpa e ${totalImported.toLocaleString('pt-PT')} novos registos gravados.`,
       });
       setImportProgress(null);
       await loadExistingCount();
@@ -247,6 +255,7 @@ export default function ImportacaoStockTab({
         (r.cliente_ser && r.cliente_ser.toLowerCase().includes(term)) ||
         (r.entidade && r.entidade.toLowerCase().includes(term)) ||
         (r.sigla && r.sigla.toLowerCase().includes(term)) ||
+        (r.artigo_id && r.artigo_id.toLowerCase().includes(term)) ||
         (r.artigo && r.artigo.toLowerCase().includes(term)) ||
         (r.descricao && r.descricao.toLowerCase().includes(term)) ||
         (r.armazem && r.armazem.toLowerCase().includes(term)) ||
@@ -267,7 +276,7 @@ export default function ImportacaoStockTab({
     for (const r of parsedRows) {
       totalQuantity += Number(r.stock) || 0;
       if (r.cliente_ser) clientsSet.add(r.cliente_ser);
-      if (r.artigo) artigosSet.add(r.artigo);
+      if (r.artigo_id || r.artigo) artigosSet.add(r.artigo_id || r.artigo!);
       if (r.armazem) armazensSet.add(r.armazem);
     }
 
@@ -378,7 +387,7 @@ export default function ImportacaoStockTab({
               <code className="font-mono">cliente_ser</code>,{' '}
               <code className="font-mono">Entidade</code>,{' '}
               <code className="font-mono">Sigla</code>,{' '}
-              <code className="font-mono">artigo</code>,{' '}
+              <code className="font-mono">artigo_id</code> (ou artigo),{' '}
               <code className="font-mono">armazem</code>,{' '}
               <code className="font-mono">localizacao</code>,{' '}
               <code className="font-mono">lote</code>,{' '}
@@ -487,17 +496,23 @@ export default function ImportacaoStockTab({
 
         {/* Botão de Confirmação da Importação */}
         {parsedRows.length > 0 && (
-          <div className="pt-6 flex justify-end">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-outline-variant/15">
+            <p className="text-xs text-on-surface-variant flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-amber-600 text-sm">info</span>
+              <span>
+                A tabela de stock existente será <strong>limpa previamente</strong> antes da gravação dos novos registos.
+              </span>
+            </p>
             <button
               type="button"
               onClick={handleConfirmImport}
               disabled={importingLoading || parsingLoading}
-              className="bg-secondary text-on-secondary hover:bg-secondary/90 px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="bg-secondary text-on-secondary hover:bg-secondary/90 px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
               {importingLoading ? (
                 <>
                   <span className="w-4 h-4 border-2 border-on-secondary border-t-transparent rounded-full animate-spin"></span>
-                  <span>A importar dados...</span>
+                  <span>{importProgress || 'A importar dados...'}</span>
                 </>
               ) : (
                 <>
@@ -553,7 +568,7 @@ export default function ImportacaoStockTab({
                   <th className="py-2.5 px-3">Cliente_Ser</th>
                   <th className="py-2.5 px-3">Entidade</th>
                   <th className="py-2.5 px-3">Sigla</th>
-                  <th className="py-2.5 px-3">Artigo</th>
+                  <th className="py-2.5 px-3">Artigo ID</th>
                   <th className="py-2.5 px-3">Descrição</th>
                   <th className="py-2.5 px-3">Armazém</th>
                   <th className="py-2.5 px-3">Localização</th>
@@ -581,7 +596,7 @@ export default function ImportacaoStockTab({
                       {r.sigla || '-'}
                     </td>
                     <td className="py-2.5 px-3 font-mono font-semibold">
-                      {r.artigo}
+                      {r.artigo_id || r.artigo}
                     </td>
                     <td className="py-2.5 px-3 font-sans text-xs text-on-surface truncate max-w-[200px]" title={r.descricao || ''}>
                       {r.descricao || '-'}

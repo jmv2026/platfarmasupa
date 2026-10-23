@@ -376,7 +376,12 @@ export default function ConfiguracaoTabs({
         setArtigosList([]);
         setFeedback({
           type: 'success',
-          message: language === 'pt' ? 'Catálogo de artigos limpo com sucesso.' : language === 'es' ? 'Catálogo de artículos vaciado con éxito.' : 'Article catalog cleared successfully.',
+          message:
+            language === 'pt'
+              ? `Tabela de artigos limpa com sucesso.${res.count !== undefined ? ` (${res.count} registos eliminados)` : ''}`
+              : language === 'es'
+              ? `Catálogo de artículos vaciado con éxito.${res.count !== undefined ? ` (${res.count} registros eliminados)` : ''}`
+              : `Article catalog cleared successfully.${res.count !== undefined ? ` (${res.count} records deleted)` : ''}`,
         });
         setConfirmClearArtigosModal(false);
         router.refresh();
@@ -1457,8 +1462,13 @@ export default function ConfiguracaoTabs({
             </div>
 
             {/* Janela de Importação em Lote de Artigos (TXT / XLSX) */}
-            <ImportacaoArtigosCard clients={clients}
-                            onSuccess={(importedArtigos) => {
+            {/* Janela de Importação em Lote de Artigos (TXT / XLSX) */}
+            <ImportacaoArtigosCard
+              clients={clients}
+              onClear={() => setConfirmClearArtigosModal(true)}
+              clearingLoading={clearingArtigosLoading}
+              totalArtigosCount={artigosList.length}
+              onSuccess={(importedArtigos) => {
                 if (importedArtigos && importedArtigos.length > 0) {
                   setArtigosList((prev) => {
                     const map = new Map<string, Artigo>();
@@ -1484,10 +1494,10 @@ export default function ConfiguracaoTabs({
                     onClick={() => setConfirmClearArtigosModal(true)}
                     disabled={clearingArtigosLoading}
                     className="shrink-0 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    title="Limpar todos os artigos"
+                    title="Limpar todos os artigos da base de dados"
                   >
                     <span className="material-symbols-outlined text-sm">delete_sweep</span>
-                    {t.common.delete}
+                    Limpar Tabela Artigos
                   </button>
                 )}
               </div>
@@ -1586,19 +1596,34 @@ export default function ConfiguracaoTabs({
                       <span className="material-symbols-outlined text-xl">warning</span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-on-surface">{t.common.delete} {t.configuracao.tabArticles}?</h4>
+                      <h4 className="text-sm font-bold text-on-surface">Limpar Tabela Artigos?</h4>
                       <p className="text-xs text-on-surface-variant mt-0.5">{language === 'pt' ? 'Esta ação não pode ser revertida.' : language === 'es' ? 'Esta acción no se puede revertir.' : 'This action cannot be undone.'}</p>
                     </div>
                   </div>
 
                   <p className="text-xs text-on-surface leading-relaxed">
-                    {language === 'pt' ? 'Tem a certeza de que deseja eliminar permanentemente todos os artigos do catálogo?' : language === 'es' ? '¿Está seguro de que desea eliminar permanentemente todos los artículos?' : 'Are you sure you want to permanently delete all articles from catalog?'}
+                    {language === 'pt' ? (
+                      <>
+                        Tem a certeza de que deseja eliminar permanentemente todos os artigos da tabela{' '}
+                        <code className="font-mono font-bold text-rose-700">public.artigos</code>?
+                        {artigosList.length > 0 && (
+                          <span className="block mt-1 font-semibold text-on-surface">
+                            Serão removidos <strong>{artigosList.length}</strong> artigos do catálogo.
+                          </span>
+                        )}
+                      </>
+                    ) : language === 'es' ? (
+                      '¿Está seguro de que desea eliminar permanentemente todos los artículos de la tabla public.artigos?'
+                    ) : (
+                      'Are you sure you want to permanently delete all articles from public.artigos table?'
+                    )}
                   </p>
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-outline-variant/20">
                     <button
                       type="button"
                       onClick={() => setConfirmClearArtigosModal(false)}
+                      disabled={clearingArtigosLoading}
                       className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60 rounded-xl transition-all cursor-pointer"
                     >
                       {t.common.cancel}
@@ -1609,8 +1634,17 @@ export default function ConfiguracaoTabs({
                       disabled={clearingArtigosLoading}
                       className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      <span className="material-symbols-outlined text-sm">delete_forever</span>
-                      {clearingArtigosLoading ? t.common.loading : t.common.confirm}
+                      {clearingArtigosLoading ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>A limpar...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm">delete_forever</span>
+                          <span>Confirmar e Limpar</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

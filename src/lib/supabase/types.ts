@@ -347,6 +347,7 @@ export interface StockAtual {
   data_fabrico: string | null;
   stock: number;
   ultimo_movimento: string;
+  stock_id?: string | null;
 }
 
 export interface StockPedido {

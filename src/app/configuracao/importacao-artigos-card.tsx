@@ -19,9 +19,17 @@ import { importarArtigosAction } from './actions';
 interface ImportacaoArtigosCardProps {
   clients?: Client[];
   onSuccess?: (importedArtigos?: any[]) => void;
+  onClear?: () => void;
+  clearingLoading?: boolean;
+  totalArtigosCount?: number;
 }
 
-export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCardProps) {
+export default function ImportacaoArtigosCard({
+  onSuccess,
+  onClear,
+  clearingLoading = false,
+  totalArtigosCount,
+}: ImportacaoArtigosCardProps) {
   const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parsedRows, setParsedRows] = useState<ArtigoImportInput[]>([]);
@@ -230,6 +238,13 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {totalArtigosCount !== undefined && totalArtigosCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+              <span className="material-symbols-outlined text-sm">database</span>
+              Base de dados: <strong>{totalArtigosCount.toLocaleString('pt-PT')}</strong> artigos
+            </span>
+          )}
+
           <button
             type="button"
             onClick={handleDownloadExcelTemplate}
@@ -248,6 +263,20 @@ export default function ImportacaoArtigosCard({ onSuccess }: ImportacaoArtigosCa
             <span className="material-symbols-outlined text-sm text-secondary">description</span>
             Modelo CSV
           </button>
+
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={clearingLoading}
+              className="px-3 py-1.5 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Limpar todos os artigos da base de dados"
+            >
+              <span className="material-symbols-outlined text-sm">delete_sweep</span>
+              Limpar Tabela
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowHelp(!showHelp)}

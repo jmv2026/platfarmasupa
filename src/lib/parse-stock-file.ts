@@ -5,7 +5,8 @@ export interface StockImportRow {
   cliente_ser: string;
   entidade?: string | null;
   sigla?: string | null;
-  artigo: string;
+  artigo_id: string;
+  artigo?: string;
   descricao?: string | null;
   armazem: string;
   localizacao?: string | null;
@@ -143,10 +144,11 @@ function normalizeHeader(key: string): string {
     clean === 'artigo' ||
     clean === 'codartigo' ||
     clean === 'artigo_id' ||
+    clean === 'artigoid' ||
     clean === 'codigoartigo' ||
     clean === 'ref'
   )
-    return 'artigo';
+    return 'artigo_id';
   if (
     clean === 'descricao' ||
     clean === 'designacao' ||
@@ -243,19 +245,20 @@ export function parseStockTextFile(text: string, defaultCliente?: string): Stock
     const sigla = r['sigla'] ? r['sigla'].trim() : null;
     const clienteSer = r['cliente_ser'] || sigla || defaultCliente || '';
     const entidade = r['entidade'] ? r['entidade'].trim() : null;
-    const artigo = r['artigo'] || '';
+    const artigoId = (r['artigo_id'] || r['artigo'] || '').trim();
     const descricao = r['descricao'] ? r['descricao'].trim() : null;
     const armazem = r['armazem'] || '';
 
     // Artigo e armazém são essenciais para uma linha de stock
-    if (!artigo && !armazem && !clienteSer) continue;
+    if (!artigoId && !armazem && !clienteSer) continue;
 
     rows.push({
       id: cleanOrGenerateUuid(r['id']),
       cliente_ser: clienteSer.trim(),
       entidade,
       sigla: sigla || (clienteSer ? clienteSer.trim() : null),
-      artigo: artigo.trim(),
+      artigo_id: artigoId,
+      artigo: artigoId,
       descricao: descricao || null,
       armazem: armazem.trim(),
       localizacao: r['localizacao'] ? r['localizacao'].trim() : null,
@@ -318,18 +321,19 @@ export async function parseStockExcelFile(
       const sigla = r['sigla'] ? String(r['sigla']).trim() : null;
       const clienteSer = r['cliente_ser'] || sigla || defaultCliente || '';
       const entidade = r['entidade'] ? String(r['entidade']).trim() : null;
-      const artigo = r['artigo'] || '';
+      const artigoId = String(r['artigo_id'] || r['artigo'] || '').trim();
       const descricao = r['descricao'] ? String(r['descricao']).trim() : null;
       const armazem = r['armazem'] || '';
 
-      if (!artigo && !armazem && !clienteSer) return;
+      if (!artigoId && !armazem && !clienteSer) return;
 
       rows.push({
         id: cleanOrGenerateUuid(r['id']),
         cliente_ser: String(clienteSer).trim(),
         entidade,
         sigla: sigla || (clienteSer ? String(clienteSer).trim() : null),
-        artigo: String(artigo).trim(),
+        artigo_id: artigoId,
+        artigo: artigoId,
         descricao: descricao || null,
         armazem: String(armazem).trim(),
         localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,

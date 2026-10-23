@@ -449,9 +449,9 @@ export async function limparArtigosAction() {
   }
 
   try {
-    const { error: deleteErr } = await supabase
+    const { error: deleteErr, count } = await supabase
       .from('artigos')
-      .delete()
+      .delete({ count: 'exact' })
       .neq('artigo_id', '');
 
     if (deleteErr) {
@@ -470,7 +470,7 @@ export async function limparArtigosAction() {
     revalidatePath('/dashboard');
     revalidatePath('/stocks');
 
-    return { success: true };
+    return { success: true, count: count ?? 0 };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar artigos';
     return { success: false, error: msg };
@@ -1014,12 +1014,13 @@ export async function importarStockAction(rows: StockImportRow[], defaultCliente
       if (cleanId && cleanId.startsWith('{') && cleanId.endsWith('}')) {
         cleanId = cleanId.slice(1, -1).trim();
       }
+      const artigoId = (r.artigo_id || r.artigo || '').trim();
       return {
         id: cleanId || undefined,
         cliente_ser: (r.cliente_ser || defaultCliente || '').trim(),
         entidade: r.entidade ? r.entidade.trim() : null,
         sigla: r.sigla ? r.sigla.trim() : (r.cliente_ser ? r.cliente_ser.trim() : null),
-        artigo: (r.artigo || '').trim(),
+        artigo_id: artigoId,
         descricao: r.descricao ? r.descricao.trim() : null,
         armazem: (r.armazem || '').trim(),
         localizacao: r.localizacao ? r.localizacao.trim() : null,
@@ -1027,10 +1028,10 @@ export async function importarStockAction(rows: StockImportRow[], defaultCliente
         stock: Number(r.stock) || 0,
         data_stock: r.data_stock || null,
       };
-    }).filter((r) => r.cliente_ser && r.artigo && r.armazem);
+    }).filter((r) => r.cliente_ser && r.artigo_id && r.armazem);
 
     if (preparedRows.length === 0) {
-      return { success: false, error: 'Nenhum registo continha os campos obrigatórios (cliente_ser, artigo, armazem).' };
+      return { success: false, error: 'Nenhum registo continha os campos obrigatórios (cliente_ser, artigo_id, armazem).' };
     }
 
     for (let i = 0; i < preparedRows.length; i += BATCH_SIZE) {
@@ -1075,10 +1076,10 @@ export async function limparStockAction(cliente_ser?: string) {
     .eq('id', user.id)
     .single();
 
-  const { isAdmin } = checkUserRole(user, profile);
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
 
-  if (!isAdmin) {
-    return { success: false, error: 'Acesso negado: Apenas administradores podem limpar a tabela de stock.' };
+  if (!isManagerOrAdmin) {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem limpar a tabela de stock.' };
   }
 
   try {
