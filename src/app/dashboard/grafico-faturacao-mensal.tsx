@@ -339,6 +339,19 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     return String(val);
   };
 
+  // Formatador com exatamente uma casa decimal para o topo das barras
+  const formatBarTop = (val: number) => {
+    const abs = Math.abs(val);
+    if (tipoMetrica === 'faturacao') {
+      if (abs >= 1000000) return `${(val / 1000000).toFixed(1)}M€`;
+      if (abs >= 1000) return `${(val / 1000).toFixed(1)}k€`;
+      return `${val.toFixed(1)}€`;
+    }
+    if (abs >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+    if (abs >= 1000) return `${(val / 1000).toFixed(1)}k`;
+    return val.toFixed(1);
+  };
+
   const formatCurrency = (val: number) => {
     return val.toLocaleString(locale, { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -763,7 +776,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                           fill={isHovered ? '#14532d' : '#166534'}
                           className="font-mono tracking-tight"
                         >
-                          {formatShortTick(val1)}
+                          {formatBarTop(val1)}
                         </text>
                       </g>
                     )}
@@ -780,7 +793,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                           fill="#be123c"
                           className="font-mono tracking-tight"
                         >
-                          {formatShortTick(val2)}
+                          {formatBarTop(val2)}
                         </text>
                       </g>
                     )}

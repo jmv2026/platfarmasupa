@@ -6,6 +6,7 @@ import { UserRole, TipoArmazenamento, TipoCliente } from '@/lib/supabase/types';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import { PlatMovimentoRow, preparePlatMovimentoForDb } from '@/lib/parse-erp-file';
 import type { StockImportRow } from '@/lib/parse-stock-file';
+import type { FaturaRow } from '@/lib/parse-faturas-file';
 
 // Helper para validar de forma resiliente permissões de Admin e Gestor
 function checkUserRole(
@@ -1110,6 +1111,141 @@ export async function obterStockStatsAction() {
   try {
     const { count, error } = await supabase
       .from('stock')
+      .select('*', { count: 'exact', head: true });
+
+    if (error) throw error;
+    return { success: true, count: count ?? 0 };
+  } catch (err: unknown) {
+    return { success: false, count: 0 };
+  }
+}
+
+// 16. AÇÃO: Importar Faturas para public.faturas
+export async function importarFaturasAction(rows: FaturaRow[]) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
+    return { success: false, error: 'Acesso negado: Apenas administradores e gestores podem importar faturas.' };
+  }
+
+  if (!rows || rows.length === 0) {
+    return { success: false, error: 'Nenhum registo de fatura fornecido para importação.' };
+  }
+
+  try {
+    const BATCH_SIZE = 200;
+    let totalInserted = 0;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE).map((r) => ({
+        documento_ref: r.documento_ref.trim(),
+        data: r.data || null,
+        entidade: r.entidade ? r.entidade.trim() : null,
+        tipo_doc: r.tipo_doc ? r.tipo_doc.trim() : null,
+        num_doc: r.num_doc ? r.num_doc.trim() : null,
+        documento: r.documento ? r.documento.trim() : null,
+        requisicao: r.requisicao ? r.requisicao.trim() : null,
+        num_contribuinte: r.num_contribuinte ? r.num_contribuinte.trim() : null,
+        total_iva: Number(r.total_iva) || 0,
+        total_merc: Number(r.total_merc) || 0,
+        total_outros: Number(r.total_outros) || 0,
+        total_desc: Number(r.total_desc) || 0,
+        nome: r.nome ? r.nome.trim() : null,
+        morada: r.morada ? r.morada.trim() : null,
+        localidade: r.localidade ? r.localidade.trim() : null,
+        cod_postal: r.cod_postal ? r.cod_postal.trim() : null,
+        cod_postal_localidade: r.cod_postal_localidade ? r.cod_postal_localidade.trim() : null,
+        pais: r.pais ? r.pais.trim() : null,
+        nome_entrega: r.nome_entrega ? r.nome_entrega.trim() : null,
+        morada_entrega: r.morada_entrega ? r.morada_entrega.trim() : null,
+        cod_postal_localidade_entrega: r.cod_postal_localidade_entrega ? r.cod_postal_localidade_entrega.trim() : null,
+        cod_postal_entrega: r.cod_postal_entrega ? r.cod_postal_entrega.trim() : null,
+        localidade_entrega: r.localidade_entrega ? r.localidade_entrega.trim() : null,
+        entidade_entrega: r.entidade_entrega ? r.entidade_entrega.trim() : null,
+        cli_primavera: r.cli_primavera ? r.cli_primavera.trim() : null,
+        sigla: r.sigla ? r.sigla.trim() : null,
+        cliente_ser: r.cliente_ser ? r.cliente_ser.trim() : null,
+      }));
+
+      const { error: insertErr } = await supabase
+        .from('faturas')
+        .upsert(batch, { onConflict: 'documento_ref' });
+
+      if (insertErr) {
+        console.error('Erro ao gravar lote em faturas:', insertErr);
+        return {
+          success: false,
+          error: `Erro na gravação (lote ${Math.floor(i / BATCH_SIZE) + 1}): ${insertErr.message}`,
+        };
+      }
+      totalInserted += batch.length;
+    }
+
+    revalidatePath('/configuracao');
+    revalidatePath('/dashboard');
+    return { success: true, count: totalInserted };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro inesperado na importação de faturas';
+    return { success: false, error: msg };
+  }
+}
+
+// 17. AÇÃO: Limpar Registos da tabela public.faturas
+export async function limparFaturasAction() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const { isAdmin } = checkUserRole(user, profile);
+  if (!isAdmin) {
+    return { success: false, error: 'Apenas administradores podem limpar a tabela faturas.' };
+  }
+
+  try {
+    const { error } = await supabase.from('faturas').delete().neq('documento_ref', '');
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    revalidatePath('/configuracao');
+    revalidatePath('/dashboard');
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao limpar faturas';
+    return { success: false, error: msg };
+  }
+}
+
+// 18. AÇÃO: Obter resumo estatístico da tabela public.faturas
+export async function obterFaturasStatsAction() {
+  const supabase = await createClient();
+  try {
+    const { count, error } = await supabase
+      .from('faturas')
       .select('*', { count: 'exact', head: true });
 
     if (error) throw error;

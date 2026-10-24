@@ -11,6 +11,7 @@ import {
   preparePlatMovimentoForDb,
 } from '@/lib/parse-erp-file';
 import { importarPlatMovimentosAction, limparPlatMovimentosAction } from './actions';
+import ImportacaoFaturasCard from './importacao-faturas-card';
 
 interface ImportacaoErpTabProps {
   clients?: Client[];
@@ -21,6 +22,7 @@ export default function ImportacaoErpTab({
   clients = [],
   onRefresh,
 }: ImportacaoErpTabProps) {
+  const [erpView, setErpView] = useState<'faturas' | 'movimentos'>('faturas');
   const [clientsList, setClientsList] = useState<Client[]>(clients);
   const [existingCount, setExistingCount] = useState<number | null>(null);
 
@@ -290,8 +292,43 @@ export default function ImportacaoErpTab({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Banner / Card de Informação do Módulo ERP */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/30 relative overflow-hidden">
+      {/* Sub-navegação da Aba ERP */}
+      <div className="bg-surface-container/30 p-1.5 rounded-2xl border border-outline-variant/30 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setErpView('faturas')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            erpView === 'faturas'
+              ? 'bg-teal-700 text-white shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">receipt_long</span>
+          Faturação (faturas)
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setErpView('movimentos')}
+          className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            erpView === 'movimentos'
+              ? 'bg-indigo-700 text-white shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/60'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">dataset</span>
+          Movimentos de Stock (plat_movimentos)
+        </button>
+      </div>
+
+      {erpView === 'faturas' && (
+        <ImportacaoFaturasCard clients={clientsList} onRefresh={onRefresh} />
+      )}
+
+      {erpView === 'movimentos' && (
+        <div className="space-y-6">
+          {/* Banner / Card de Informação do Módulo ERP */}
+          <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/30 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-5">
           <div className="flex items-start gap-3">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shrink-0">
@@ -643,6 +680,8 @@ export default function ImportacaoErpTab({
           </ul>
         </div>
       </div>
+        </div>
+      )}
     </div>
   );
 }
