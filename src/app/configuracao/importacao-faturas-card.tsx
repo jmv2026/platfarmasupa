@@ -284,10 +284,11 @@ export default function ImportacaoFaturasCard({
       const isCredit = t === 'NC' || t === 'NCE';
       if (isCredit) ncCount++;
 
-      merc += isCredit ? -Math.abs(r.total_merc) : Math.abs(r.total_merc);
-      iva += isCredit ? -Math.abs(r.total_iva) : Math.abs(r.total_iva);
-      desc += isCredit ? -Math.abs(r.total_desc) : Math.abs(r.total_desc);
-      outros += isCredit ? -Math.abs(r.total_outros) : Math.abs(r.total_outros);
+      // Documentos NC e NCE são importados com valores negativos nos campos de faturação
+      merc += Number(r.total_merc) || 0;
+      iva += Number(r.total_iva) || 0;
+      desc += Number(r.total_desc) || 0;
+      outros += Number(r.total_outros) || 0;
 
       if (r.sigla) clientsSet.add(r.sigla);
       else if (r.cliente_ser) clientsSet.add(r.cliente_ser);

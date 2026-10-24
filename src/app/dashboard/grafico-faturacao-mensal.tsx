@@ -77,7 +77,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     // Mapeia todas as contagens por "YYYY-MM"
     const contagemPorMes: Record<
       string,
-      { quantidade: number; docs: number; merc: number; iva: number; desc: number }
+      { quantidade: number; docs: number; merc: number; iva: number; desc: number; liquido: number }
     > = {};
     const todosAnosDisponiveis = new Set<number>();
 
@@ -87,13 +87,14 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       if (parsed) {
         const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
         if (!contagemPorMes[key]) {
-          contagemPorMes[key] = { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0 };
+          contagemPorMes[key] = { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0, liquido: 0 };
         }
         contagemPorMes[key].quantidade += Number(p.total_quantidade) || 0;
         contagemPorMes[key].docs += Number(p.total_docs) || 0;
         contagemPorMes[key].merc += Number(p.total_merc) || 0;
         contagemPorMes[key].iva += Number(p.total_iva) || 0;
         contagemPorMes[key].desc += Number(p.total_desc) || 0;
+        contagemPorMes[key].liquido += Number(p.total_liquido) || 0;
         todosAnosDisponiveis.add(parsed.year);
       }
     });
@@ -145,14 +146,14 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     let prevVal: number | null = null;
     const resultado: MesData[] = mesesParaGerar.map(({ year, month }) => {
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const mesData = contagemPorMes[key] || { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0 };
+      const mesData = contagemPorMes[key] || { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0, liquido: 0 };
       const total_quantidade = mesData.quantidade;
       const total_docs = mesData.docs;
       const total_merc = mesData.merc;
       const total_iva = mesData.iva;
       const total_desc = mesData.desc;
-      // Faturação Líquida = Mercadoria - IVA - Descontos
-      const total_liquido = total_merc - total_iva - total_desc;
+      // Faturação Líquida = mesData.liquido ou (total_merc - total_iva - total_desc)
+      const total_liquido = contagemPorMes[key] ? mesData.liquido : (total_merc - total_iva - total_desc);
 
       const mShort = monthsShort[month] || String(month + 1);
       const mFull = monthsNames[month] || String(month + 1);

@@ -161,6 +161,20 @@ function mapRawRowToFatura(r: Record<string, any>): FaturaRow | null {
   const totalOutros = parseNum(r['total_outros'] ?? r['totaloutros'] ?? r['outros']);
   const totalDesc = parseNum(r['total_desc'] ?? r['totaldesc'] ?? r['desconto'] ?? r['total_desconto']);
 
+  // Documentos de crédito (NC e NCE) são importados com valores negativos nos campos de faturação
+  const isCredit =
+    (tipoDoc || '').toUpperCase() === 'NC' ||
+    (tipoDoc || '').toUpperCase() === 'NCE' ||
+    docRef.toUpperCase().includes('-NC ') ||
+    docRef.toUpperCase().includes('-NCE ') ||
+    (documento || '').toUpperCase().startsWith('NC ') ||
+    (documento || '').toUpperCase().startsWith('NCE ');
+
+  const totalMercFinal = isCredit ? (totalMerc > 0 ? -totalMerc : totalMerc) : Math.abs(totalMerc);
+  const totalIvaFinal = isCredit ? (totalIva > 0 ? -totalIva : totalIva) : Math.abs(totalIva);
+  const totalDescFinal = isCredit ? (totalDesc > 0 ? -totalDesc : totalDesc) : Math.abs(totalDesc);
+  const totalOutrosFinal = isCredit ? (totalOutros > 0 ? -totalOutros : totalOutros) : Math.abs(totalOutros);
+
   const nome = cleanCell(r['nome'] ?? r['cliente_nome'] ?? r['nome_cliente'] ?? '') || null;
   const morada = cleanCell(r['morada'] ?? r['endereco'] ?? '') || null;
   const localidade = cleanCell(r['localidade'] ?? r['cidade'] ?? '') || null;
@@ -188,10 +202,10 @@ function mapRawRowToFatura(r: Record<string, any>): FaturaRow | null {
     documento,
     requisicao,
     num_contribuinte: numContribuinte,
-    total_iva: totalIva,
-    total_merc: totalMerc,
-    total_outros: totalOutros,
-    total_desc: totalDesc,
+    total_iva: totalIvaFinal,
+    total_merc: totalMercFinal,
+    total_outros: totalOutrosFinal,
+    total_desc: totalDescFinal,
     nome,
     morada,
     localidade,
@@ -495,6 +509,66 @@ export async function generateFaturasSampleExcel(): Promise<Blob> {
     cli_primavera: '6373',
     sigla: 'VAR',
     cliente_ser: 'Varimpulse',
+  });
+
+  worksheet.addRow({
+    documento_ref: 'PHM-NC 2026/1',
+    data: '2026-06-23',
+    entidade: '0002',
+    tipo_doc: 'NC',
+    num_doc: '1',
+    documento: 'NC 2026/1',
+    requisicao: 'FA.2026/1',
+    num_contribuinte: 'B19582097',
+    total_iva: 0,
+    total_merc: -203500,
+    total_outros: 0,
+    total_desc: 0,
+    nome: 'BIOPHARMED',
+    morada: 'C/La Cora nº4, Local 1',
+    localidade: 'Granada',
+    cod_postal: '18006',
+    cod_postal_localidade: 'Granada',
+    pais: 'ES',
+    nome_entrega: '',
+    morada_entrega: 'Parque Empresarial Vialonga-Granja',
+    cod_postal_localidade_entrega: 'Vialonga',
+    cod_postal_entrega: '2625-607',
+    localidade_entrega: 'Casal do Bagulho',
+    entidade_entrega: '0002',
+    cli_primavera: '6509',
+    sigla: 'PHM',
+    cliente_ser: 'Pharmed',
+  });
+
+  worksheet.addRow({
+    documento_ref: 'PHM-NCE 2026/1',
+    data: '2026-10-22',
+    entidade: '0002',
+    tipo_doc: 'NCE',
+    num_doc: '1',
+    documento: 'NCE 2026/1',
+    requisicao: 'FA.2026/82',
+    num_contribuinte: 'B19582097',
+    total_iva: -144,
+    total_merc: -2400,
+    total_outros: 0,
+    total_desc: 0,
+    nome: 'BIOPHARMED',
+    morada: 'C/La Cora nº4, Local 1',
+    localidade: 'Granada',
+    cod_postal: '18006',
+    cod_postal_localidade: 'Granada',
+    pais: 'ES',
+    nome_entrega: '',
+    morada_entrega: 'C/La Cora nº4, Local 1',
+    cod_postal_localidade_entrega: 'Granada',
+    cod_postal_entrega: '18006',
+    localidade_entrega: '',
+    entidade_entrega: '0002',
+    cli_primavera: '6509',
+    sigla: 'PHM',
+    cliente_ser: 'Pharmed',
   });
 
   const buffer = await workbook.xlsx.writeBuffer();

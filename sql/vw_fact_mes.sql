@@ -1,6 +1,7 @@
 -- View de Faturação / Movimentos de Saída Mensais Agrupados por Cliente e Mês
 -- Alimentada exclusivamente a partir da tabela faturas (cabeçalhos de documentos de faturação)
 -- Chave primária da tabela faturas: documento_ref
+-- Nota: Os registos cujo tipo_doc é NC ou NCE são importados com valores negativos nos campos monetários.
 
 DROP VIEW IF EXISTS public.vw_fact_mes CASCADE;
 
@@ -15,35 +16,14 @@ SELECT
     (count(*))::integer AS total_docs,
     (count(*))::integer AS total_linhas,
     (0)::numeric AS total_quantidade,
+    sum(COALESCE(f.total_merc, 0::numeric)) AS total_merc,
+    sum(COALESCE(f.total_desc, 0::numeric)) AS total_desc,
+    sum(COALESCE(f.total_iva, 0::numeric)) AS total_iva,
+    sum(COALESCE(f.total_outros, 0::numeric)) AS total_outros,
     sum(
-        CASE 
-            WHEN UPPER(TRIM(COALESCE(f.tipo_doc, split_part(f.documento, ' ', 1)))) IN ('NC', 'NCE') THEN -ABS(COALESCE(f.total_merc, 0::numeric))
-            ELSE ABS(COALESCE(f.total_merc, 0::numeric))
-        END
-    ) AS total_merc,
-    sum(
-        CASE 
-            WHEN UPPER(TRIM(COALESCE(f.tipo_doc, split_part(f.documento, ' ', 1)))) IN ('NC', 'NCE') THEN -ABS(COALESCE(f.total_desc, 0::numeric))
-            ELSE ABS(COALESCE(f.total_desc, 0::numeric))
-        END
-    ) AS total_desc,
-    sum(
-        CASE 
-            WHEN UPPER(TRIM(COALESCE(f.tipo_doc, split_part(f.documento, ' ', 1)))) IN ('NC', 'NCE') THEN -ABS(COALESCE(f.total_iva, 0::numeric))
-            ELSE ABS(COALESCE(f.total_iva, 0::numeric))
-        END
-    ) AS total_iva,
-    sum(
-        CASE 
-            WHEN UPPER(TRIM(COALESCE(f.tipo_doc, split_part(f.documento, ' ', 1)))) IN ('NC', 'NCE') THEN -ABS(COALESCE(f.total_outros, 0::numeric))
-            ELSE ABS(COALESCE(f.total_outros, 0::numeric))
-        END
-    ) AS total_outros,
-    sum(
-        CASE 
-            WHEN UPPER(TRIM(COALESCE(f.tipo_doc, split_part(f.documento, ' ', 1)))) IN ('NC', 'NCE') THEN -(ABS(COALESCE(f.total_merc, 0::numeric)) - ABS(COALESCE(f.total_iva, 0::numeric)) - ABS(COALESCE(f.total_desc, 0::numeric)))
-            ELSE (ABS(COALESCE(f.total_merc, 0::numeric)) - ABS(COALESCE(f.total_iva, 0::numeric)) - ABS(COALESCE(f.total_desc, 0::numeric)))
-        END
+        COALESCE(f.total_merc, 0::numeric) 
+        - COALESCE(f.total_iva, 0::numeric) 
+        - COALESCE(f.total_desc, 0::numeric)
     ) AS total_liquido
 FROM public.faturas f
 LEFT JOIN public.clientes c ON (
