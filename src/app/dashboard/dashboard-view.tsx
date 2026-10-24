@@ -18,6 +18,7 @@ export interface DashboardFaturacaoItem {
   total_merc: number | null;
   total_iva: number | null;
   total_desc: number | null;
+  total_liquido?: number | null;
 }
 
 

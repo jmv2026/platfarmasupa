@@ -1189,10 +1189,10 @@ export default function StocksView({
                 <div>
                   <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                     <span className="material-symbols-outlined text-secondary">warehouse</span>
-                    Visão Consolidada por Armazém Físico e Localização
+                    Visão Consolidada por Armazém
                   </h3>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Registo detalhado de todos os lotes por armazém (<code className="text-xs bg-surface-container px-1 py-0.5 rounded font-mono text-secondary">armazem_loc</code>), incluindo Venda, Quarentena, Devoluções e Expirados.
+                    Registo consolidado de todos os lotes por armazém (sem separação por posição física), incluindo Venda, Quarentena, Devoluções e Expirados.
                   </p>
                 </div>
                 {isAdmin && (
@@ -1234,7 +1234,7 @@ export default function StocksView({
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Armazém</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
                       {isAdmin && (
@@ -1765,14 +1765,14 @@ export default function StocksView({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-on-surface mb-1">
-                    Armazém / Localização
+                    Armazém
                   </label>
                   <input
                     type="text"
                     value={editForm.armazem_loc}
-                    onChange={(e) => setEditForm((prev) => ({ ...prev, armazem_loc: e.target.value }))}
-                    placeholder="Ex: 01.12C15"
-                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono focus:outline-none focus:ring-2 focus:ring-secondary"
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, armazem_loc: e.target.value.toUpperCase() }))}
+                    placeholder="Ex: MDZ01, CRD01"
+                    className="w-full bg-surface-container border border-outline-variant/40 rounded-xl px-3 py-2 text-xs text-on-surface font-mono uppercase focus:outline-none focus:ring-2 focus:ring-secondary"
                   />
                 </div>
 
@@ -1858,7 +1858,7 @@ export default function StocksView({
                 <span className="font-mono text-on-surface">{deletingStock.lote || 'S/LOTE'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-on-surface-variant">Armazém / Localização:</span>
+                <span className="text-on-surface-variant">Armazém:</span>
                 <span className="font-mono text-on-surface">{deletingStock.armazem_loc}</span>
               </div>
               <div className="flex items-center justify-between">

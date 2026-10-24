@@ -46,10 +46,11 @@ export async function apagarLinhaStockAction(stockId: string) {
   }
 
   try {
+    const idList = stockId.split(',').map((s) => s.trim()).filter(Boolean);
     const { error: deleteErr } = await supabase
       .from('stock')
       .delete()
-      .eq('id', stockId);
+      .in('id', idList);
 
     if (deleteErr) {
       console.error('Erro ao apagar linha de stock:', deleteErr);
@@ -111,11 +112,14 @@ export async function editarLinhaStockAction(input: EditarStockInput) {
   }
 
   try {
+    const idList = input.stockId.split(',').map((s) => s.trim()).filter(Boolean);
+    const primaryId = idList[0];
+
     // Obter registo atual
     const { data: currentStock, error: fetchErr } = await supabase
       .from('stock')
       .select('*')
-      .eq('id', input.stockId)
+      .eq('id', primaryId)
       .single();
 
     if (fetchErr || !currentStock) {
@@ -131,23 +135,24 @@ export async function editarLinhaStockAction(input: EditarStockInput) {
 
     if (input.armazem_loc !== undefined && input.armazem_loc !== null) {
       const loc = input.armazem_loc.trim();
+      updates.armazem = loc;
       updates.localizacao = loc;
-      // Se tiver formato Armazem.Posição (ex: MDZ01.12A), podemos sincronizar armazem
-      if (loc.includes('.')) {
-        updates.armazem = loc.split('.')[0];
-      } else if (loc.length > 0 && !currentStock.armazem) {
-        updates.armazem = loc;
-      }
     }
 
     const { error: updateErr } = await supabase
       .from('stock')
       .update(updates)
-      .eq('id', input.stockId);
+      .eq('id', primaryId);
 
     if (updateErr) {
       console.error('Erro ao atualizar linha de stock:', updateErr);
       return { success: false, error: `Erro ao atualizar registo: ${updateErr.message}` };
+    }
+
+    // Se havia múltiplos registos de posições diferentes agora consolidadas, remover os secundários
+    if (idList.length > 1) {
+      const secondaryIds = idList.slice(1);
+      await supabase.from('stock').delete().in('id', secondaryIds);
     }
 
     revalidatePath('/stocks');

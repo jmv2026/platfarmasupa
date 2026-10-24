@@ -1,5 +1,5 @@
--- Migration: Add stock_id to vw_stock_atual
--- Description: Adds MAX(s.id::text) AS stock_id as the last column of vw_stock_atual to allow row-level edit and delete by administrators.
+-- Migration: Update vw_stock_atual without position grouping
+-- Description: Consolidates stock by armazém (removing separation by position/localizacao), summing quantities, and aggregating stock_ids for row-level admin actions.
 
 CREATE OR REPLACE VIEW public.vw_stock_atual WITH (security_invoker = true) AS
 SELECT 
@@ -17,13 +17,13 @@ SELECT
         ELSE s.armazem 
     END AS tipo_armazem,
     COALESCE(arm.descricao, s.armazem) AS armazem_descricao,
-    COALESCE(s.localizacao, s.armazem) AS armazem_loc,
+    s.armazem AS armazem_loc,
     COALESCE(s.lote, 'S/LOTE'::text) AS lote,
     s.data_stock AS validade,
     NULL::date AS data_fabrico,
     SUM(s.stock) AS stock,
     MAX(s.created_at) AS ultimo_movimento,
-    MAX(s.id::text) AS stock_id
+    string_agg(s.id::text, ',') AS stock_id
 FROM public.stock s
 LEFT JOIN LATERAL (
     SELECT c1.id, c1.name, c1.sigla, c1.cli_primavera
@@ -92,7 +92,7 @@ GROUP BY
         ELSE s.armazem 
     END,
     COALESCE(arm.descricao, s.armazem),
-    COALESCE(s.localizacao, s.armazem),
+    s.armazem,
     COALESCE(s.lote, 'S/LOTE'::text),
     s.data_stock
 HAVING SUM(s.stock) > 0;
