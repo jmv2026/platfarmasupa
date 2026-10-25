@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ExcelJS from 'exceljs';
 import { useLanguage } from '@/lib/i18n/context';
 import { apagarLinhaStockAction, editarLinhaStockAction } from './actions';
 import {
@@ -396,9 +395,56 @@ export default function StocksView({
   }, [filteredStockAtual]);
 
 
+  // Set de artigos que têm stock positivo em armazém (o lote deve ser ignorado)
+  const artigosComStockPositivo = useMemo(() => {
+    const set = new Set<string>();
+    (stockAtualList || []).forEach((item) => {
+      if (Number(item.stock) > 0) {
+        const cid = item.cliente_id || '';
+        if (item.artigo_id) {
+          set.add(`${cid}::${item.artigo_id.trim().toLowerCase()}`);
+          const norm = item.artigo_id.trim().replace(/^[0-9]+-/, '').toLowerCase();
+          set.add(`${cid}::${norm}`);
+        }
+        if (item.artigo_cli) {
+          set.add(`${cid}::${item.artigo_cli.trim().toLowerCase()}`);
+          const normCli = item.artigo_cli.trim().replace(/^[0-9]+-/, '').toLowerCase();
+          set.add(`${cid}::${normCli}`);
+        }
+      }
+    });
+    return set;
+  }, [stockAtualList]);
+
   // Filtragem para Artigos com Stock 0 (vw_stock_zero)
+  // Regra: O lote deve ser ignorado, e verificado apenas o artigo
   const filteredStockZero = useMemo(() => {
+    const seenArtigos = new Set<string>();
+
     return (stockZero || []).filter((item) => {
+      const cid = item.cliente_id || '';
+      const artId = (item.artigo_id || '').trim().toLowerCase();
+      const artCli = (item.artigo_cli || '').trim().toLowerCase();
+      const normArtId = artId.replace(/^[0-9]+-/, '');
+      const normArtCli = artCli.replace(/^[0-9]+-/, '');
+
+      // Se o artigo tiver stock positivo em qualquer lote/armazém, NÃO deve constar como stock 0
+      if (
+        artigosComStockPositivo.has(`${cid}::${artId}`) ||
+        (artCli && artigosComStockPositivo.has(`${cid}::${artCli}`)) ||
+        (normArtId && artigosComStockPositivo.has(`${cid}::${normArtId}`)) ||
+        (normArtCli && artigosComStockPositivo.has(`${cid}::${normArtCli}`))
+      ) {
+        return false;
+      }
+
+      // Evitar duplicações do mesmo artigo (verificação a nível de artigo)
+      const uniqueKey = `${cid}::${normArtId || artId}`;
+      if (seenArtigos.has(uniqueKey)) {
+        return false;
+      }
+      seenArtigos.add(uniqueKey);
+
       if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
         return false;
       }
@@ -422,13 +468,12 @@ export default function StocksView({
           item.artigo_cli?.toLowerCase().includes(q) ||
           item.descricao?.toLowerCase().includes(q) ||
           item.cliente_sigla?.toLowerCase().includes(q) ||
-          item.cliente_nome?.toLowerCase().includes(q) ||
-          item.lotes_historico?.toLowerCase().includes(q)
+          item.cliente_nome?.toLowerCase().includes(q)
         );
       }
       return true;
     });
-  }, [stockZero, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm]);
+  }, [stockZero, artigosComStockPositivo, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm]);
 
   // Exportar CSV
   const handleExportCSV = () => {
@@ -452,9 +497,9 @@ export default function StocksView({
           rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo)},${sanitize(r.tipo_armazenamento)},${r.stockVenda},${r.stockOutros},${r.stockTotal},${r.lotesCount.size}`);
         });
       } else if (activeTab === 'stock_zero') {
-        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Tipo Artigo,Conservacao,Familia,Stock,Ultimo Movimento,Total Movimentos,Lotes Historico');
+        rows.push('Cliente,Artigo,Artigo Cli,Descricao,Tipo Artigo,Conservacao,Familia,Stock,Ultimo Movimento,Total Movimentos');
         filteredStockZero.forEach((r) => {
-          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo || '')},${sanitize(r.tipo_armazenamento || '')},${sanitize(r.familia || '')},${r.stock},${sanitize(r.ultimo_movimento || '')},${r.total_movimentos},${sanitize(r.lotes_historico || '')}`);
+          rows.push(`${sanitize(r.cliente_sigla)},${sanitize(r.artigo_id)},${sanitize(r.artigo_cli)},${sanitize(r.descricao || '')},${sanitize(r.tipo_artigo || '')},${sanitize(r.tipo_armazenamento || '')},${sanitize(r.familia || '')},${r.stock},${sanitize(r.ultimo_movimento || '')},${r.total_movimentos}`);
         });
       } else {
         rows.push('Cliente,Artigo,Artigo Cli,Descricao,Lote,Validade,Dias Restantes,Armazem Loc,Stock');
@@ -479,8 +524,9 @@ export default function StocksView({
     }
   };
 
-  // Exportar Excel (.xlsx) com formatação rica via ExcelJS
+  // Exportar Excel (.xlsx) com formatação rica via ExcelJS (import dinâmico para poupar ~900KB no bundle inicial)
   const handleExportExcel = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     const sheetTitles: Record<TabType, string> = {
       pedidos: 'Stock Disponível',
@@ -586,7 +632,6 @@ export default function StocksView({
         { header: 'Stock Atual', key: 'stock', width: 14 },
         { header: 'Último Movimento', key: 'ultimo_movimento', width: 22 },
         { header: 'Total Movimentos', key: 'total_movimentos', width: 16 },
-        { header: 'Lotes Histórico', key: 'lotes_historico', width: 28 },
       ];
       filteredStockZero.forEach((item) => {
         worksheet.addRow({
@@ -600,7 +645,6 @@ export default function StocksView({
           stock: item.stock,
           ultimo_movimento: item.ultimo_movimento ? new Date(item.ultimo_movimento).toLocaleString('pt-PT') : 'Sem movimentos',
           total_movimentos: item.total_movimentos,
-          lotes_historico: item.lotes_historico,
         });
       });
     } else {
@@ -1592,7 +1636,7 @@ export default function StocksView({
                     Catálogo de Artigos com Stock 0 (Sem Existências / Esgotados)
                   </h3>
                   <p className="text-xs text-on-surface-variant mt-0.5">
-                    Artigos com saldo nulo em armazém — inclui artigos que esgotaram após expedições e artigos do catálogo sem lotes ativos.
+                    Artigos com saldo nulo em armazém — inclui artigos que esgotaram após expedições e artigos do catálogo sem existências ativas (verificação a nível de artigo, ignorando lotes).
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
@@ -1616,7 +1660,6 @@ export default function StocksView({
                       <th className="py-3 px-3 text-right">Stock Atual</th>
                       <th className="py-3 px-3 text-center">Atividade</th>
                       <th className="py-3 px-3">Último Movimento</th>
-                      <th className="py-3 px-3">Histórico de Lotes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -1669,14 +1712,11 @@ export default function StocksView({
                           <td className="py-3 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
                             {item.ultimo_movimento ? new Date(item.ultimo_movimento).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                           </td>
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-700 max-w-[200px] truncate" title={item.lotes_historico || '-'}>
-                            {item.lotes_historico || '-'}
-                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={10} className="py-12 text-center text-slate-500">
+                        <td colSpan={9} className="py-12 text-center text-slate-500">
                           <span className="material-symbols-outlined text-4xl text-slate-300 mb-2 block">
                             check_circle
                           </span>

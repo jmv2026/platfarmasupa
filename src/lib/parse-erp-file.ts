@@ -86,74 +86,81 @@ function normalizeHeader(key: string): string {
 }
 
 export interface PlatMovimentoRow {
+  // 43 Campos Oficiais do Perfil ERP
+  documento_ref?: string | null;
   data: string | null; // YYYY-MM-DD
-  cli_primavera: string | null;
   cliente_ser: string | null;
-  tipomovimento: string | null;
+  tipo_movimento: string | null;
   documento: string | null;
-  numlinha: number | null;
+  num_linha: number | null;
   doc_linha: string; // PRIMARY KEY
   chave1: string | null;
   chave2: string | null;
-  valorunitario: number | null;
-  valoradicional: number | null;
-  valorabater: number | null;
-  artigo_id: string | null;
-  artigo_cli: string | null;
+  valor_unitario: number | null;
+  valor_adicional: number | null;
+  valor_abater: number | null;
   descricao: string | null;
-  tipoartigo: string | null;
+  tipo_artigo: string | null;
   armazem: string | null;
   localizacao: string | null;
   lote: string | null;
   quantidade: number | null;
   familia: string | null;
-  subfamilia: string | null;
-  datafabrico: string | null; // YYYY-MM-DD
+  sub_familia: string | null;
+  sub_Familia?: string | null;
+  data_fabrico: string | null; // YYYY-MM-DD
   validade: string | null; // YYYY-MM-DD
   entidade: string | null;
-  totaliva: number | null;
-  totalmerc: number | null;
-  totaloutros: number | null;
+  total_iva: number | null;
+  total_merc: number | null;
+  total_outros: number | null;
   totaldesc: number | null;
   requisicao: string | null;
-  numcontribuinte: string | null;
+  num_contribuinte: string | null;
   nome: string | null;
   morada: string | null;
   localidade: string | null;
-  codpostal: string | null;
-  codpostallocalidade: string | null;
+  cod_postal: string | null;
+  cod_postal_localidade: string | null;
   pais: string | null;
-  nomeentrega: string | null;
-  entidadeentrega: string | null;
-  moradaentrega: string | null;
-  localidadeentrega: string | null;
-  codpostalentrega: string | null;
+  nome_entrega: string | null;
+  entidade_entrega: string | null;
+  morada_entrega: string | null;
+  localidade_entrega: string | null;
+  cod_postal_entrega: string | null;
+  observacoes?: string | null;
+  tipo_doc?: string | null;
+  num_doc?: string | null;
+
+  // Propriedades auxiliares / integração / compatibilidade
+  cli_primavera?: string | null;
+  artigo_id?: string | null;
+  artigo_cli?: string | null;
   created_at?: string;
-  // Propriedades auxiliares / compatibilidade
+  tipomovimento?: string | null;
+  numlinha?: number | null;
+  valorunitario?: number | null;
+  valoradicional?: number | null;
+  valorabater?: number | null;
+  tipoartigo?: string | null;
+  subfamilia?: string | null;
+  datafabrico?: string | null;
+  totaliva?: number | null;
+  totalmerc?: number | null;
+  totaloutros?: number | null;
+  total_desc?: number | null;
+  numcontribuinte?: string | null;
+  codpostal?: string | null;
+  codpostallocalidade?: string | null;
+  nomeentrega?: string | null;
+  entidadeentrega?: string | null;
+  moradaentrega?: string | null;
+  localidadeentrega?: string | null;
+  codpostalentrega?: string | null;
+  cod_postal_localidade_entrega?: string | null;
   artigo?: string | null;
   sigla?: string | null;
-  num_linha?: number | null;
-  tipo_movimento?: string | null;
-  tipo_artigo?: string | null;
-  documento_ref?: string | null;
-  sub_familia?: string | null;
-  valor_unitario?: number | null;
-  valor_adicional?: number | null;
-  valor_abater?: number | null;
-  total_iva?: number | null;
-  total_merc?: number | null;
-  total_outros?: number | null;
-  total_desc?: number | null;
   data_movimento?: string | null;
-  cod_postal?: string | null;
-  cod_postal_localidade?: string | null;
-  num_contribuinte?: string | null;
-  nome_entrega?: string | null;
-  morada_entrega?: string | null;
-  localidade_entrega?: string | null;
-  cod_postal_entrega?: string | null;
-  cod_postal_localidade_entrega?: string | null;
-  entidade_entrega?: string | null;
 }
 
 function cleanCell(val: any): string {
@@ -188,9 +195,9 @@ function mapRawRowToPlatMovimento(r: Record<string, any>): PlatMovimentoRow {
   const dataOnly = parseDateOnly(r['data'] || r['data_movimento'] || r['datamovimento']);
   const cliPrimavera = r['cli_primavera'] || r['cliprimavera'] ? String(r['cli_primavera'] || r['cliprimavera']).trim() : null;
   const clienteSer = r['cliente_ser'] || r['clienteser'] || r['sigla'] || r['sigla_cliente'] ? String(r['cliente_ser'] || r['clienteser'] || r['sigla'] || r['sigla_cliente']).trim() : null;
-  const tipoMov = r['tipomovimento'] || r['tipo_movimento'] ? String(r['tipomovimento'] || r['tipo_movimento']).trim() : null;
+  const tipoMov = r['tipo_movimento'] || r['tipomovimento'] ? String(r['tipo_movimento'] || r['tipomovimento']).trim() : null;
   const doc = r['documento'] ? String(r['documento']).trim() : null;
-  const numLinha = parseNum(r['numlinha'] || r['num_linha']);
+  const numLinha = parseNum(r['num_linha'] || r['numlinha']);
 
   let docLinha = r['doc_linha'] || r['doclinha'] ? String(r['doc_linha'] || r['doclinha']).trim() : '';
   if (!docLinha && doc && numLinha != null) {
@@ -209,83 +216,107 @@ function mapRawRowToPlatMovimento(r: Record<string, any>): PlatMovimentoRow {
     }
   }
 
-  const valUnitario = parseNum(r['valorunitario'] || r['valor_unitario']);
-  const valAdicional = parseNum(r['valoradicional'] || r['valor_adicional']);
-  const valAbater = parseNum(r['valorabater'] || r['valor_abater']);
+  const valUnitario = parseNum(r['valor_unitario'] || r['valorunitario']);
+  const valAdicional = parseNum(r['valor_adicional'] || r['valoradicional']);
+  const valAbater = parseNum(r['valor_abater'] || r['valorabater']);
   const qtd = parseNum(r['quantidade']);
-  const totIva = parseNum(r['totaliva'] || r['total_iva']);
-  const totMerc = parseNum(r['totalmerc'] || r['total_merc']);
-  const totOutros = parseNum(r['totaloutros'] || r['total_outros']);
+  const totIva = parseNum(r['total_iva'] || r['totaliva']);
+  const totMerc = parseNum(r['total_merc'] || r['totalmerc']);
+  const totOutros = parseNum(r['total_outros'] || r['totaloutros']);
   const totDesc = parseNum(r['totaldesc'] || r['total_desc']);
 
-  const subFam = r['subfamilia'] || r['sub_familia'] ? String(r['subfamilia'] || r['sub_familia']).trim() : null;
-  const fabDate = parseDataFabrico(r['datafabrico'] || r['data_fabrico']);
+  const subFam = r['sub_familia'] || r['sub_Familia'] || r['subfamilia'] ? String(r['sub_familia'] || r['sub_Familia'] || r['subfamilia']).trim() : null;
+  const fabDate = parseDataFabrico(r['data_fabrico'] || r['datafabrico']);
   const valDate = parseDateOnly(r['validade']);
 
-  const codPostal = r['codpostal'] || r['cod_postal'] ? String(r['codpostal'] || r['cod_postal']).trim() : null;
-  const codPostalLoc = r['codpostallocalidade'] || r['cod_postal_localidade'] ? String(r['codpostallocalidade'] || r['cod_postal_localidade']).trim() : null;
-  const locEntrega = r['localidadeentrega'] || r['localidade_entrega'] || r['cod_postal_localidade_entrega'] ? String(r['localidadeentrega'] || r['localidade_entrega'] || r['cod_postal_localidade_entrega']).trim() : null;
-  const codPostalEntrega = r['codpostalentrega'] || r['cod_postal_entrega'] ? String(r['codpostalentrega'] || r['cod_postal_entrega']).trim() : null;
+  const codPostal = r['cod_postal'] || r['codpostal'] ? String(r['cod_postal'] || r['codpostal']).trim() : null;
+  const codPostalLoc = r['cod_postal_localidade'] || r['codpostallocalidade'] ? String(r['cod_postal_localidade'] || r['codpostallocalidade']).trim() : null;
+  const locEntrega = r['localidade_entrega'] || r['localidadeentrega'] || r['cod_postal_localidade_entrega'] ? String(r['localidade_entrega'] || r['localidadeentrega'] || r['cod_postal_localidade_entrega']).trim() : null;
+  const codPostalEntrega = r['cod_postal_entrega'] || r['codpostalentrega'] ? String(r['cod_postal_entrega'] || r['codpostalentrega']).trim() : null;
+  const nomeEntrega = r['nome_entrega'] || r['nomeentrega'] ? String(r['nome_entrega'] || r['nomeentrega']).trim() : null;
+  const entidadeEntrega = r['entidade_entrega'] || r['entidadeentrega'] ? String(r['entidade_entrega'] || r['entidadeentrega']).trim() : null;
+  const moradaEntrega = r['morada_entrega'] || r['moradaentrega'] ? String(r['morada_entrega'] || r['moradaentrega']).trim() : null;
+  const docRef = r['documento_ref'] || r['documentoref'] ? String(r['documento_ref'] || r['documentoref']).trim() : (clienteSer && doc ? `${clienteSer}-${doc}` : doc);
+  const tipoDoc = r['tipo_doc'] || r['tipodoc'] || r['chave1'] ? String(r['tipo_doc'] || r['tipodoc'] || r['chave1']).trim() : null;
+  const numDoc = r['num_doc'] || r['numdoc'] ? String(r['num_doc'] || r['numdoc']).trim() : null;
+  const obs = r['observacoes'] ? String(r['observacoes']).trim() : null;
 
   return {
+    documento_ref: docRef,
     data: dataOnly,
-    cli_primavera: cliPrimavera,
     cliente_ser: clienteSer,
-    tipomovimento: tipoMov,
+    tipo_movimento: tipoMov,
     documento: doc,
-    numlinha: numLinha,
+    num_linha: numLinha,
     doc_linha: docLinha,
     chave1: r['chave1'] ? String(r['chave1']).trim() : null,
     chave2: r['chave2'] ? String(r['chave2']).trim() : null,
-    valorunitario: valUnitario,
-    valoradicional: valAdicional,
-    valorabater: valAbater,
-    artigo_id: artId,
-    artigo_cli: artCli,
+    valor_unitario: valUnitario,
+    valor_adicional: valAdicional,
+    valor_abater: valAbater,
     descricao: r['descricao'] ? String(r['descricao']).trim() : null,
-    tipoartigo: r['tipoartigo'] || r['tipo_artigo'] ? String(r['tipoartigo'] || r['tipo_artigo']).trim() : null,
+    tipo_artigo: r['tipo_artigo'] || r['tipoartigo'] ? String(r['tipo_artigo'] || r['tipoartigo']).trim() : null,
     armazem: r['armazem'] ? String(r['armazem']).trim() : null,
     localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
     lote: r['lote'] ? String(r['lote']).trim() : null,
     quantidade: qtd,
     familia: r['familia'] ? String(r['familia']).trim() : null,
-    subfamilia: subFam,
-    datafabrico: fabDate,
+    sub_familia: subFam,
+    sub_Familia: subFam,
+    data_fabrico: fabDate,
     validade: valDate,
     entidade: r['entidade'] ? String(r['entidade']).trim() : null,
-    totaliva: totIva,
-    totalmerc: totMerc,
-    totaloutros: totOutros,
+    total_iva: totIva,
+    total_merc: totMerc,
+    total_outros: totOutros,
     totaldesc: totDesc,
     requisicao: r['requisicao'] ? String(r['requisicao']).trim() : null,
-    numcontribuinte: r['numcontribuinte'] || r['num_contribuinte'] ? String(r['numcontribuinte'] || r['num_contribuinte']).trim() : null,
+    num_contribuinte: r['num_contribuinte'] || r['numcontribuinte'] ? String(r['num_contribuinte'] || r['numcontribuinte']).trim() : null,
     nome: r['nome'] ? String(r['nome']).trim() : null,
     morada: r['morada'] ? String(r['morada']).trim() : null,
     localidade: r['localidade'] ? String(r['localidade']).trim() : null,
-    codpostal: codPostal,
-    codpostallocalidade: codPostalLoc,
-    pais: r['pais'] ? String(r['pais']).trim() : null,
-    nomeentrega: r['nomeentrega'] || r['nome_entrega'] ? String(r['nomeentrega'] || r['nome_entrega']).trim() : null,
-    entidadeentrega: r['entidadeentrega'] || r['entidade_entrega'] ? String(r['entidadeentrega'] || r['entidade_entrega']).trim() : null,
-    moradaentrega: r['moradaentrega'] || r['morada_entrega'] ? String(r['moradaentrega'] || r['morada_entrega']).trim() : null,
-    localidadeentrega: locEntrega,
-    codpostalentrega: codPostalEntrega,
-
-    // Aliases
-    artigo: artId,
-    sigla: clienteSer,
-    num_linha: numLinha,
-    tipo_movimento: tipoMov,
-    sub_familia: subFam,
-    total_iva: totIva,
-    total_merc: totMerc,
-    total_desc: totDesc,
     cod_postal: codPostal,
     cod_postal_localidade: codPostalLoc,
-    nome_entrega: r['nomeentrega'] || r['nome_entrega'] ? String(r['nomeentrega'] || r['nome_entrega']).trim() : null,
-    morada_entrega: r['moradaentrega'] || r['morada_entrega'] ? String(r['moradaentrega'] || r['morada_entrega']).trim() : null,
+    pais: r['pais'] ? String(r['pais']).trim() : null,
+    nome_entrega: nomeEntrega,
+    entidade_entrega: entidadeEntrega,
+    morada_entrega: moradaEntrega,
+    localidade_entrega: locEntrega,
     cod_postal_entrega: codPostalEntrega,
-    entidade_entrega: r['entidadeentrega'] || r['entidade_entrega'] ? String(r['entidadeentrega'] || r['entidade_entrega']).trim() : null,
+    observacoes: obs,
+    tipo_doc: tipoDoc,
+    num_doc: numDoc,
+
+    // Suporte adicional / integração
+    cli_primavera: cliPrimavera,
+    artigo_id: artId,
+    artigo_cli: artCli,
+
+    // Aliases legado para compatibilidade total
+    tipomovimento: tipoMov,
+    numlinha: numLinha,
+    valorunitario: valUnitario,
+    valoradicional: valAdicional,
+    valorabater: valAbater,
+    tipoartigo: r['tipo_artigo'] || r['tipoartigo'] ? String(r['tipo_artigo'] || r['tipoartigo']).trim() : null,
+    subfamilia: subFam,
+    datafabrico: fabDate,
+    totaliva: totIva,
+    totalmerc: totMerc,
+    totaloutros: totOutros,
+    total_desc: totDesc,
+    numcontribuinte: r['num_contribuinte'] || r['numcontribuinte'] ? String(r['num_contribuinte'] || r['numcontribuinte']).trim() : null,
+    codpostal: codPostal,
+    codpostallocalidade: codPostalLoc,
+    nomeentrega: nomeEntrega,
+    entidadeentrega: entidadeEntrega,
+    moradaentrega: moradaEntrega,
+    localidadeentrega: locEntrega,
+    codpostalentrega: codPostalEntrega,
+    cod_postal_localidade_entrega: locEntrega,
+    artigo: artId,
+    sigla: clienteSer,
+    data_movimento: dataOnly,
   };
 }
 
@@ -398,182 +429,186 @@ export async function parsePlatMovimentosFile(file: File): Promise<PlatMovimento
 }
 
 export const PLAT_MOVIMENTOS_ERP_HEADERS = [
+  'documento_ref',
   'data',
-  'cli_primavera',
   'cliente_ser',
-  'tipomovimento',
+  'tipo_movimento',
   'documento',
-  'numlinha',
+  'num_linha',
   'doc_linha',
   'chave1',
   'chave2',
-  'valorunitario',
-  'valoradicional',
-  'valorabater',
-  'artigo_id',
-  'artigo_cli',
+  'valor_unitario',
+  'valor_adicional',
+  'valor_abater',
   'descricao',
-  'tipoartigo',
+  'tipo_artigo',
   'armazem',
   'localizacao',
   'lote',
   'quantidade',
   'familia',
-  'subFamilia',
-  'datafabrico',
+  'sub_Familia',
+  'data_fabrico',
   'validade',
   'entidade',
-  'totaliva',
-  'totalmerc',
-  'totaloutros',
+  'total_iva',
+  'total_merc',
+  'total_outros',
   'totaldesc',
   'requisicao',
-  'numcontribuinte',
+  'num_contribuinte',
   'nome',
   'morada',
   'localidade',
-  'codpostal',
-  'codpostallocalidade',
+  'cod_postal',
+  'cod_postal_localidade',
   'pais',
-  'nomeentrega',
-  'entidadeentrega',
-  'moradaentrega',
-  'localidadeentrega',
-  'codpostalentrega',
+  'nome_entrega',
+  'entidade_entrega',
+  'morada_entrega',
+  'localidade_entrega',
+  'cod_postal_entrega',
+  'observacoes',
+  'tipo_doc',
+  'num_doc',
 ] as const;
 
 export const PLAT_MOVIMENTOS_SAMPLE_DATA: Record<string, any>[] = [
   {
-    data: '24/09/2026',
-    cli_primavera: '482',
-    cliente_ser: 'Maxifar',
-    tipomovimento: 'S',
-    documento: 'SSF 26MAX/173',
-    numlinha: 6,
-    doc_linha: 'SSF 26MAX/173-6',
-    chave1: 'SSF',
-    chave2: '26MAX',
-    valorunitario: '9,67',
-    valoradicional: '0',
-    valorabater: '0',
-    artigo_id: '5738679',
-    artigo_cli: '482-5738679',
-    descricao: 'EKZEM 0.1 MG/0.4 ML GOTAS AUR. 30 UNID.',
-    tipoartigo: '80',
-    armazem: 'MAX01',
-    localizacao: 'MAX01.22A24',
-    lote: '26004',
-    quantidade: 30,
+    documento_ref: 'SER-FA 24AOP/35',
+    data: '06/02/2024',
+    cliente_ser: 'AOP',
+    tipo_movimento: 'S',
+    documento: 'FA 24AOP/35',
+    num_linha: 2,
+    doc_linha: 'FA 24AOP/35-2',
+    chave1: 'FA',
+    chave2: '24AOP',
+    valor_unitario: '599,85',
+    valor_adicional: '0',
+    valor_abater: '0',
+    descricao: 'EMPRESSIN 40 IU/2 ml 10 AMP (PT)',
+    tipo_artigo: '52',
+    armazem: 'AOP01',
+    localizacao: 'AOP01.12B57',
+    lote: '019307',
+    quantidade: 1,
     familia: 'MED',
-    subFamilia: 'SALVAT',
-    datafabrico: '',
-    validade: '01/03/2028',
-    entidade: '4552',
-    totaliva: '503,97',
-    totalmerc: '5927,77',
-    totaloutros: '0',
-    totaldesc: '1410,72',
-    requisicao: 'COOPP3693',
-    numcontribuinte: '513745653',
-    nome: 'FIRSTPHARMA, S.A.',
-    morada: 'RUA DO VALE, 786',
-    localidade: 'FOLGOSA',
-    codpostal: '4425-399',
-    codpostallocalidade: 'FOLGOSA-MAIA',
+    sub_Familia: 'AOP',
+    data_fabrico: '20/04/2023',
+    validade: '28/02/2025',
+    entidade: '3382',
+    total_iva: '35,99',
+    total_merc: '599,85',
+    total_outros: '0',
+    totaldesc: '0',
+    requisicao: '4500201126',
+    num_contribuinte: '505962403',
+    nome: 'HPP LUSÍADAS, S.A.',
+    morada: 'RUA ABÍLIO MENDES, 3',
+    localidade: 'LISBOA',
+    cod_postal: '1500-458',
+    cod_postal_localidade: 'LISBOA',
     pais: 'PT',
-    nomeentrega: '',
-    entidadeentrega: '4552',
-    moradaentrega: 'COOPROFAR',
-    localidadeentrega: 'GONDOMAR',
-    codpostalentrega: '4420-612',
+    nome_entrega: '',
+    entidade_entrega: '3382',
+    morada_entrega: 'HOSP. LUSIADAS PORTO',
+    localidade_entrega: 'PORTO',
+    cod_postal_entrega: '4050-115',
+    observacoes: '',
+    tipo_doc: 'FA',
+    num_doc: '35',
   },
   {
-    data: '24/09/2026',
-    cli_primavera: '482',
-    cliente_ser: 'Maxifar',
-    tipomovimento: 'S',
-    documento: 'SSF 26MAX/173',
-    numlinha: 9,
-    doc_linha: 'SSF 26MAX/173-9',
-    chave1: 'SSF',
-    chave2: '26MAX',
-    valorunitario: '9,75',
-    valoradicional: '0',
-    valorabater: '0',
-    artigo_id: '6630939',
-    artigo_cli: '482-6630939',
-    descricao: 'MEGALEVURE MORANGO 10 STICKS',
-    tipoartigo: '84',
-    armazem: 'MAX01',
-    localizacao: 'MAX01.22C11',
-    lote: 'K05302',
-    quantidade: 9,
+    documento_ref: 'SER-FA 24AOP/36',
+    data: '06/02/2024',
+    cliente_ser: 'AOP',
+    tipo_movimento: 'S',
+    documento: 'FA 24AOP/36',
+    num_linha: 2,
+    doc_linha: 'FA 24AOP/36-2',
+    chave1: 'FA',
+    chave2: '24AOP',
+    valor_unitario: '599,85',
+    valor_adicional: '0',
+    valor_abater: '0',
+    descricao: 'EMPRESSIN 40 IU/2 ml 10 AMP (PT)',
+    tipo_artigo: '52',
+    armazem: 'AOP01',
+    localizacao: 'AOP01.12B57',
+    lote: '019307',
+    quantidade: 1,
     familia: 'MED',
-    subFamilia: 'SALVAT',
-    datafabrico: '01/01/1980',
-    validade: '31/05/2028',
-    entidade: '4552',
-    totaliva: '503,97',
-    totalmerc: '5927,77',
-    totaloutros: '0',
-    totaldesc: '1410,72',
-    requisicao: 'COOPP3693',
-    numcontribuinte: '513745653',
-    nome: 'FIRSTPHARMA, S.A.',
-    morada: 'RUA DO VALE, 786',
-    localidade: 'FOLGOSA',
-    codpostal: '4425-399',
-    codpostallocalidade: 'FOLGOSA-MAIA',
+    sub_Familia: 'AOP',
+    data_fabrico: '20/04/2023',
+    validade: '28/02/2025',
+    entidade: '498',
+    total_iva: '35,99',
+    total_merc: '599,85',
+    total_outros: '0',
+    totaldesc: '0',
+    requisicao: '2024110268',
+    num_contribuinte: '508085888',
+    nome: 'UNIDADE LOCAL SAÚDE DO ALENTEJO CENTRAL,EPE',
+    morada: 'HOSPITAL DO ESPÍRITO SANTO DE ÉVORA-FARMÁCIA',
+    localidade: 'ÉVORA',
+    cod_postal: '7000-811',
+    cod_postal_localidade: 'ÉVORA',
     pais: 'PT',
-    nomeentrega: '',
-    entidadeentrega: '4552',
-    moradaentrega: 'COOPROFAR',
-    localidadeentrega: 'GONDOMAR',
-    codpostalentrega: '4420-612',
+    nome_entrega: '',
+    entidade_entrega: '498',
+    morada_entrega: 'HOSPITAL DO ESPÍRITO SANTO DE ÉVORA-FARMÁCIA',
+    localidade_entrega: 'ÉVORA',
+    cod_postal_entrega: '7000-811',
+    observacoes: '',
+    tipo_doc: 'FA',
+    num_doc: '36',
   },
   {
-    data: '24/09/2026',
-    cli_primavera: '482',
-    cliente_ser: 'Maxifar',
-    tipomovimento: 'S',
-    documento: 'SSF 26MAX/173',
-    numlinha: 18,
-    doc_linha: 'SSF 26MAX/173-18',
+    documento_ref: 'SER-SSF 24SEA/4',
+    data: '20/02/2024',
+    cliente_ser: 'Seacross',
+    tipo_movimento: 'S',
+    documento: 'SSF 24SEA/4',
+    num_linha: 2,
+    doc_linha: 'SSF 24SEA/4-2',
     chave1: 'SSF',
-    chave2: '26MAX',
-    valorunitario: '0',
-    valoradicional: '0',
-    valorabater: '9,4',
-    artigo_id: '5868401',
-    artigo_cli: '482-5868401',
-    descricao: 'CRISTALMINA 10 MG/ML 25 ML SOL. P/ PULV. CUT. FRSC.',
-    tipoartigo: '80',
-    armazem: 'MAX01',
-    localizacao: 'MAX01.23A23',
-    lote: 'V713',
-    quantidade: 2,
+    chave2: '24SEA',
+    valor_unitario: '13,85',
+    valor_adicional: '0',
+    valor_abater: '0',
+    descricao: 'Azacitidina Seacross 25 mg/ml 100mg/1 vial',
+    tipo_artigo: '52',
+    armazem: 'SC01',
+    localizacao: 'SC01.22E28',
+    lote: '1012205502',
+    quantidade: 100,
     familia: 'MED',
-    subFamilia: 'SALVAT',
-    datafabrico: '01/01/1980',
-    validade: '01/05/2027',
-    entidade: '4552',
-    totaliva: '503,97',
-    totalmerc: '5927,77',
-    totaloutros: '0',
-    totaldesc: '1410,72',
-    requisicao: 'COOPP3693',
-    numcontribuinte: '513745653',
-    nome: 'FIRSTPHARMA, S.A.',
-    morada: 'RUA DO VALE, 786',
-    localidade: 'FOLGOSA',
-    codpostal: '4425-399',
-    codpostallocalidade: 'FOLGOSA-MAIA',
+    sub_Familia: 'SEACROSS',
+    data_fabrico: '22/11/2023',
+    validade: '30/09/2025',
+    entidade: '5960',
+    total_iva: '83,1',
+    total_merc: '1385',
+    total_outros: '0',
+    totaldesc: '0',
+    requisicao: 'GR 51.1/3',
+    num_contribuinte: '511228848',
+    nome: 'SESARAM- SERVIÇO DE SAÚDE DA R.A.MADEIRA, E.P.E.',
+    morada: 'HOSPITAL DR. NÉLIO MENDONÇA',
+    localidade: 'FUNCHAL',
+    cod_postal: '9004-514',
+    cod_postal_localidade: 'FUNCHAL',
     pais: 'PT',
-    nomeentrega: '',
-    entidadeentrega: '4552',
-    moradaentrega: 'COOPROFAR',
-    localidadeentrega: 'GONDOMAR',
-    codpostalentrega: '4420-612',
+    nome_entrega: '',
+    entidade_entrega: '5960',
+    morada_entrega: 'HOSPITAL DR. NÉLIO MENDONÇA',
+    localidade_entrega: 'FUNCHAL',
+    cod_postal_entrega: '9004-514',
+    observacoes: '',
+    tipo_doc: 'SSF',
+    num_doc: '4',
   },
 ];
 
@@ -599,48 +634,49 @@ export async function generatePlatMovimentosSampleExcel(): Promise<Blob> {
   const worksheet = workbook.addWorksheet('Movimentos ERP');
 
   const columnWidths: Record<string, number> = {
+    documento_ref: 20,
     data: 14,
-    cli_primavera: 14,
     cliente_ser: 16,
-    tipomovimento: 14,
+    tipo_movimento: 14,
     documento: 18,
-    numlinha: 10,
+    num_linha: 10,
     doc_linha: 24,
     chave1: 10,
     chave2: 12,
-    valorunitario: 14,
-    valoradicional: 14,
-    valorabater: 14,
-    artigo_id: 14,
-    artigo_cli: 18,
+    valor_unitario: 14,
+    valor_adicional: 14,
+    valor_abater: 14,
     descricao: 45,
-    tipoartigo: 12,
+    tipo_artigo: 12,
     armazem: 12,
     localizacao: 16,
     lote: 14,
     quantidade: 12,
     familia: 10,
-    subFamilia: 14,
-    datafabrico: 14,
+    sub_Familia: 14,
+    data_fabrico: 14,
     validade: 14,
     entidade: 12,
-    totaliva: 12,
-    totalmerc: 12,
-    totaloutros: 12,
+    total_iva: 12,
+    total_merc: 12,
+    total_outros: 12,
     totaldesc: 12,
     requisicao: 18,
-    numcontribuinte: 16,
+    num_contribuinte: 16,
     nome: 35,
     morada: 35,
     localidade: 20,
-    codpostal: 12,
-    codpostallocalidade: 22,
+    cod_postal: 12,
+    cod_postal_localidade: 22,
     pais: 8,
-    nomeentrega: 25,
-    entidadeentrega: 16,
-    moradaentrega: 35,
-    localidadeentrega: 20,
-    codpostalentrega: 16,
+    nome_entrega: 25,
+    entidade_entrega: 16,
+    morada_entrega: 35,
+    localidade_entrega: 20,
+    cod_postal_entrega: 16,
+    observacoes: 20,
+    tipo_doc: 10,
+    num_doc: 10,
   };
 
   worksheet.columns = PLAT_MOVIMENTOS_ERP_HEADERS.map((h) => ({
@@ -669,7 +705,7 @@ export async function generatePlatMovimentosSampleExcel(): Promise<Blob> {
 }
 
 /**
- * Normaliza e prepara uma linha de movimento ERP para persistência na tabela public.plat_movimentos (42 colunas)
+ * Normaliza e prepara uma linha de movimento ERP para persistência na tabela public.plat_movimentos (43 colunas)
  */
 export function preparePlatMovimentoForDb(
   r: PlatMovimentoRow,
@@ -678,7 +714,7 @@ export function preparePlatMovimentoForDb(
   clientMapById?: Map<string, string>
 ) {
   let resolvedClientId: string | null = null;
-  let inferredSigla = r.cliente_ser || r.sigla || r.subfamilia || r.sub_familia || null;
+  let inferredSigla = r.cliente_ser || r.sigla || r.sub_familia || r.sub_Familia || r.subfamilia || null;
 
   if (!inferredSigla && r.chave2) {
     inferredSigla = r.chave2.replace(/[0-9]/g, '');
@@ -700,7 +736,7 @@ export function preparePlatMovimentoForDb(
     null;
 
   const resolvedNumLinha =
-    r.numlinha != null ? Number(r.numlinha) : r.num_linha != null ? Number(r.num_linha) : null;
+    r.num_linha != null ? Number(r.num_linha) : r.numlinha != null ? Number(r.numlinha) : null;
   const resolvedDoc = r.documento ? String(r.documento).trim() : null;
 
   let resolvedDocLinha = r.doc_linha ? String(r.doc_linha).trim() : '';
@@ -727,71 +763,91 @@ export function preparePlatMovimentoForDb(
 
   const cleanData = r.data ? r.data.split(' ')[0] : null;
   const cleanDataFab =
-    !r.datafabrico || r.datafabrico === '1980-01-01' || r.datafabrico.startsWith('1980-01-01')
+    !r.data_fabrico && !r.datafabrico
       ? null
-      : r.datafabrico.split(' ')[0];
+      : (r.data_fabrico || r.datafabrico === '1980-01-01' || r.datafabrico?.startsWith('1980-01-01'))
+      ? (r.data_fabrico === '1980-01-01' || r.datafabrico === '1980-01-01' ? null : (r.data_fabrico || r.datafabrico)?.split(' ')[0])
+      : null;
   const cleanValidade = r.validade ? r.validade.split(' ')[0] : null;
 
+  const resolvedDocRef =
+    r.documento_ref ||
+    (resolvedClienteSer && resolvedDoc ? `${resolvedClienteSer}-${resolvedDoc}` : resolvedDoc);
+  const resolvedTipoDoc =
+    r.tipo_doc || r.chave1 || (resolvedDoc ? resolvedDoc.split(' ')[0] : null);
+  const resolvedNumDoc =
+    r.num_doc || (resolvedDoc && resolvedDoc.includes('/') ? resolvedDoc.split('/')[1] : null);
+  const resolvedObs = r.observacoes ? String(r.observacoes).trim() : null;
+
   return {
-    doc_linha: resolvedDocLinha,
+    documento_ref: resolvedDocRef ? String(resolvedDocRef).trim() : null,
     data: cleanData,
-    cli_primavera: r.cli_primavera ? String(r.cli_primavera).trim() : null,
     cliente_ser: resolvedClienteSer,
-    tipomovimento: r.tipomovimento || r.tipo_movimento || null,
+    tipo_movimento: r.tipo_movimento || r.tipomovimento || null,
     documento: resolvedDoc,
-    numlinha: resolvedNumLinha,
+    num_linha: resolvedNumLinha,
+    doc_linha: resolvedDocLinha,
     chave1: r.chave1 ? String(r.chave1).trim() : null,
     chave2: r.chave2 ? String(r.chave2).trim() : null,
-    valorunitario: Number(r.valorunitario ?? r.valor_unitario ?? 0),
-    valoradicional: Number(r.valoradicional ?? r.valor_adicional ?? 0),
-    valorabater: Number(r.valorabater ?? r.valor_abater ?? 0),
-    artigo_id: resolvedArtigoId,
-    artigo_cli: resolvedArtigoCli,
+    valor_unitario: Number(r.valor_unitario ?? r.valorunitario ?? 0),
+    valor_adicional: Number(r.valor_adicional ?? r.valoradicional ?? 0),
+    valor_abater: Number(r.valor_abater ?? r.valorabater ?? 0),
     descricao: r.descricao ? String(r.descricao).trim() : null,
-    tipoartigo: r.tipoartigo || r.tipo_artigo ? String(r.tipoartigo || r.tipo_artigo).trim() : null,
+    tipo_artigo: r.tipo_artigo || r.tipoartigo ? String(r.tipo_artigo || r.tipoartigo).trim() : null,
     armazem: r.armazem ? String(r.armazem).trim() : null,
     localizacao: r.localizacao ? String(r.localizacao).trim() : null,
     lote: r.lote ? String(r.lote).trim() : null,
     quantidade: Number(r.quantidade ?? 0),
     familia: r.familia ? String(r.familia).trim() : null,
-    subfamilia: r.subfamilia || r.sub_familia ? String(r.subfamilia || r.sub_familia).trim() : null,
-    datafabrico: cleanDataFab,
+    sub_familia:
+      r.sub_familia || r.sub_Familia || r.subfamilia
+        ? String(r.sub_familia || r.sub_Familia || r.subfamilia).trim()
+        : null,
+    data_fabrico: cleanDataFab,
     validade: cleanValidade,
     entidade: r.entidade ? String(r.entidade).trim() : null,
-    totaliva: Number(r.totaliva ?? r.total_iva ?? 0),
-    totalmerc: Number(r.totalmerc ?? r.total_merc ?? 0),
-    totaloutros: Number(r.totaloutros ?? r.total_outros ?? 0),
+    total_iva: Number(r.total_iva ?? r.totaliva ?? 0),
+    total_merc: Number(r.total_merc ?? r.totalmerc ?? 0),
+    total_outros: Number(r.total_outros ?? r.totaloutros ?? 0),
     totaldesc: Number(r.totaldesc ?? r.total_desc ?? 0),
     requisicao: r.requisicao ? String(r.requisicao).trim() : null,
-    numcontribuinte:
-      r.numcontribuinte || r.num_contribuinte
-        ? String(r.numcontribuinte || r.num_contribuinte).trim()
+    num_contribuinte:
+      r.num_contribuinte || r.numcontribuinte
+        ? String(r.num_contribuinte || r.numcontribuinte).trim()
         : null,
     nome: r.nome ? String(r.nome).trim() : null,
     morada: r.morada ? String(r.morada).trim() : null,
     localidade: r.localidade ? String(r.localidade).trim() : null,
-    codpostal: r.codpostal || r.cod_postal ? String(r.codpostal || r.cod_postal).trim() : null,
-    codpostallocalidade:
-      r.codpostallocalidade || r.cod_postal_localidade
-        ? String(r.codpostallocalidade || r.cod_postal_localidade).trim()
+    cod_postal: r.cod_postal || r.codpostal ? String(r.cod_postal || r.codpostal).trim() : null,
+    cod_postal_localidade:
+      r.cod_postal_localidade || r.codpostallocalidade
+        ? String(r.cod_postal_localidade || r.codpostallocalidade).trim()
         : null,
     pais: r.pais ? String(r.pais).trim() : null,
-    nomeentrega:
-      r.nomeentrega || r.nome_entrega ? String(r.nomeentrega || r.nome_entrega).trim() : null,
-    entidadeentrega:
-      r.entidadeentrega || r.entidade_entrega
-        ? String(r.entidadeentrega || r.entidade_entrega).trim()
+    nome_entrega:
+      r.nome_entrega || r.nomeentrega ? String(r.nome_entrega || r.nomeentrega).trim() : null,
+    entidade_entrega:
+      r.entidade_entrega || r.entidadeentrega
+        ? String(r.entidade_entrega || r.entidadeentrega).trim()
         : null,
-    moradaentrega:
-      r.moradaentrega || r.morada_entrega ? String(r.moradaentrega || r.morada_entrega).trim() : null,
-    localidadeentrega:
-      r.localidadeentrega || r.cod_postal_localidade_entrega || r.localidade_entrega
-        ? String(r.localidadeentrega || r.cod_postal_localidade_entrega || r.localidade_entrega).trim()
+    morada_entrega:
+      r.morada_entrega || r.moradaentrega ? String(r.morada_entrega || r.moradaentrega).trim() : null,
+    localidade_entrega:
+      r.localidade_entrega || r.localidadeentrega || r.cod_postal_localidade_entrega
+        ? String(r.localidade_entrega || r.localidadeentrega || r.cod_postal_localidade_entrega).trim()
         : null,
-    codpostalentrega:
-      r.codpostalentrega || r.cod_postal_entrega
-        ? String(r.codpostalentrega || r.cod_postal_entrega).trim()
+    cod_postal_entrega:
+      r.cod_postal_entrega || r.codpostalentrega
+        ? String(r.cod_postal_entrega || r.codpostalentrega).trim()
         : null,
+    observacoes: resolvedObs,
+    tipo_doc: resolvedTipoDoc ? String(resolvedTipoDoc).trim() : null,
+    num_doc: resolvedNumDoc ? String(resolvedNumDoc).trim() : null,
+
+    // Suporte adicional para tabelas relacionadas
+    cli_primavera: r.cli_primavera ? String(r.cli_primavera).trim() : null,
+    artigo_id: resolvedArtigoId,
+    artigo_cli: resolvedArtigoCli,
   };
 }
 

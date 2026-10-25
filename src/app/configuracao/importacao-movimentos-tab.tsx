@@ -21,6 +21,14 @@ export type MovimentoWithDetails = Movimento & {
   MoradaEntrega?: string | null;
   LocalidadeEntrega?: string | null;
   CodPostalEntrega?: string | null;
+  CodPostalLocalidadeEntrega?: string | null;
+  num_doc?: string | null;
+  artigo_id?: string | null;
+  localidade_entrega?: string | null;
+  nome_entrega?: string | null;
+  entidade_entrega?: string | null;
+  morada_entrega?: string | null;
+  cod_postal_entrega?: string | null;
 };
 
 interface ImportacaoMovimentosTabProps {
@@ -198,6 +206,7 @@ export default function ImportacaoMovimentosTab({
       cliente_nome: string;
       cliente_id?: string;
       tipo_doc: string;
+      num_doc?: string;
       entidade?: string;
       nome?: string;
       num_contribuinte?: string;
@@ -206,6 +215,11 @@ export default function ImportacaoMovimentosTab({
       localidade?: string;
       cod_postal?: string;
       pais?: string;
+      nome_entrega?: string;
+      entidade_entrega?: string;
+      morada_entrega?: string;
+      localidade_entrega?: string;
+      cod_postal_entrega?: string;
       EntidadeEntrega?: string;
       NomeEntrega?: string;
       MoradaEntrega?: string;
@@ -231,6 +245,7 @@ export default function ImportacaoMovimentosTab({
           cliente_nome: m.cliente_nome || m.sigla || '',
           cliente_id: m.cliente_id,
           tipo_doc: m.tipo_doc || (m.documento_ref ? m.documento_ref.split(' ')[0] : '-'),
+          num_doc: m.num_doc || undefined,
           entidade: m.entidade || undefined,
           nome: m.nome || undefined,
           num_contribuinte: m.num_contribuinte || undefined,
@@ -239,11 +254,16 @@ export default function ImportacaoMovimentosTab({
           localidade: m.localidade || undefined,
           cod_postal: m.cod_postal || undefined,
           pais: m.pais || undefined,
-          EntidadeEntrega: (m as any).EntidadeEntrega || undefined,
-          NomeEntrega: (m as any).NomeEntrega || undefined,
-          MoradaEntrega: (m as any).MoradaEntrega || undefined,
-          LocalidadeEntrega: (m as any).LocalidadeEntrega || undefined,
-          CodPostalEntrega: (m as any).CodPostalEntrega || undefined,
+          nome_entrega: m.nome_entrega || (m as any).NomeEntrega || undefined,
+          entidade_entrega: m.entidade_entrega || (m as any).EntidadeEntrega || undefined,
+          morada_entrega: m.morada_entrega || (m as any).MoradaEntrega || undefined,
+          localidade_entrega: m.localidade_entrega || (m as any).LocalidadeEntrega || undefined,
+          cod_postal_entrega: m.cod_postal_entrega || (m as any).CodPostalEntrega || undefined,
+          EntidadeEntrega: m.entidade_entrega || (m as any).EntidadeEntrega || undefined,
+          NomeEntrega: m.nome_entrega || (m as any).NomeEntrega || undefined,
+          MoradaEntrega: m.morada_entrega || (m as any).MoradaEntrega || undefined,
+          LocalidadeEntrega: m.localidade_entrega || (m as any).LocalidadeEntrega || undefined,
+          CodPostalEntrega: m.cod_postal_entrega || (m as any).CodPostalEntrega || undefined,
           total_merc: Number(m.total_merc || 0),
           total_iva: Number(m.total_iva || 0),
           total_desc: Number(m.total_desc || 0),
@@ -720,23 +740,21 @@ export default function ImportacaoMovimentosTab({
                 Limpar plat_movimentos
               </button>
 
-              {/* Limpar Tabela Movimentos & Linhas */}
-              {movimentosList.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmClearMovModal(true)}
-                  disabled={clearingMovLoading}
-                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-xs"
-                  title={
-                    movFilterClient === 'todos'
-                      ? 'Limpar todos os movimentos e linhas registadas'
-                      : `Limpar movimentos de ${selectedClient?.name || 'cliente selecionado'}`
-                  }
-                >
-                  <span className="material-symbols-outlined text-sm">delete_forever</span>
-                  Limpar Movimentos {selectedClient?.sigla ? `(${selectedClient.sigla})` : '(Todos)'}
-                </button>
-              )}
+              {/* Limpar Tabelas movimentos e movimentos_linhas */}
+              <button
+                type="button"
+                onClick={() => setConfirmClearMovModal(true)}
+                disabled={clearingMovLoading}
+                className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+                title={
+                  movFilterClient === 'todos'
+                    ? 'Limpar todos os registos das tabelas movimentos e movimentos_linhas'
+                    : `Limpar movimentos e linhas de ${selectedClient?.name || 'cliente selecionado'}`
+                }
+              >
+                <span className="material-symbols-outlined text-sm">delete_forever</span>
+                Limpar Movimentos & Linhas {selectedClient?.sigla ? `(${selectedClient.sigla})` : '(Todos)'}
+              </button>
             </div>
           </div>
 
@@ -1055,7 +1073,7 @@ export default function ImportacaoMovimentosTab({
                       {docParaModal.documento_ref}
                     </h4>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary">
-                      {docParaModal.tipo_doc}
+                      {docParaModal.tipo_doc} {docParaModal.num_doc ? `Nº ${docParaModal.num_doc}` : ''}
                     </span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-800">
                       {docParaModal.sigla}
@@ -1098,11 +1116,11 @@ export default function ImportacaoMovimentosTab({
                   <span className="material-symbols-outlined text-sm">local_shipping</span>
                   Local de Entrega
                 </p>
-                <p><strong>Entidade Entrega:</strong> {docParaModal.EntidadeEntrega || '-'}</p>
-                <p><strong>Nome Entrega:</strong> {docParaModal.NomeEntrega || '-'}</p>
-                <p><strong>Morada:</strong> {docParaModal.MoradaEntrega || '-'}</p>
-                <p><strong>Localidade:</strong> {docParaModal.LocalidadeEntrega || '-'}</p>
-                <p><strong>Código Postal:</strong> {docParaModal.CodPostalEntrega || '-'}</p>
+                <p><strong>Entidade Entrega:</strong> {docParaModal.entidade_entrega || docParaModal.EntidadeEntrega || '-'}</p>
+                <p><strong>Nome Entrega:</strong> {docParaModal.nome_entrega || docParaModal.NomeEntrega || '-'}</p>
+                <p><strong>Morada:</strong> {docParaModal.morada_entrega || docParaModal.MoradaEntrega || '-'}</p>
+                <p><strong>Localidade:</strong> {docParaModal.localidade_entrega || docParaModal.LocalidadeEntrega || '-'}</p>
+                <p><strong>Código Postal:</strong> {docParaModal.cod_postal_entrega || docParaModal.CodPostalEntrega || '-'}</p>
               </div>
             </div>
 
@@ -1252,26 +1270,26 @@ export default function ImportacaoMovimentosTab({
               </div>
               <div>
                 <h4 className="text-sm font-bold text-on-surface">
-                  Limpar Movimentos {selectedClient?.sigla || selectedClient?.name || '(Todos os Clientes)'}?
+                  Limpar Tabelas movimentos e movimentos_linhas {selectedClient?.sigla ? `(${selectedClient.sigla})` : '(Todos os Clientes)'}?
                 </h4>
-                <p className="text-xs text-on-surface-variant mt-0.5">Eliminação permanente de dados relacionais.</p>
+                <p className="text-xs text-on-surface-variant mt-0.5">Eliminação permanente de cabeçalhos e linhas de movimentos.</p>
               </div>
             </div>
 
             <p className="text-xs text-on-surface leading-relaxed">
               {selectedClient ? (
                 <>
-                  Tem a certeza de que deseja eliminar os movimentos do cliente{' '}
-                  <strong>{selectedClient.name}</strong> (<code className="font-mono text-primary font-bold">{selectedClient.sigla}</code>)?
+                  Tem a certeza de que deseja eliminar os registos do cliente{' '}
+                  <strong>{selectedClient.name}</strong> (<code className="font-mono text-primary font-bold">{selectedClient.sigla}</code>) das tabelas <code>movimentos</code> e <code>movimentos_linhas</code>?
                 </>
               ) : (
                 <>
-                  Tem a certeza de que deseja eliminar <strong>TODOS</strong> os movimentos registados no sistema?
+                  Tem a certeza de que deseja eliminar <strong>TODOS</strong> os registos das tabelas <code>movimentos</code> (cabeçalhos) e <code>movimentos_linhas</code> (linhas de detalhe)?
                 </>
               )}
               <br /><br />
-              <span className="text-on-surface-variant text-[11px] block">
-                Esta ação elimina os registos da tabela <code>movimentos</code> e remove em cascata todas as linhas associadas na tabela <code>movimentos_linhas</code>. O saldo de stock nas views será recalculado.
+              <span className="text-on-surface-variant text-[11px] block bg-rose-50 border border-rose-200 p-2.5 rounded-lg text-rose-800 font-medium">
+                Esta ação elimina os registos da tabela <code>movimentos</code> e todas as linhas associadas na tabela <code>movimentos_linhas</code>. O saldo de stock nas views será recalculado.
               </span>
             </p>
 

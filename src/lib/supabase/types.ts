@@ -248,6 +248,71 @@ export interface Movimento {
   localidade_entrega?: string | null;
   cod_postal_entrega?: string | null;
   cod_postal_localidade_entrega?: string | null;
+  num_doc?: string | null;
+  artigo_id?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MovimentoLinha {
+  doc_linha: string; // PRIMARY KEY
+  documento_ref: string;
+  num_linha?: number | null;
+  data?: string | null;
+  data_movimento?: string | null;
+  cliente_ser?: string | null;
+  cli_primavera?: string | null;
+  sigla?: string | null;
+  documento?: string | null;
+  tipo_doc?: string | null;
+  num_doc?: string | null;
+  chave1?: string | null;
+  chave2?: string | null;
+  valor_unitario?: number | null;
+  valor_adicional?: number | null;
+  valor_abater?: number | null;
+  artigo?: string | null;
+  artigo_id?: string | null;
+  artigo_cli?: string | null;
+  descricao?: string | null;
+  tipo_artigo?: string | null;
+  armazem?: string | null;
+  localizacao?: string | null;
+  posicao?: string | null;
+  lote?: string | null;
+  quantidade: number;
+  familia?: string | null;
+  sub_familia?: string | null;
+  data_fabrico?: string | null;
+  validade?: string | null;
+  tipo_movimento: string;
+  tipo_armazem?: string | null;
+  armazem_loc?: string | null;
+  entidade?: string | null;
+  total_iva?: number | null;
+  total_merc?: number | null;
+  total_outros?: number | null;
+  totaldesc?: number | null;
+  total_desc?: number | null;
+  requisicao?: string | null;
+  num_contribuinte?: string | null;
+  nome?: string | null;
+  morada?: string | null;
+  localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
+  pais?: string | null;
+  nome_entrega?: string | null;
+  entidade_entrega?: string | null;
+  morada_entrega?: string | null;
+  localidade_entrega?: string | null;
+  cod_postal_entrega?: string | null;
+  observacoes?: string | null;
+  observacoes_linha?: string | null;
+  nr_serie?: string | null;
+  ref_ser?: string | null;
+  estado_stock?: string | null;
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -256,77 +321,83 @@ export interface Movimento {
 export type MovimentoSF = Movimento;
 
 export interface PlatMovimento {
-  doc_linha: string; // PRIMARY KEY
+  // 43 Campos do Perfil ERP
+  documento_ref?: string | null;
   data?: string | null;
-  cli_primavera?: string | null;
   cliente_ser?: string | null;
-  tipomovimento?: string | null;
+  tipo_movimento?: string | null;
   documento?: string | null;
-  numlinha?: number | null;
+  num_linha?: number | null;
+  doc_linha: string; // PRIMARY KEY
   chave1?: string | null;
   chave2?: string | null;
-  valorunitario?: number | null;
-  valoradicional?: number | null;
-  valorabater?: number | null;
-  artigo_id?: string | null;
-  artigo_cli?: string | null;
+  valor_unitario?: number | null;
+  valor_adicional?: number | null;
+  valor_abater?: number | null;
   descricao?: string | null;
-  tipoartigo?: string | null;
+  tipo_artigo?: string | null;
   armazem?: string | null;
   localizacao?: string | null;
   lote?: string | null;
   quantidade?: number | null;
   familia?: string | null;
-  subfamilia?: string | null;
-  datafabrico?: string | null;
+  sub_familia?: string | null;
+  sub_Familia?: string | null;
+  data_fabrico?: string | null;
   validade?: string | null;
   entidade?: string | null;
-  totaliva?: number | null;
-  totalmerc?: number | null;
-  totaloutros?: number | null;
+  total_iva?: number | null;
+  total_merc?: number | null;
+  total_outros?: number | null;
   totaldesc?: number | null;
   requisicao?: string | null;
-  numcontribuinte?: string | null;
+  num_contribuinte?: string | null;
   nome?: string | null;
   morada?: string | null;
   localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
+  pais?: string | null;
+  nome_entrega?: string | null;
+  entidade_entrega?: string | null;
+  morada_entrega?: string | null;
+  localidade_entrega?: string | null;
+  cod_postal_entrega?: string | null;
+  observacoes?: string | null;
+  tipo_doc?: string | null;
+  num_doc?: string | null;
+
+  // Campos opcionais / integração / auditoria
+  cli_primavera?: string | null;
+  artigo_id?: string | null;
+  artigo_cli?: string | null;
+  created_at?: string;
+
+  // Aliases de compatibilidade
+  tipomovimento?: string | null;
+  numlinha?: number | null;
+  valorunitario?: number | null;
+  valoradicional?: number | null;
+  valorabater?: number | null;
+  tipoartigo?: string | null;
+  subfamilia?: string | null;
+  datafabrico?: string | null;
+  totaliva?: number | null;
+  totalmerc?: number | null;
+  totaloutros?: number | null;
+  total_desc?: number | null;
+  numcontribuinte?: string | null;
   codpostal?: string | null;
   codpostallocalidade?: string | null;
-  pais?: string | null;
   nomeentrega?: string | null;
   entidadeentrega?: string | null;
   moradaentrega?: string | null;
   localidadeentrega?: string | null;
   codpostalentrega?: string | null;
-  created_at?: string;
-
-  // Campos de compatibilidade / aliases
-  sigla?: string | null;
-  num_linha?: number | null;
-  data_movimento?: string | null;
-  documento_ref?: string | null;
-  tipo_doc?: string | null;
-  artigo?: string | null;
-  tipo_artigo?: string | null;
-  tipo_movimento?: string | null;
-  sub_familia?: string | null;
-  data_fabrico?: string | null;
-  valor_unitario?: number | null;
-  valor_adicional?: number | null;
-  valor_abater?: number | null;
-  total_iva?: number | null;
-  total_merc?: number | null;
-  total_outros?: number | null;
-  total_desc?: number | null;
-  num_contribuinte?: string | null;
-  cod_postal?: string | null;
-  cod_postal_localidade?: string | null;
-  nome_entrega?: string | null;
-  morada_entrega?: string | null;
-  localidade_entrega?: string | null;
-  cod_postal_entrega?: string | null;
   cod_postal_localidade_entrega?: string | null;
-  entidade_entrega?: string | null;
+  sigla?: string | null;
+  data_movimento?: string | null;
+  artigo?: string | null;
 }
 
 export interface StockAtual {

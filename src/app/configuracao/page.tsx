@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
 import { UserProfile, Client, Artigo, Armazem, Tempo } from '@/lib/supabase/types';
-import { MovimentoWithDetails } from './importacao-movimentos-tab';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 30;
@@ -46,13 +45,12 @@ export default async function ConfiguracaoPage() {
     supabase.from('tempos').select('*').order('sigla'),
     supabase
       .from('VW_torrestir_last')
-      .select('*')
+      .select('id, ref_ser, ref_comprovativo, data_estado, hora_estado, ref_trans, cod_estado, cod_incide, data_reg_incide, hora_reg_incide, desc_estado_expedicao, obs_expedicao, created_at')
       .order('created_at', { ascending: false })
       .limit(1000),
   ]);
 
   const trackingList = trackingListRaw || [];
-  const formattedMovimentos: MovimentoWithDetails[] = [];
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -81,7 +79,6 @@ export default async function ConfiguracaoPage() {
         users={(usersList as UserProfile[]) || []}
         clients={(clientsList as Client[]) || []}
         artigos={(artigosList as Artigo[]) || []}
-        initialMovimentos={formattedMovimentos}
         armazens={(armazensList as Armazem[]) || []}
         tempos={(temposList as Tempo[]) || []}
         trackingData={(trackingList as any[]) || []}

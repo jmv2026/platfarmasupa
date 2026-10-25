@@ -21,14 +21,6 @@ interface TrackingData {
 export default function TransporteView({ data }: { data: TrackingData[] }) {
   const [search, setSearch] = useState('');
 
-  // DEBUG
-  if (typeof window !== 'undefined') {
-    console.log('TransporteView rendered with data length:', data?.length);
-    if (search) {
-      console.log('Searching for:', search, 'Found:', data?.filter(item => String(item.ref_ser).toLowerCase().includes(search.toLowerCase().trim())).length);
-    }
-  }
-
   // Como os dados vêm ordenados de forma descendente, o primeiro registo de cada ref_ser é o mais recente
   const uniqueData: TrackingData[] = [];
   const seenRefs = new Set<string>();

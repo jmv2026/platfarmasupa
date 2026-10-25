@@ -279,11 +279,11 @@ export default function ImportacaoErpTab({
     const totalArtigos = new Set(parsedRows.map((r) => r.artigo_cli || r.artigo_id).filter(Boolean)).size;
     const totalLotes = new Set(parsedRows.map((r) => r.lote).filter(Boolean)).size;
     const entradas = parsedRows.filter((r) => {
-      const t = (r.tipomovimento || '').toUpperCase();
+      const t = (r.tipo_movimento || r.tipomovimento || '').toUpperCase();
       return t === 'E' || t === 'ES' || t === 'ET';
     }).length;
     const saidas = parsedRows.filter((r) => {
-      const t = (r.tipomovimento || '').toUpperCase();
+      const t = (r.tipo_movimento || r.tipomovimento || '').toUpperCase();
       return t === 'S' || t === 'SS' || t === 'ST';
     }).length;
 
@@ -583,7 +583,7 @@ export default function ImportacaoErpTab({
                           <td className="py-2 px-3 font-semibold text-on-surface">{row.cli_primavera || '-'}</td>
                           <td className="py-2 px-3 font-semibold text-secondary whitespace-nowrap">{row.cliente_ser || '-'}</td>
                           <td className="py-2 px-3 text-on-surface whitespace-nowrap">{row.documento || '-'}</td>
-                          <td className="py-2 px-3 text-center">{row.numlinha ?? '-'}</td>
+                          <td className="py-2 px-3 text-center">{row.num_linha ?? row.numlinha ?? '-'}</td>
                           <td className="py-2 px-3 font-bold text-emerald-700 whitespace-nowrap">{row.artigo_cli || '-'}</td>
                           <td className="py-2 px-3 font-semibold text-on-surface">{row.artigo_id || '-'}</td>
                           <td className="py-2 px-3 font-sans truncate max-w-[180px]" title={row.descricao || ''}>
@@ -595,20 +595,20 @@ export default function ImportacaoErpTab({
                           <td className="py-2 px-3 text-center">
                             <span
                               className={`px-1.5 py-0.5 rounded-md font-bold text-[10px] ${
-                                (row.tipomovimento || '').toUpperCase() === 'E' || (row.tipomovimento || '').toUpperCase() === 'ES'
+                                (row.tipo_movimento || row.tipomovimento || '').toUpperCase() === 'E' || (row.tipo_movimento || row.tipomovimento || '').toUpperCase() === 'ES'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : 'bg-amber-100 text-amber-800'
                               }`}
                             >
-                              {row.tipomovimento || '-'}
+                              {row.tipo_movimento || row.tipomovimento || '-'}
                             </span>
                           </td>
                           <td className="py-2 px-3 text-right font-bold text-on-surface">
                             {row.quantidade?.toLocaleString() || 0}
                           </td>
                           <td className="py-2 px-3 text-on-surface-variant">{row.entidade || '-'}</td>
-                          <td className="py-2 px-3 font-sans truncate max-w-[150px]" title={`${row.nomeentrega || ''} ${row.moradaentrega || ''}`}>
-                            {row.nomeentrega || row.localidadeentrega || row.localidade || '-'}
+                          <td className="py-2 px-3 font-sans truncate max-w-[150px]" title={`${row.nome_entrega || row.nomeentrega || ''} ${row.morada_entrega || row.moradaentrega || ''}`}>
+                            {row.nome_entrega || row.nomeentrega || row.localidade_entrega || row.localidadeentrega || row.localidade || '-'}
                           </td>
                         </tr>
                       ))}
@@ -617,7 +617,7 @@ export default function ImportacaoErpTab({
                 </div>
                 <div className="bg-surface-container/20 px-3 py-2 text-[11px] text-on-surface-variant border-t border-outline-variant/20 flex justify-between items-center">
                   <span>A mostrar {filteredPreviewRows.length} de {parsedRows.length} linhas</span>
-                  <span>Perfil Padrão ERP: 42 colunas delimitadas por ponto e vírgula (;) | PK: doc_linha</span>
+                  <span>Perfil Padrão ERP: 43 colunas delimitadas por ponto e vírgula (;) | PK: doc_linha</span>
                 </div>
               </div>
             </div>
@@ -630,31 +630,31 @@ export default function ImportacaoErpTab({
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs font-bold text-on-surface uppercase tracking-wider">
             <span className="material-symbols-outlined text-indigo-600 text-base">tune</span>
-            Campos Mapeados na Tabela plat_movimentos (42 Campos - Perfil ERP)
+            Campos Mapeados na Tabela plat_movimentos (43 Campos - Perfil ERP)
           </div>
           <p className="text-xs text-on-surface-variant">
-            A tabela e os analisadores (.csv, .txt, .xlsx, .xls) acolhem integralmente a estrutura de 42 colunas com Primary Key em <code>doc_linha</code>:
+            A tabela e os analisadores (.csv, .txt, .xlsx, .xls) acolhem integralmente a estrutura de 43 colunas com Primary Key em <code>doc_linha</code>:
           </p>
           <div className="text-[11px] font-mono bg-surface-container/40 rounded-xl p-3.5 text-on-surface space-y-1.5 divide-y divide-outline-variant/15">
             <div className="pb-1">
-              <span className="text-indigo-600 font-bold">1. Documento & Registo (9):</span>{' '}
-              <span className="text-on-surface-variant">data, cli_primavera, cliente_ser, tipomovimento, documento, numlinha, doc_linha (PK), chave1, chave2</span>
+              <span className="text-indigo-600 font-bold">1. Documento & Registo (12):</span>{' '}
+              <span className="text-on-surface-variant">documento_ref, data, cliente_ser, tipo_movimento, documento, num_linha, doc_linha (PK), chave1, chave2, tipo_doc, num_doc, observacoes</span>
             </div>
             <div className="py-1">
-              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (12):</span>{' '}
-              <span className="text-on-surface-variant">artigo_id, artigo_cli, descricao, tipoartigo, armazem, localizacao, lote, quantidade, familia, subFamilia, datafabrico, validade</span>
+              <span className="text-indigo-600 font-bold">2. Artigo & Rastreabilidade (10):</span>{' '}
+              <span className="text-on-surface-variant">descricao, tipo_artigo, armazem, localizacao, lote, quantidade, familia, sub_Familia, data_fabrico, validade</span>
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">3. Valores Comerciais & Totais (7):</span>{' '}
-              <span className="text-on-surface-variant">valorunitario, valoradicional, valorabater, totaliva, totalmerc, totaloutros, totaldesc</span>
+              <span className="text-on-surface-variant">valor_unitario, valor_adicional, valor_abater, total_iva, total_merc, total_outros, totaldesc</span>
             </div>
             <div className="py-1">
               <span className="text-indigo-600 font-bold">4. Entidade & Faturação (9):</span>{' '}
-              <span className="text-on-surface-variant">entidade, requisicao, numcontribuinte, nome, morada, localidade, codpostal, codpostallocalidade, pais</span>
+              <span className="text-on-surface-variant">entidade, requisicao, num_contribuinte, nome, morada, localidade, cod_postal, cod_postal_localidade, pais</span>
             </div>
             <div className="pt-1">
               <span className="text-indigo-600 font-bold">5. Destino de Entrega (5):</span>{' '}
-              <span className="text-on-surface-variant">nomeentrega, entidadeentrega, moradaentrega, localidadeentrega, codpostalentrega</span>
+              <span className="text-on-surface-variant">nome_entrega, entidade_entrega, morada_entrega, localidade_entrega, cod_postal_entrega</span>
             </div>
           </div>
         </div>

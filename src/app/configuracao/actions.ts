@@ -628,7 +628,7 @@ export async function enviarEmailTesteConfigAction(destinatarioCustom?: string) 
   return result;
 }
 
-// 8. AÇÃO: Limpar Registos das tabelas movimentos e movimentos_linhas (Acesso restrito a Admin)
+// 8. AÇÃO: Limpar Registos das tabelas movimentos e movimentos_linhas
 export async function limparMovimentosAction(clienteId?: string) {
   const supabase = await createClient();
   const {
@@ -636,7 +636,7 @@ export async function limparMovimentosAction(clienteId?: string) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador.' };
+    return { success: false, error: 'Sessão expirada. Inicie sessão para continuar.' };
   }
 
   const { data: profile } = await supabase
@@ -645,27 +645,65 @@ export async function limparMovimentosAction(clienteId?: string) {
     .eq('id', user.id)
     .single();
 
-  const { isAdmin } = checkUserRole(user, profile);
-  if (!isAdmin) {
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
     return {
       success: false,
-      error: 'Acesso negado: Apenas administradores podem limpar a tabela de movimentos.',
+      error: 'Acesso negado: Apenas administradores e gestores podem limpar as tabelas de movimentos.',
     };
   }
 
   try {
-    let query = supabase.from('movimentos').delete({ count: 'exact' });
+    let totalCount = 0;
+
     if (clienteId && clienteId !== 'todos') {
-      query = query.eq('cliente_id', clienteId);
+      const { data: clientObj } = await supabase
+        .from('clientes')
+        .select('sigla')
+        .eq('id', clienteId)
+        .single();
+      
+      const sigla = clientObj?.sigla;
+
+      const { error: deleteMovErr, count } = await supabase
+        .from('movimentos')
+        .delete({ count: 'exact' })
+        .eq('cliente_id', clienteId);
+
+      if (deleteMovErr) {
+        console.error('Erro ao limpar movimentos por cliente:', deleteMovErr);
+        return { success: false, error: `Erro ao limpar movimentos: ${deleteMovErr.message}` };
+      }
+      totalCount = count ?? 0;
+
+      // Limpar também eventuais linhas em movimentos_linhas associadas à sigla do cliente
+      if (sigla) {
+        await supabase
+          .from('movimentos_linhas')
+          .delete()
+          .or(`sigla.eq.${sigla},cliente_ser.eq.${sigla}`);
+      }
     } else {
-      query = query.neq('documento_ref', '');
-    }
+      // Limpeza de ambas as tabelas (movimentos_linhas e movimentos)
+      const { error: deleteLinhasErr } = await supabase
+        .from('movimentos_linhas')
+        .delete()
+        .neq('doc_linha', '');
 
-    const { error: deleteErr, count } = await query;
+      if (deleteLinhasErr) {
+        console.error('Erro ao limpar movimentos_linhas:', deleteLinhasErr);
+      }
 
-    if (deleteErr) {
-      console.error('Erro ao limpar movimentos:', deleteErr);
-      return { success: false, error: `Erro ao limpar movimentos: ${deleteErr.message}` };
+      const { error: deleteMovErr, count } = await supabase
+        .from('movimentos')
+        .delete({ count: 'exact' })
+        .neq('documento_ref', '');
+
+      if (deleteMovErr) {
+        console.error('Erro ao limpar movimentos:', deleteMovErr);
+        return { success: false, error: `Erro ao limpar movimentos: ${deleteMovErr.message}` };
+      }
+      totalCount = count ?? 0;
     }
 
     revalidatePath('/configuracao');
@@ -673,7 +711,7 @@ export async function limparMovimentosAction(clienteId?: string) {
     revalidatePath('/dashboard');
     revalidatePath('/pedidos');
     revalidatePath('/historico-pedidos');
-    return { success: true, count: count ?? 0 };
+    return { success: true, count: totalCount };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro inesperado ao limpar movimentos';
     return { success: false, error: msg };
@@ -869,7 +907,7 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
     // Buscar artigos distintos da plat_movimentos
     const { data: movimentos, error: movErr } = await supabase
       .from('plat_movimentos')
-      .select('artigo_id, artigo_cli, descricao, tipoartigo, familia, subfamilia, cli_primavera')
+      .select('artigo_id, artigo_cli, descricao, tipo_artigo, familia, sub_familia, cli_primavera')
       .not('artigo_id', 'is', null);
 
     if (movErr || !movimentos) {
@@ -878,7 +916,7 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
 
     // Remover duplicados por artigo_cli ou artigo_id
     const artigosMap = new Map<string, any>();
-    movimentos.forEach((m) => {
+    movimentos.forEach((m: any) => {
       const artId = (m.artigo_id || '').trim().toUpperCase();
       if (!artId) return;
 
@@ -896,8 +934,8 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
       return { success: false, error: 'Nenhum artigo encontrado em plat_movimentos.' };
     }
 
-    const batch = uniqueArtigos.map((r) => {
-      const tipoArt = (r.tipoartigo || '').trim().toUpperCase();
+    const batch = uniqueArtigos.map((r: any) => {
+      const tipoArt = (r.tipo_artigo || r.tipoartigo || '').trim().toUpperCase();
       return {
         artigo_id: r.artigo_id,
         artigo_cli: r.artigo_cli,
@@ -905,7 +943,7 @@ export async function criarArtigosAPartirPlatMovimentosAction(clientId: string) 
         tipo_artigo: ['MH', 'MV', 'DM', 'DC', 'SC', '80', '84'].includes(tipoArt) ? tipoArt : 'MH',
         tipo_armazenamento: 'TA',
         familia: r.familia?.trim() || null,
-        subfamilia: r.subfamilia?.trim() || null,
+        subfamilia: (r.sub_familia || r.subfamilia || '').trim() || null,
         cli_primavera: r.cli_primavera?.trim() || clientCliPrimavera || null,
         ativo: true
       };

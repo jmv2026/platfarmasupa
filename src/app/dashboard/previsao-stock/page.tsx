@@ -31,25 +31,37 @@ export default async function PrevisaoStockPage() {
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_cli, descricao, validade, stock, cliente_id, tipo_artigo');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
-  // Função auxiliar para paginação transparente (PostgREST tem limite padrão de 1000 registos por pedido)
-  async function fetchAllRows<T>(
-    fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: any }>,
+  // Função auxiliar otimizada para paginação paralela rápida
+  async function fetchAllRowsFast<T>(
+    fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
     pageSize = 1000
   ): Promise<T[]> {
-    const allRows: T[] = [];
-    let from = 0;
+    const firstPage = await fetchPage(0, pageSize - 1, 'exact');
+    if (firstPage.error || !firstPage.data) {
+      if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
+      return [];
+    }
 
-    while (true) {
-      const { data, error } = await fetchPage(from, from + pageSize - 1);
-      if (error) {
-        console.error('Erro ao buscar dados paginados:', error);
-        break;
+    const allRows: T[] = [...firstPage.data];
+    const total = firstPage.count ?? allRows.length;
+
+    if (total <= pageSize || firstPage.data.length < pageSize) {
+      return allRows;
+    }
+
+    const numRemainingPages = Math.ceil((total - pageSize) / pageSize);
+    const remainingPromises = Array.from({ length: numRemainingPages }, (_, i) => {
+      const pageIndex = i + 1;
+      const from = pageIndex * pageSize;
+      const to = from + pageSize - 1;
+      return fetchPage(from, to);
+    });
+
+    const remainingResults = await Promise.all(remainingPromises);
+    for (const res of remainingResults) {
+      if (res.data) {
+        allRows.push(...res.data);
       }
-      if (!data || data.length === 0) break;
-
-      allRows.push(...data);
-      if (data.length < pageSize) break;
-      from += pageSize;
     }
 
     return allRows;
@@ -57,10 +69,10 @@ export default async function PrevisaoStockPage() {
 
   // Fonte exclusiva para pedidos e consumos no gráfico de previsão: view vw_pedidos
   const fetchPedidos = () =>
-    fetchAllRows<any>((from, to) => {
+    fetchAllRowsFast<any>((from, to, countMode) => {
       let q = supabase
         .from('vw_pedidos')
-        .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc, pedido_linhas')
+        .select('id, documento_ref, cliente_id, data_pedido, created_at, total_linhas, total_quantidade, sigla, nome, entidade, tipo_doc, pedido_linhas', countMode ? { count: countMode } : undefined)
         .range(from, to);
       if (!isManagerOrAdmin && userClientId) {
         q = q.eq('cliente_id', userClientId);

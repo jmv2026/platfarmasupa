@@ -10,7 +10,6 @@ import {
 } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
-import UTIF from 'utif';
 
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
@@ -116,7 +115,8 @@ export default function HistoricoPedidosView({
       if (!response.ok) throw new Error('Falha ao descarregar a imagem');
       const buffer = await response.arrayBuffer();
 
-      // Processar com UTIF
+      // Processar com UTIF (import dinâmico sob demanda)
+      const UTIF = (await import('utif')).default;
       const ifds = UTIF.decode(buffer);
       UTIF.decodeImage(buffer, ifds[0]);
       const rgba = UTIF.toRGBA8(ifds[0]);
