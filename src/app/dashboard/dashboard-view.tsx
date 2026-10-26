@@ -325,134 +325,134 @@ export default function DashboardView({
         </div>
       )}
 
-      {/* KPIs Grid (6 Indicadores com espaço livre amplo, cantos refinados e contraste WCAG AAA) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-stretch">
+      {/* KPIs Grid (6 Indicadores superiores compactos a 2/3 da altura com elegância e alto contraste) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5 items-stretch">
         {/* 1. Artigos em Risco (Medicamentos Uso Humano) */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                 {t.dashboard.kpiRiskItems}
               </span>
-              <span className="text-[11px] font-semibold text-amber-700 leading-tight mt-0.5">
+              <span className="text-[10px] font-semibold text-amber-700 leading-tight mt-0.5">
                 {t.dashboard.kpiHumanMeds}
               </span>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">warning</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">warning</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-amber-600 leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-amber-600 leading-none">
               {totalArtigosEmRisco}
             </span>
-            <span className="text-[11px] text-amber-800 font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
+            <span className="text-[10px] text-amber-800 font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
               <span>{t.dashboard.kpiRiskPeriod}</span>
             </span>
           </div>
         </div>
 
         {/* 2. Artigos Bloqueados */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
               {t.dashboard.kpiBlockedItems}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-200/60 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">block</span>
+            <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200/60 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">block</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-rose-600 leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-rose-600 leading-none">
               {totalArtigosBloqueados}
             </span>
-            <span className="text-[11px] text-rose-800 font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">error</span>
+            <span className="text-[10px] text-rose-800 font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">error</span>
               <span>{t.dashboard.kpiBlockedPeriod}</span>
             </span>
           </div>
         </div>
 
         {/* 3. Pedidos do Mês em Curso */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
               {t.dashboard.kpiOrdersMonth}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">calendar_month</span>
+            <div className="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 border border-teal-200/60 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">calendar_month</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-teal-800 leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-teal-800 leading-none">
               {pedidosMesCount}
             </span>
-            <span className="text-[11px] text-teal-800 font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">today</span>
+            <span className="text-[10px] text-teal-800 font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">today</span>
               <span>{currentMonthName}</span>
             </span>
           </div>
         </div>
 
         {/* 4. Pedidos do Ano Corrente */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
               {t.dashboard.kpiOrdersYear}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200/60 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">date_range</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/60 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">date_range</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-indigo-800 leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-indigo-800 leading-none">
               {pedidosAnoCount}
             </span>
-            <span className="text-[11px] text-indigo-800 font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">event</span>
+            <span className="text-[10px] text-indigo-800 font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">event</span>
               <span>{currentYear}</span>
             </span>
           </div>
         </div>
 
         {/* 5. Total Histórico de Pedidos */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
               {t.dashboard.kpiTotalOrders}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">receipt_long</span>
+            <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">receipt_long</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-slate-900 leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-slate-900 leading-none">
               {totalPedidosCount}
             </span>
-            <span className="text-[11px] text-slate-600 font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">history</span>
+            <span className="text-[10px] text-slate-600 font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">history</span>
               <span>{t.common.total}</span>
             </span>
           </div>
         </div>
 
         {/* 6. Artigos com Stock */}
-        <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+        <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+            <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
               {t.dashboard.kpiActiveArticles}
             </span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-sermail-green border border-emerald-200/60 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-lg">medication</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-sermail-green border border-emerald-200/60 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-base">medication</span>
             </div>
           </div>
-          <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-headline text-sermail-green-dark leading-none">
+          <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+            <span className="text-xl sm:text-2xl font-extrabold font-headline text-sermail-green-dark leading-none">
               {totalArtigosCount}
             </span>
-            <span className="text-[11px] text-sermail-green font-semibold flex items-center gap-1 leading-tight">
-              <span className="material-symbols-outlined text-xs shrink-0">inventory</span>
+            <span className="text-[10px] text-sermail-green font-semibold flex items-center gap-0.5 leading-tight">
+              <span className="material-symbols-outlined text-[11px] shrink-0">inventory</span>
               <span>{t.common.warehouse}</span>
             </span>
           </div>
