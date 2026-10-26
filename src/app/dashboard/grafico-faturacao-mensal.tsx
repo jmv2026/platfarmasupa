@@ -640,17 +640,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#84cc16" stopOpacity="0.45" />
-                <stop offset="40%" stopColor="#a3e635" stopOpacity="0.25" />
-                <stop offset="75%" stopColor="#6ee7b7" stopOpacity="0.12" />
-                <stop offset="100%" stopColor="#a7f3d0" stopOpacity="0.01" />
-              </linearGradient>
-
-              <linearGradient id="strokeGradientLima" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#65a30d" />
-                <stop offset="35%" stopColor="#84cc16" />
-                <stop offset="70%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#059669" />
+                <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
               </linearGradient>
 
               {/* Gradiente para a Coluna 1: Faturação Líquida */}
@@ -839,46 +830,31 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 <path
                   d={linePath}
                   fill="none"
-                  stroke="url(#strokeGradientLima)"
-                  strokeWidth="3.5"
+                  stroke="#059669"
+                  strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  filter="url(#glowLima)"
                   className="transition-all duration-300 pointer-events-none"
                 />
 
-                {/* Pontos de Dados Interativos */}
+                {/* Pontos de Dados Interativos com cor única */}
                 {points.map((p, i) => {
                   const isHovered = hoveredIndex === i;
-                  const isPeak = estatisticas.pico?.key === p.data.key && p.valorGrafico > 0;
 
                   return (
                     <g key={`point-${i}`}>
                       <circle
                         cx={p.x}
                         cy={p.y}
-                        r={isHovered ? 7 : isPeak ? 5.5 : 4}
-                        fill={isHovered ? '#bef264' : isPeak ? '#a3e635' : '#d9f99d'}
-                        stroke={isHovered ? '#14532d' : isPeak ? '#4d7c0f' : '#059669'}
-                        strokeWidth={isHovered ? '3' : '2'}
+                        r={isHovered ? 6 : 4}
+                        fill="#10b981"
+                        stroke="#059669"
+                        strokeWidth={isHovered ? '2.5' : '1.5'}
                         className="transition-all duration-150 cursor-pointer"
                         onMouseEnter={() => setHoveredIndex(i)}
                         onMouseLeave={() => setHoveredIndex(null)}
                         onClick={() => setSelectedMonthIndex((prev) => (prev === i ? null : i))}
                       />
-
-                      {isHovered && (
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={13}
-                          fill="none"
-                          stroke="#84cc16"
-                          strokeWidth="2"
-                          strokeOpacity="0.5"
-                          className="animate-ping pointer-events-none"
-                        />
-                      )}
                     </g>
                   );
                 })}

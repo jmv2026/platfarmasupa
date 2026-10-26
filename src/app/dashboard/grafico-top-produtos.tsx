@@ -12,7 +12,7 @@ interface GraficoTopProdutosProps {
 
 type PeriodoFiltro = 'mes-atual' | '3m' | '6m' | '12m' | 'ano-atual' | 'todos';
 type TipoVisualizacao = 'barras' | 'area' | 'combinado';
-type TopLimit = 'top5' | 'top10' | 'todos';
+type TopLimit = 'top5' | 'top10' | 'top25';
 
 interface ProdutoRanking {
   rank: number;
@@ -132,14 +132,14 @@ export default function GraficoTopProdutos({
       }
     });
 
-    // Ordenar por maior quantidade e selecionar de acordo com o filtro (Top 5, Top 10 ou Todos)
+    // Ordenar por maior quantidade e selecionar de acordo com o filtro (Top 5, Top 10 ou Top 25)
     const ordenados = Object.values(agrupamento).sort((a, b) => b.quantidade - a.quantidade);
     const selecionadosRaw =
       topLimit === 'top5'
         ? ordenados.slice(0, 5)
         : topLimit === 'top10'
         ? ordenados.slice(0, 10)
-        : ordenados;
+        : ordenados.slice(0, 25);
 
     const totalSelecionados = selecionadosRaw.reduce((acc, curr) => acc + curr.quantidade, 0);
 
@@ -172,16 +172,16 @@ export default function GraficoTopProdutos({
     };
   }, [saidas, periodo, topLimit]);
 
-  // Dimensões do SVG do gráfico otimizadas: largura dinâmica se houver muitos produtos no modo 'todos'
+  // Dimensões do SVG do gráfico otimizadas: largura dinâmica se houver muitos produtos no modo 'top25'
   const svgWidth = useMemo(() => {
     const count = topProdutos.length;
     if (count <= 10) return 850;
-    // No modo 'todos', atribui ~70px por artigo para permitir scroll horizontal limpo
+    // No modo 'top25', atribui ~70px por artigo para permitir scroll horizontal limpo
     return Math.max(850, count * 70);
   }, [topProdutos.length]);
 
   const svgHeight = 280;
-  const padding = { top: 25, right: 30, bottom: 42, left: 55 };
+  const padding = { top: 25, right: 30, bottom: 42, left: 70 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
@@ -204,16 +204,27 @@ export default function GraficoTopProdutos({
   // Linhas de grelha Y
   const yTicks = [0, yMax * 0.25, yMax * 0.5, yMax * 0.75, yMax];
 
-  // Coordenadas dos pontos no gráfico
+  // Largura de cada barra
+  const barWidth = useMemo(() => {
+    const n = topProdutos.length;
+    if (n === 0) return 24;
+    const available = chartWidth / n;
+    return Math.min(Math.max(available * 0.52, 14), 38);
+  }, [topProdutos.length, chartWidth]);
+
+  // Coordenadas dos pontos no gráfico com margem de afastamento para a 1ª coluna não encostar na escala Y
   const points = useMemo(() => {
     const num = topProdutos.length;
     if (num === 0) return [];
+
+    const xOffset = Math.max(barWidth * 0.9, 32);
+    const availableWidth = Math.max(chartWidth - xOffset * 2, 0);
 
     return topProdutos.map((p, index) => {
       const x =
         num === 1
           ? padding.left + chartWidth / 2
-          : padding.left + (index / (num - 1)) * chartWidth;
+          : padding.left + xOffset + (index / (num - 1)) * availableWidth;
       const y = padding.top + chartHeight - (p.quantidade / yMax) * chartHeight;
 
       return {
@@ -223,7 +234,7 @@ export default function GraficoTopProdutos({
         index,
       };
     });
-  }, [topProdutos, chartWidth, chartHeight, padding, yMax]);
+  }, [topProdutos, chartWidth, chartHeight, padding, yMax, barWidth]);
 
   // Caminhos Bézier Spline para Gráfico de Top Produtos
   const { linePath, areaPath } = useMemo(() => {
@@ -255,14 +266,6 @@ export default function GraficoTopProdutos({
     return { linePath: d, areaPath: area };
   }, [points, chartHeight, padding]);
 
-  // Largura de cada barra
-  const barWidth = useMemo(() => {
-    const n = topProdutos.length;
-    if (n === 0) return 24;
-    const available = chartWidth / n;
-    return Math.min(Math.max(available * 0.52, 14), 38);
-  }, [topProdutos.length, chartWidth]);
-
   const activeItem = hoveredIndex !== null ? topProdutos[hoveredIndex] : null;
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
 
@@ -283,7 +286,7 @@ export default function GraficoTopProdutos({
                   ? 'Top 5 Artigos Mais Pedidos'
                   : topLimit === 'top10'
                   ? 'Top 10 Artigos Mais Pedidos'
-                  : 'Todos os Artigos Expedidos'}
+                  : 'Top 25 Artigos Mais Pedidos'}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -292,23 +295,23 @@ export default function GraficoTopProdutos({
               )}
             </div>
             <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              {topLimit === 'todos'
-                ? 'Lista integral de artigos expedidos e respetivas quantidades'
-                : topLimit === 'top5'
+              {topLimit === 'top5'
                 ? 'Os 5 artigos líderes com maior volume de saídas'
-                : 'Os 10 artigos com maior quantidade expedida'}
+                : topLimit === 'top10'
+                ? 'Os 10 artigos com maior quantidade expedida'
+                : 'Os 25 artigos com maior quantidade expedida'}
             </p>
           </div>
         </div>
 
-        {/* Seletor de Escopo CENTRALIZADO E EVIDENCIADO: Top 5 / Top 10 / Todos */}
+        {/* Seletor de Escopo CENTRALIZADO E EVIDENCIADO: Top 5 / Top 10 / Top 25 */}
         <div className="flex justify-center items-center my-1.5 2xl:my-0 2xl:w-1/3">
           <div className="inline-flex items-center p-1.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-lime-50/70 to-emerald-50 border-2 border-emerald-400/90 shadow-sm ring-2 ring-emerald-500/15 gap-1">
             {(
               [
                 { id: 'top5', label: 'Top 5' },
                 { id: 'top10', label: 'Top 10' },
-                { id: 'todos', label: language === 'pt' ? 'Todos' : language === 'es' ? 'Todos' : 'All' },
+                { id: 'top25', label: 'Top 25' },
               ] as const
             ).map((opt) => (
               <button
@@ -409,7 +412,7 @@ export default function GraficoTopProdutos({
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                {topLimit === 'top5' ? 'Total Unidades Top 5' : topLimit === 'top10' ? t.dashboard.top10TotalUnits : 'Total Unidades Expedidas'}
+                {topLimit === 'top5' ? 'Total Unidades Top 5' : topLimit === 'top10' ? t.dashboard.top10TotalUnits : 'Total Unidades Top 25'}
               </span>
               <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
             </div>
@@ -456,7 +459,7 @@ export default function GraficoTopProdutos({
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                {topLimit === 'top5' ? 'Média por Artigo Top 5' : topLimit === 'top10' ? t.dashboard.top10AveragePerItem : 'Média por Artigo'}
+                {topLimit === 'top5' ? 'Média por Artigo Top 5' : topLimit === 'top10' ? t.dashboard.top10AveragePerItem : 'Média por Artigo Top 25'}
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
             </div>
@@ -468,7 +471,7 @@ export default function GraficoTopProdutos({
                 <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
               </div>
               <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-                {topLimit === 'top5' ? 'Top 5' : topLimit === 'top10' ? 'Top 10' : 'Todos'}
+                {topLimit === 'top5' ? 'Top 5' : topLimit === 'top10' ? 'Top 10' : 'Top 25'}
               </span>
             </div>
           </div>
@@ -477,7 +480,7 @@ export default function GraficoTopProdutos({
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                {topLimit === 'top5' ? 'Quota Top 5 no Total' : topLimit === 'top10' ? t.dashboard.top10ShareOfTotal : 'Representatividade'}
+                {topLimit === 'top5' ? 'Quota Top 5 no Total' : topLimit === 'top10' ? t.dashboard.top10ShareOfTotal : 'Quota Top 25 no Total'}
               </span>
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
                 {estatisticas.concentracaoGeral}%
@@ -555,7 +558,7 @@ export default function GraficoTopProdutos({
                       strokeDasharray={idx === 0 ? 'none' : '3 3'}
                     />
                     <text
-                      x={padding.left - 8}
+                      x={padding.left - 10}
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="10"
@@ -597,11 +600,11 @@ export default function GraficoTopProdutos({
                           height={bHeight}
                           rx={Math.min(barWidth / 2, 7)}
                           ry={Math.min(barWidth / 2, 7)}
-                          fill={isHovered ? 'url(#barTopProdutosHover)' : 'url(#barTopProdutos)'}
-                          stroke={isHovered ? '#15803d' : '#86efac'}
-                          strokeWidth={isHovered ? '2' : '1'}
-                          opacity={tipoGrafico === 'combinado' ? 0.75 : 0.95}
-                          className="transition-all duration-200 cursor-pointer hover:opacity-100"
+                          fill="#10b981"
+                          stroke="#059669"
+                          strokeWidth="1"
+                          opacity={tipoGrafico === 'combinado' ? 0.8 : isHovered ? 1 : 0.92}
+                          className="transition-all duration-150 cursor-pointer"
                           onMouseEnter={() => setHoveredIndex(i)}
                           onMouseLeave={() => setHoveredIndex(null)}
                           onClick={() => onSelectProdutoPrevisao?.(p.data.codigo)}
@@ -657,27 +660,14 @@ export default function GraficoTopProdutos({
                         <circle
                           cx={p.x}
                           cy={p.y}
-                          r={isHovered ? 7 : isFirst ? 5.5 : 4}
-                          fill={isHovered ? '#bef264' : isFirst ? '#a3e635' : '#d9f99d'}
-                          stroke={isHovered ? '#14532d' : isFirst ? '#4d7c0f' : '#059669'}
-                          strokeWidth={isHovered ? '3' : '2'}
+                          r={isHovered ? 6 : isFirst ? 5.5 : 4}
+                          fill={isHovered ? '#10b981' : isFirst ? '#a3e635' : '#d9f99d'}
+                          stroke={isHovered ? '#059669' : isFirst ? '#4d7c0f' : '#059669'}
+                          strokeWidth={isHovered ? '2.5' : '2'}
                           className="transition-all duration-150"
                           onMouseEnter={() => setHoveredIndex(i)}
                           onMouseLeave={() => setHoveredIndex(null)}
                         />
-
-                        {isHovered && (
-                          <circle
-                            cx={p.x}
-                            cy={p.y}
-                            r="13"
-                            fill="none"
-                            stroke="#84cc16"
-                            strokeWidth="2"
-                            strokeOpacity="0.5"
-                            className="animate-ping pointer-events-none"
-                          />
-                        )}
                       </g>
                     );
                   })}

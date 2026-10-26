@@ -149,7 +149,55 @@ export default function GraficoPrevisaoStock({
     const dataInicioRunRate = new Date(currentYear, currentMonth - (mesesRecuo - 1), 1);
     const nrMesesBase = mesesRecuo;
 
-    // 2. Agrupamento de pedidos por artigo
+    // 2. Mapeamento de stock por artigo (priorizando artigo_id sobre artigo_cli)
+    const stockPorArtigo: Record<
+      string,
+      { stock: number; validadeMaisProxima: string | null; descricao?: string; itens: DashboardStockItem[] }
+    > = {};
+
+    const cliToIdMap = new Map<string, string>();
+
+    stockAtual.forEach((item) => {
+      // Priorizar artigo_id sobre artigo_cli
+      const artId = (item.artigo_id || item.artigo_cli || 'N/A').trim();
+      const desc = item.descricao?.trim();
+
+      if (item.artigo_id && item.artigo_cli) {
+        cliToIdMap.set(item.artigo_cli.trim().toLowerCase(), item.artigo_id.trim());
+      }
+
+      if (!stockPorArtigo[artId]) {
+        stockPorArtigo[artId] = {
+          stock: 0,
+          validadeMaisProxima: item.validade || null,
+          descricao: desc || undefined,
+          itens: [],
+        };
+      } else if (desc && (!stockPorArtigo[artId].descricao || desc.length > (stockPorArtigo[artId].descricao?.length || 0))) {
+        stockPorArtigo[artId].descricao = desc;
+      }
+
+      // Se item.artigo_cli for diferente de artId, mapear também como alias de pesquisa
+      if (item.artigo_cli && item.artigo_cli.trim() !== artId) {
+        const idCli = item.artigo_cli.trim();
+        if (!stockPorArtigo[idCli]) {
+          stockPorArtigo[idCli] = stockPorArtigo[artId];
+        }
+      }
+
+      stockPorArtigo[artId].stock += Number(item.stock || 0);
+      stockPorArtigo[artId].itens.push(item);
+      if (item.validade) {
+        if (
+          !stockPorArtigo[artId].validadeMaisProxima ||
+          new Date(item.validade) < new Date(stockPorArtigo[artId].validadeMaisProxima!)
+        ) {
+          stockPorArtigo[artId].validadeMaisProxima = item.validade;
+        }
+      }
+    });
+
+    // 3. Agrupamento de pedidos por artigo (resolvendo artigo_cli para artigo_id)
     const pedidosPorArtigo: Record<
       string,
       { codigo: string; descricao: string; totalQtd: number; totalQtdRunRate: number; pedidosSet: Set<string> }
@@ -163,7 +211,16 @@ export default function GraficoPrevisaoStock({
 
       if (p.pedido_linhas && p.pedido_linhas.length > 0) {
         p.pedido_linhas.forEach((linha) => {
-          const cod = (linha.artigo_codigo || linha.artigo_id || 'N/A').trim();
+          let rawCod = (linha.artigo_id || linha.artigo_codigo || 'N/A').trim();
+          let cod = cliToIdMap.get(rawCod.toLowerCase()) || rawCod;
+          if (cod.includes('-')) {
+            const parts = cod.split('-');
+            const potentialId = parts.slice(1).join('-');
+            if (potentialId && (stockPorArtigo[potentialId] || cliToIdMap.has(rawCod.toLowerCase()))) {
+              cod = potentialId;
+            }
+          }
+
           const qtd = Number(linha.quantidade) || 0;
           const desc = linha.descricao?.trim();
           totalGeralPedidosUnidades += qtd;
@@ -185,47 +242,6 @@ export default function GraficoPrevisaoStock({
           }
           pedidosPorArtigo[cod].pedidosSet.add(p.id);
         });
-      }
-    });
-
-    // 3. Mapeamento de stock por artigo
-    const stockPorArtigo: Record<
-      string,
-      { stock: number; validadeMaisProxima: string | null; descricao?: string; itens: DashboardStockItem[] }
-    > = {};
-
-    stockAtual.forEach((item) => {
-      const artId = (item.artigo_cli || item.artigo_id || 'N/A').trim();
-      const desc = item.descricao?.trim();
-
-      if (!stockPorArtigo[artId]) {
-        stockPorArtigo[artId] = {
-          stock: 0,
-          validadeMaisProxima: item.validade || null,
-          descricao: desc || undefined,
-          itens: [],
-        };
-      } else if (desc && (!stockPorArtigo[artId].descricao || desc.length > (stockPorArtigo[artId].descricao?.length || 0))) {
-        stockPorArtigo[artId].descricao = desc;
-      }
-
-      // Se item.artigo_id for diferente de artigo_cli, mapear também como alias
-      if (item.artigo_id && item.artigo_id.trim() !== artId) {
-        const idAlt = item.artigo_id.trim();
-        if (!stockPorArtigo[idAlt]) {
-          stockPorArtigo[idAlt] = stockPorArtigo[artId];
-        }
-      }
-
-      stockPorArtigo[artId].stock += Number(item.stock || 0);
-      stockPorArtigo[artId].itens.push(item);
-      if (item.validade) {
-        if (
-          !stockPorArtigo[artId].validadeMaisProxima ||
-          new Date(item.validade) < new Date(stockPorArtigo[artId].validadeMaisProxima!)
-        ) {
-          stockPorArtigo[artId].validadeMaisProxima = item.validade;
-        }
       }
     });
 
@@ -418,7 +434,7 @@ export default function GraficoPrevisaoStock({
     }
 
     const artigosTopComparativo: ArtigoTopComparativo[] = topLista.map((art, idx) => {
-      const stkInfo = stockPorArtigo[art.codigo] || { stock: 0, validadeMaisProxima: null };
+      const stkInfo = stockPorArtigo[art.codigo] || { stock: 0, validadeMaisProxima: null, itens: [] };
       const consMedio = Math.round(art.totalQtdRunRate / nrMesesBase);
       let aut = 999;
       let statusRup: 'critico' | 'atencao' | 'estavel' | 'sem_consumo' = 'estavel';
@@ -433,11 +449,13 @@ export default function GraficoPrevisaoStock({
       }
 
       const rankOrig = ordenadosPorPedidos.findIndex((p) => p.codigo === art.codigo) + 1;
+      const displayCodigo =
+        (stkInfo.itens?.[0]?.artigo_id || cliToIdMap.get(art.codigo.toLowerCase()) || art.codigo).trim();
 
       return {
         rank: rankOrig > 0 ? rankOrig : idx + 1,
-        codigo: art.codigo,
-        descricao: (art.descricao && art.descricao !== art.codigo ? art.descricao : stkInfo.descricao) || art.descricao || art.codigo,
+        codigo: displayCodigo,
+        descricao: (art.descricao && art.descricao !== art.codigo ? art.descricao : stkInfo.descricao) || art.descricao || displayCodigo,
         stockAtual: stkInfo.stock,
         totalQtd: art.totalQtd,
         consumoMedioMensal: consMedio,
@@ -446,14 +464,17 @@ export default function GraficoPrevisaoStock({
         statusRuptura: statusRup,
         isLider: liderCodigo ? art.codigo.toLowerCase() === liderCodigo.toLowerCase() : idx === 0,
         isSelecionado: Boolean(
-          codigoAlvo && art.codigo.toLowerCase() === codigoAlvo.toLowerCase()
+          codigoAlvo && (art.codigo.toLowerCase() === codigoAlvo.toLowerCase() || displayCodigo.toLowerCase() === codigoAlvo.toLowerCase())
         ),
       };
     });
 
+    const displayAlvoCodigo =
+      (infoStockAlvo?.itens?.[0]?.artigo_id || cliToIdMap.get(codigoAlvo?.toLowerCase() || '') || codigoAlvo || '').trim();
+
     const produtoAlvoObj: ArtigoAlvoInfo | null = codigoAlvo
       ? {
-        codigo: codigoAlvo,
+        codigo: displayAlvoCodigo,
         descricao: descricaoAlvo,
         stockAtual: stockInicialProduto,
         totalQtdPedidos: totalQtdPedidosAlvo,
@@ -486,21 +507,26 @@ export default function GraficoPrevisaoStock({
     };
   }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language, diasReposicao]);
 
-  // Dimensões do SVG do gráfico dinâmicas para crescer até à margem direita
-  const svgWidth = useMemo(() => {
+  // Base SVG width e dimensões padrão
+  const baseSvgWidth = useMemo(() => {
     if (horizonte === '12m') return 1100;
     if (horizonte === '6m') return 880;
     return 760;
   }, [horizonte]);
 
   const svgHeight = 320;
-  const padding = { top: 25, right: 20, bottom: 42, left: 52 };
-
-  const chartWidth = svgWidth - padding.left - padding.right;
-  const chartHeight = svgHeight - padding.top - padding.bottom;
+  const basePaddingLeft = 52;
+  const basePaddingRight = 24;
+  const paddingTop = 25;
+  const paddingBottom = 42;
+  const baseChartWidth = baseSvgWidth - basePaddingLeft - basePaddingRight;
+  const chartHeight = svgHeight - paddingTop - paddingBottom;
 
   // Escala Y máxima baseada no stock inicial do produto líder + margem
   const maxYValue = useMemo(() => {
+    if (estatisticas.stockTotalInicial <= 0) {
+      return 100;
+    }
     const maxStock = Math.max(
       ...dadosPrevisao.map((d) => Math.max(d.stockProjetado, d.consumoAcumulado)),
       estatisticas.stockTotalInicial,
@@ -514,6 +540,103 @@ export default function GraficoPrevisaoStock({
   }, [dadosPrevisao, estatisticas.stockTotalInicial]);
 
   const yTicks = [0, maxYValue * 0.25, maxYValue * 0.5, maxYValue * 0.75, maxYValue];
+
+  // Nível de Segurança (Y coordinate)
+  const yNivelSeguranca = useMemo(() => {
+    return (
+      paddingTop +
+      chartHeight -
+      (Math.min(estatisticas.nivelSeguranca, maxYValue) / maxYValue) * chartHeight
+    );
+  }, [estatisticas.nivelSeguranca, maxYValue, chartHeight, paddingTop]);
+
+  // Análise da posição do Ponto de Encomenda ('esquerda', 'dentro' ou 'direita')
+  const infoPontoEncomenda = useMemo(() => {
+    const num = dadosPrevisao.length;
+    if (num === 0) return null;
+
+    const buffer = estatisticas.nivelSeguranca;
+    if (buffer <= 0) return null;
+
+    const stock0 = dadosPrevisao[0].stockProjetado;
+    const stockLast = dadosPrevisao[num - 1].stockProjetado;
+    const consumoMensal =
+      estatisticas.consumoMedioMensal > 0
+        ? estatisticas.consumoMedioMensal
+        : Math.max((stock0 - stockLast) / Math.max(num - 1, 1), 1);
+
+    const dxPerMonth = baseChartWidth / Math.max(num - 1, 1);
+
+    // 1. Caso à esquerda: stock inicial já se encontra abaixo do stock de segurança
+    if (stock0 < buffer) {
+      const s0 = dadosPrevisao[0].stockProjetado;
+      const s1 = num > 1 ? dadosPrevisao[1].stockProjetado : 0;
+      const rateLeft = s0 - s1 > 0 ? s0 - s1 : (consumoMensal > 0 ? consumoMensal : 1);
+      const mesesAtras = Math.max(Number(((buffer - stock0) / rateLeft).toFixed(2)), 0.1);
+      const xOffset = mesesAtras * dxPerMonth;
+      const leftExtra = Math.min(Math.ceil(xOffset + 60), 1500);
+
+      return {
+        tipo: 'esquerda' as const,
+        mesesAtras,
+        leftExtra,
+        rightExtra: 0,
+        xOffset,
+      };
+    }
+
+    // 2. Caso dentro dos meses analisados
+    for (let i = 0; i < num - 1; i++) {
+      const s0 = dadosPrevisao[i].stockProjetado;
+      const s1 = dadosPrevisao[i + 1].stockProjetado;
+      if (s0 >= buffer && s1 < buffer) {
+        const diff = s0 - s1;
+        const ratio = diff > 0 ? (s0 - buffer) / diff : 0.5;
+        return {
+          tipo: 'dentro' as const,
+          indexSegmento: i,
+          ratio,
+          leftExtra: 0,
+          rightExtra: 0,
+          xOffset: 0,
+        };
+      }
+    }
+
+    // 3. Caso à direita: no final dos meses analisados o stock ainda está acima do stock de segurança
+    if (stockLast >= buffer && consumoMensal > 0) {
+      const sLast = dadosPrevisao[num - 1].stockProjetado;
+      const sPrev = num > 1 ? dadosPrevisao[num - 2].stockProjetado : sLast;
+      const rateRight = sPrev - sLast > 0 ? sPrev - sLast : (consumoMensal > 0 ? consumoMensal : 1);
+      const mesesFrente = Math.max(Number(((stockLast - buffer) / rateRight).toFixed(2)), 0.1);
+      const xOffset = mesesFrente * dxPerMonth;
+      const rightExtra = Math.min(Math.ceil(xOffset + 70), 1500);
+
+      return {
+        tipo: 'direita' as const,
+        mesesFrente,
+        leftExtra: 0,
+        rightExtra,
+        xOffset,
+      };
+    }
+
+    return null;
+  }, [dadosPrevisao, estatisticas.nivelSeguranca, estatisticas.consumoMedioMensal, baseChartWidth]);
+
+  const leftExtra = infoPontoEncomenda?.leftExtra || 0;
+  const rightExtra = infoPontoEncomenda?.rightExtra || 0;
+
+  // Dimensões dinâmicas do SVG ajustadas para permitir o prolongamento
+  const svgWidth = baseSvgWidth + leftExtra + rightExtra;
+  const padding = useMemo(() => ({
+    top: paddingTop,
+    bottom: paddingBottom,
+    left: basePaddingLeft + leftExtra,
+    right: basePaddingRight + rightExtra,
+  }), [paddingTop, paddingBottom, basePaddingLeft, leftExtra, basePaddingRight, rightExtra]);
+
+  const chartWidth = baseChartWidth;
 
   // Coordenadas dos pontos de projeção no gráfico
   const points = useMemo(() => {
@@ -540,28 +663,156 @@ export default function GraficoPrevisaoStock({
     });
   }, [dadosPrevisao, chartWidth, chartHeight, padding, maxYValue]);
 
+  // Coordenadas do Ponto de Encomenda (mantendo rigorosamente o declive da reta)
+  const pontoEncomenda = useMemo(() => {
+    if (!infoPontoEncomenda || points.length === 0) return null;
+
+    const dxPerMonth = baseChartWidth / Math.max(dadosPrevisao.length - 1, 1);
+
+    const formatarMes = (offsetMeses: number) => {
+      const baseYear = dadosPrevisao[0].year;
+      const baseMonth = dadosPrevisao[0].month;
+      const targetDate = new Date(baseYear, baseMonth + Math.round(offsetMeses), 1);
+      const m = targetDate.getMonth();
+      const y = targetDate.getFullYear();
+      const mShort = t.dashboard.monthsShort[m] || String(m + 1);
+      const mFull = t.dashboard.months[m] || String(m + 1);
+      const mesCap = mShort.charAt(0).toUpperCase() + mShort.slice(1);
+      return {
+        mesFormatado: `${mesCap} '${String(y).slice(-2)}`,
+        mesCompleto: `${mFull} ${y}`,
+      };
+    };
+
+    if (infoPontoEncomenda.tipo === 'esquerda') {
+      const p0 = points[0];
+      const p1 = points.length > 1 ? points[1] : null;
+      let intersectX = p0.x - infoPontoEncomenda.xOffset;
+
+      // Calcular a interseção pela equação da reta y - y0 = m * (x - x0), garantindo o mesmo declive m
+      if (p1 && p1.yStock > p0.yStock) {
+        const slope = (p1.yStock - p0.yStock) / (p1.x - p0.x);
+        if (slope > 0.0001) {
+          intersectX = p0.x + (yNivelSeguranca - p0.yStock) / slope;
+        }
+      }
+
+      const mesesAtras = Math.max(Number((Math.abs(p0.x - intersectX) / dxPerMonth).toFixed(1)), 0.1);
+      const { mesFormatado, mesCompleto } = formatarMes(-mesesAtras);
+      return {
+        x: intersectX,
+        y: yNivelSeguranca,
+        tipo: 'esquerda' as const,
+        mesesAtras,
+        mesFormatado,
+        mesCompleto,
+      };
+    }
+
+    if (infoPontoEncomenda.tipo === 'direita') {
+      const pLast = points[points.length - 1];
+      const pPrev = points.length > 1 ? points[points.length - 2] : null;
+      let intersectX = pLast.x + infoPontoEncomenda.xOffset;
+
+      // Calcular a interseção pela equação da reta y - yLast = m * (x - xLast), garantindo o mesmo declive m
+      if (pPrev && pLast.yStock > pPrev.yStock) {
+        const slope = (pLast.yStock - pPrev.yStock) / (pLast.x - pPrev.x);
+        if (slope > 0.0001) {
+          intersectX = pLast.x + (yNivelSeguranca - pLast.yStock) / slope;
+        }
+      } else if (estatisticas.consumoMedioMensal > 0 && maxYValue > 0) {
+        const slopeFallback = (chartHeight * (estatisticas.consumoMedioMensal / maxYValue)) / dxPerMonth;
+        if (slopeFallback > 0.0001) {
+          intersectX = pLast.x + (yNivelSeguranca - pLast.yStock) / slopeFallback;
+        }
+      }
+
+      const mesesFrente = Math.max(Number((Math.abs(intersectX - pLast.x) / dxPerMonth).toFixed(1)), 0.1);
+      const { mesFormatado, mesCompleto } = formatarMes((dadosPrevisao.length - 1) + mesesFrente);
+      return {
+        x: intersectX,
+        y: yNivelSeguranca,
+        tipo: 'direita' as const,
+        mesesFrente,
+        mesFormatado,
+        mesCompleto,
+      };
+    }
+
+    if (infoPontoEncomenda.tipo === 'dentro') {
+      const i = infoPontoEncomenda.indexSegmento;
+      if (i !== undefined && points[i] && points[i + 1]) {
+        const p0 = points[i];
+        const p1 = points[i + 1];
+        const diffY = p1.yStock - p0.yStock;
+        const ratio = diffY !== 0 ? (yNivelSeguranca - p0.yStock) / diffY : (infoPontoEncomenda.ratio ?? 0.5);
+        const intersectX = p0.x + ratio * (p1.x - p0.x);
+        const { mesFormatado, mesCompleto } = formatarMes(i + ratio);
+        return {
+          x: intersectX,
+          y: yNivelSeguranca,
+          tipo: 'dentro' as const,
+          mesFormatado,
+          mesCompleto,
+        };
+      }
+    }
+
+    return null;
+  }, [infoPontoEncomenda, points, yNivelSeguranca, baseChartWidth, dadosPrevisao, estatisticas.consumoMedioMensal, maxYValue, chartHeight, t.dashboard.monthsShort, t.dashboard.months]);
+
+  // Limites X para prolongamento da linha de stock de segurança
+  const { xSafetyStart, xSafetyEnd } = useMemo(() => {
+    if (points.length === 0) return { xSafetyStart: padding.left, xSafetyEnd: padding.left + chartWidth };
+    const pFirst = points[0];
+    const pLast = points[points.length - 1];
+
+    if (pontoEncomenda?.tipo === 'esquerda') {
+      return {
+        xSafetyStart: Math.max(pontoEncomenda.x - 20, 15),
+        xSafetyEnd: pLast.x,
+      };
+    }
+
+    if (pontoEncomenda?.tipo === 'direita') {
+      return {
+        xSafetyStart: pFirst.x,
+        xSafetyEnd: pontoEncomenda.x + 35,
+      };
+    }
+
+    return {
+      xSafetyStart: pFirst.x,
+      xSafetyEnd: pLast.x,
+    };
+  }, [points, pontoEncomenda, padding.left, chartWidth]);
+
   // Caminhos em Linha Reta para o Gráfico de Previsão
   const { lineStockPath, areaStockPath, lineConsumoPath } = useMemo(() => {
     if (points.length === 0) {
       return { lineStockPath: '', areaStockPath: '', lineConsumoPath: '' };
     }
+    const hasStock = estatisticas.stockTotalInicial > 0;
+
     if (points.length === 1) {
       const p = points[0];
       return {
         lineStockPath: `M ${p.x} ${p.yStock}`,
         areaStockPath: `M ${p.x - 20} ${padding.top + chartHeight} L ${p.x - 20} ${p.yStock} L ${p.x + 20} ${p.yStock} L ${p.x + 20} ${padding.top + chartHeight} Z`,
-        lineConsumoPath: `M ${p.x} ${p.yConsumo}`,
+        lineConsumoPath: hasStock ? `M ${p.x} ${p.yConsumo}` : '',
       };
     }
 
     let dStock = `M ${points[0].x} ${points[0].yStock}`;
-    let dConsumo = `M ${points[0].x} ${points[0].yConsumo}`;
+    let dConsumo = hasStock ? `M ${points[0].x} ${points[0].yConsumo}` : '';
 
     for (let i = 0; i < points.length - 1; i++) {
       const p1 = points[i + 1];
 
       dStock += ` L ${p1.x} ${p1.yStock}`;
-      dConsumo += ` L ${p1.x} ${p1.yConsumo}`;
+      if (hasStock) {
+        dConsumo += ` L ${p1.x} ${p1.yConsumo}`;
+      }
     }
 
     const firstPoint = points[0];
@@ -574,33 +825,7 @@ export default function GraficoPrevisaoStock({
       areaStockPath: area,
       lineConsumoPath: dConsumo,
     };
-  }, [points, chartHeight, padding]);
-
-  // Nível de Segurança (Y coordinate)
-  const yNivelSeguranca = useMemo(() => {
-    return (
-      padding.top +
-      chartHeight -
-      (Math.min(estatisticas.nivelSeguranca, maxYValue) / maxYValue) * chartHeight
-    );
-  }, [estatisticas.nivelSeguranca, maxYValue, chartHeight, padding]);
-
-  // Ponto de Encomenda (Interseção)
-  const pontoEncomenda = useMemo(() => {
-    if (points.length < 2) return null;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i];
-      const p1 = points[i + 1];
-      if (p0.yStock <= yNivelSeguranca && p1.yStock > yNivelSeguranca) {
-        const diffY = p1.yStock - p0.yStock;
-        if (diffY === 0) continue;
-        const t = (yNivelSeguranca - p0.yStock) / diffY;
-        const intersectX = p0.x + t * (p1.x - p0.x);
-        return { x: intersectX, y: yNivelSeguranca };
-      }
-    }
-    return null;
-  }, [points, yNivelSeguranca]);
+  }, [points, chartHeight, padding, estatisticas.stockTotalInicial]);
 
   const activePoint = hoveredIndex !== null ? points[hoveredIndex] : null;
   const activeItem = hoveredIndex !== null ? dadosPrevisao[hoveredIndex] : null;
@@ -732,198 +957,176 @@ export default function GraficoPrevisaoStock({
         </div>
       )}
 
-      {/* Cartão de Destaque do Produto em Análise */}
-      {produtoAlvo && (
-        <div
-          className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:px-4 sm:py-3.5 rounded-xl border shadow-2xs ${hideHeaderControls ? 'mb-4' : 'my-4'} transition-all ${produtoAlvo.isLider
-              ? 'bg-gradient-to-r from-lime-100/90 via-emerald-50/80 to-teal-50/90 border-lime-300/80'
-              : 'bg-gradient-to-r from-emerald-100/80 via-teal-50/70 to-lime-50/80 border-emerald-300/80'
-            }`}
-        >
-          <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+      {/* Corpo Principal: 4 Cards na Lateral Esquerda + Gráfico de Previsão na Direita */}
+      <div className="flex flex-col lg:flex-row gap-3 sm:gap-3.5 my-4 items-stretch">
+        {/* Coluna Esquerda: Cartão do Artigo + 3 Cartões de Métricas (tamanho uniforme compacto) */}
+        <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-col gap-2.5 sm:gap-3 w-full lg:w-48 xl:w-56 shrink-0 justify-between">
+          {/* Cartão do Artigo em Análise (reduzido ao tamanho dos cards do lado esquerdo) */}
+          {produtoAlvo && (
             <div
-              className={`w-9 h-9 rounded-lg font-black flex items-center justify-center text-sm shadow-xs shrink-0 mt-0.5 sm:mt-0 ${produtoAlvo.isLider
-                  ? 'bg-lime-400 text-slate-950 ring-2 ring-lime-500/50'
-                  : 'bg-emerald-600 text-white ring-2 ring-emerald-400/50'
-                }`}
+              className={`flex-1 min-h-[75px] p-2.5 sm:px-3 sm:py-2.5 rounded-xl border shadow-2xs flex flex-col justify-between transition-all ${
+                produtoAlvo.isLider
+                  ? 'bg-gradient-to-br from-lime-100/80 via-emerald-50/70 to-lime-50/90 border-lime-300/80'
+                  : 'bg-gradient-to-br from-emerald-100/80 via-teal-50/70 to-lime-50/80 border-emerald-300/80'
+              }`}
             >
-              {produtoAlvo.rank ? `#${produtoAlvo.rank}` : '•'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-2 flex-wrap">
-                <span className="font-mono font-bold text-xs sm:text-sm text-emerald-950 bg-white/75 px-2 py-0.5 rounded border border-emerald-200/60 shadow-2xs shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[9px] font-black leading-none shrink-0 ${
+                    produtoAlvo.isLider
+                      ? 'bg-lime-400 text-slate-950 ring-1 ring-lime-500/50'
+                      : 'bg-emerald-600 text-white'
+                  }`}
+                >
+                  {produtoAlvo.rank ? `#${produtoAlvo.rank}` : '•'}
+                </span>
+                <span className="font-mono font-bold text-[11px] text-emerald-950 truncate">
                   {produtoAlvo.codigo}
                 </span>
-                <span className="text-sm sm:text-base text-slate-900 font-bold break-words leading-snug">
-                  {produtoAlvo.descricao}
-                </span>
               </div>
-              <div className="flex items-center gap-3 text-[11px] text-emerald-900 mt-1 flex-wrap">
-                <span>
-                  {t.dashboard.forecastCurrentStock}: <strong className="text-emerald-950">{produtoAlvo.stockAtual.toLocaleString(locale)} {t.dashboard.top10UnitsLabel}</strong>
-                </span>
-                <span>•</span>
-                <span>
-                  {t.dashboard.forecastTotalOrdered}: <strong className="text-emerald-950">{produtoAlvo.totalQtdPedidos.toLocaleString(locale)} {t.dashboard.top10UnitsLabel}</strong> ({produtoAlvo.nrPedidos} {produtoAlvo.nrPedidos === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural})
-                </span>
-                {produtoAlvo.validadeMaisProxima && (
-                  <>
-                    <span>•</span>
-                    <span>
-                      {t.dashboard.forecastNextExpiry}: <strong className="text-emerald-950">{new Date(produtoAlvo.validadeMaisProxima).toLocaleDateString(locale)}</strong>
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
-            {produtoAlvo.isLider ? (
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-200/90 text-emerald-950 border border-emerald-300 flex items-center gap-1 shadow-2xs">
-                <span className="material-symbols-outlined text-[13px] text-emerald-800">emoji_events</span>
-                <span>{t.dashboard.forecastBannerLeader.replace('{percent}', String(produtoAlvo.percentagemDoTotal))}</span>
-              </span>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300/80 flex items-center gap-1 shadow-2xs">
-                  <span className="material-symbols-outlined text-[13px] text-emerald-700">insights</span>
-                  <span>{t.dashboard.forecastBannerSelected.replace('{rank}', String(produtoAlvo.rank || '•'))}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleSelectProduct(null)}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-lime-300 hover:bg-lime-400 text-slate-950 border border-lime-500 shadow-2xs flex items-center gap-1 cursor-pointer transition-all"
-                  title={t.dashboard.forecastResetLeader}
+              <div className="pt-0.5">
+                <p
+                  className="text-[11px] sm:text-xs font-bold text-slate-900 line-clamp-1 leading-snug"
+                  title={produtoAlvo.descricao}
                 >
-                  <span className="material-symbols-outlined text-xs">restart_alt</span>
-                  <span>{t.dashboard.forecastResetLeader}</span>
-                </button>
+                  {produtoAlvo.descricao}
+                </p>
+                <div className="flex items-center justify-between gap-1 text-[10px] text-emerald-900 mt-0.5 flex-wrap">
+                  <span>
+                    Stock: <strong className="text-emerald-950 font-bold">{produtoAlvo.stockAtual.toLocaleString(locale)}</strong> {t.dashboard.top10UnitsLabel}
+                  </span>
+                  {produtoAlvo.validadeMaisProxima && (
+                    <span className="text-[9px] text-emerald-800/90 font-medium">
+                      Val: {new Date(produtoAlvo.validadeMaisProxima).toLocaleDateString(locale)}
+                    </span>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </div>
+          )}
 
-      {/* Cartões de Métricas de Previsão do Produto em Análise */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Consumo Médio Mensal (Run-Rate) */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
-              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">speed</span>
-              <span>{t.dashboard.forecastAvgConsumption}</span>
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
-              {t.dashboard.forecastRunRateLabel} {runRatePeriodo.toUpperCase()}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.consumoMedioMensal.toLocaleString(locale)}
+          {/* 1. Consumo Médio Mensal (Run-Rate) */}
+          <div className="flex-1 min-h-[75px] p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
+                <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">speed</span>
+                <span>{t.dashboard.forecastAvgConsumption}</span>
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {t.dashboard.top10UnitsLabel} / {language === 'en' ? 'mo' : language === 'es' ? 'mes' : 'mês'}
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
+                {t.dashboard.forecastRunRateLabel} {runRatePeriodo.toUpperCase()}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
-              {t.dashboard.forecastAvgConsumptionSub.replace(
-                '{months}',
-                runRatePeriodo === '3m'
-                  ? language === 'en'
-                    ? '3 months'
-                    : '3 meses'
-                  : runRatePeriodo === '6m'
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.consumoMedioMensal.toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {t.dashboard.top10UnitsLabel} / {language === 'en' ? 'mo' : language === 'es' ? 'mes' : 'mês'}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
+                {t.dashboard.forecastAvgConsumptionSub.replace(
+                  '{months}',
+                  runRatePeriodo === '3m'
                     ? language === 'en'
-                      ? '6 months'
-                      : '6 meses'
-                    : language === 'en'
-                      ? '12 months'
-                      : '12 meses'
-              )}
-            </span>
+                      ? '3 months'
+                      : '3 meses'
+                    : runRatePeriodo === '6m'
+                      ? language === 'en'
+                        ? '6 months'
+                        : '6 meses'
+                      : language === 'en'
+                        ? '12 months'
+                        : '12 meses'
+                )}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* 2. Autonomia Estimada */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.forecastRunway}
-            </span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.autonomiaMesesGlobal >= 6
-                  ? 'bg-emerald-200 text-emerald-950'
+          {/* 2. Autonomia Estimada */}
+          <div className="flex-1 min-h-[75px] p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {t.dashboard.forecastRunway}
+              </span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.autonomiaMesesGlobal >= 6
+                    ? 'bg-emerald-200 text-emerald-950'
+                    : estatisticas.autonomiaMesesGlobal >= 3
+                      ? 'bg-amber-200 text-amber-950'
+                      : 'bg-rose-200 text-rose-950'
+                  }`}
+              >
+                {estatisticas.autonomiaMesesGlobal >= 6
+                  ? (language === 'en' ? 'Stable' : language === 'es' ? 'Estable' : 'Estável')
                   : estatisticas.autonomiaMesesGlobal >= 3
-                    ? 'bg-amber-200 text-amber-950'
-                    : 'bg-rose-200 text-rose-950'
-                }`}
-            >
-              {estatisticas.autonomiaMesesGlobal >= 6
-                ? (language === 'en' ? 'Stable' : language === 'es' ? 'Estable' : 'Estável')
-                : estatisticas.autonomiaMesesGlobal >= 3
-                  ? (language === 'en' ? 'Warning' : language === 'es' ? 'Atención' : 'Atenção')
-                  : (language === 'en' ? 'Critical' : language === 'es' ? 'Crítico' : 'Crítico')}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.autonomiaMesesGlobal >= 99 ? '>12' : estatisticas.autonomiaMesesGlobal}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {language === 'en' ? 'months' : 'meses'}
+                    ? (language === 'en' ? 'Warning' : language === 'es' ? 'Atención' : 'Atenção')
+                    : (language === 'en' ? 'Critical' : language === 'es' ? 'Crítico' : 'Crítico')}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-700 font-medium leading-tight whitespace-normal">
-              {t.dashboard.forecastRunwayDays.replace('{days}', String(estatisticas.autonomiaDiasGlobal))}
-            </span>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.autonomiaMesesGlobal >= 99 ? '>12' : estatisticas.autonomiaMesesGlobal}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {language === 'en' ? 'months' : 'meses'}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-700 font-medium leading-tight whitespace-normal">
+                {t.dashboard.forecastRunwayDays.replace('{days}', String(estatisticas.autonomiaDiasGlobal))}
+              </span>
+            </div>
+          </div>
+
+          {/* 3. Lotes a Expirar no Horizonte */}
+          <div className="flex-1 min-h-[75px] p-2.5 sm:px-3 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {t.dashboard.forecastExpiringBatches}
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-200 text-teal-950 leading-none shrink-0">
+                {language === 'en' ? 'Next' : language === 'es' ? 'Próx.' : 'Próx.'} {horizonte.toUpperCase()}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.totalExpirandoNoHorizonte.toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              </div>
+              <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
+                {estatisticas.mesEsgotamentoPrevisto
+                  ? t.dashboard.forecastStockoutExpected.replace('{month}', estatisticas.mesEsgotamentoPrevisto)
+                  : t.dashboard.forecastSufficientStock}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 3. Lotes a Expirar no Horizonte */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.forecastExpiringBatches}
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-teal-200 text-teal-950 leading-none shrink-0">
-              {language === 'en' ? 'Next' : language === 'es' ? 'Próx.' : 'Próx.'} {horizonte.toUpperCase()}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.totalExpirandoNoHorizonte.toLocaleString(locale)}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
-            </div>
-            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-              {estatisticas.mesEsgotamentoPrevisto
-                ? t.dashboard.forecastStockoutExpected.replace('{month}', estatisticas.mesEsgotamentoPrevisto)
-                : t.dashboard.forecastSufficientStock}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Área do Gráfico SVG de Previsão de Stock com Suporte a Hover & Tooltip */}
-      <div
-        ref={containerRef}
-        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden"
-      >
+        {/* Área do Gráfico SVG de Previsão de Stock com Suporte a Hover & Tooltip */}
+        <div
+          ref={containerRef}
+          className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
+        >
         {/* Legenda Dinâmica no Topo Direito */}
         <div className="absolute top-2.5 right-3.5 z-10 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white/90 backdrop-blur-xs border border-lime-300/80 shadow-2xs text-[10px] sm:text-[11px] font-bold text-emerald-950">
           <span className="flex items-center gap-1">
             <span className="w-2.5 h-2.5 rounded-sm bg-lime-500 inline-block"></span>
             <span>{t.dashboard.forecastLegendProjected}</span>
           </span>
-          <span className="text-slate-300">•</span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-teal-600 inline-block"></span>
-            <span>{t.dashboard.forecastLegendConsumption}</span>
-          </span>
+          {estatisticas.stockTotalInicial > 0 && (
+            <>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1">
+                <span className="w-2.5 h-2.5 rounded-sm bg-teal-600 inline-block"></span>
+                <span>{t.dashboard.forecastLegendConsumption}</span>
+              </span>
+            </>
+          )}
           <span className="text-slate-300">•</span>
           <span className="flex items-center gap-1 mr-1">
             <span className="w-2 h-0.5 bg-rose-500 inline-block border-t border-dashed border-rose-500"></span>
@@ -999,16 +1202,16 @@ export default function GraficoPrevisaoStock({
                 return (
                   <g key={`ytick-prev-${idx}`}>
                     <line
-                      x1={padding.left}
+                      x1={basePaddingLeft}
                       y1={y}
-                      x2={svgWidth - padding.right}
+                      x2={svgWidth - basePaddingRight}
                       y2={y}
                       stroke={idx === 0 ? '#cbd5e1' : '#e2e8f0'}
                       strokeWidth={idx === 0 ? '1.5' : '1'}
                       strokeDasharray={idx === 0 ? 'none' : '3 3'}
                     />
                     <text
-                      x={padding.left - 8}
+                      x={basePaddingLeft - 8}
                       y={y + 3.5}
                       textAnchor="end"
                       fontSize="9.5"
@@ -1021,19 +1224,44 @@ export default function GraficoPrevisaoStock({
                 );
               })}
 
-              {/* Linha de Nível de Segurança */}
+              {/* Linha de Nível de Segurança (com prolongamento se o ponto de encomenda estiver fora) */}
               <line
-                x1={padding.left}
+                x1={xSafetyStart}
                 y1={yNivelSeguranca}
-                x2={svgWidth - padding.right}
+                x2={xSafetyEnd}
                 y2={yNivelSeguranca}
                 stroke="#f43f5e"
                 strokeWidth="1.5"
                 strokeDasharray="4 4"
-                className="opacity-70"
+                className="opacity-75"
               />
+              {/* Destaque do segmento de prolongamento da linha de segurança */}
+              {pontoEncomenda?.tipo === 'esquerda' && points.length > 0 && (
+                <line
+                  x1={xSafetyStart}
+                  y1={yNivelSeguranca}
+                  x2={points[0].x}
+                  y2={yNivelSeguranca}
+                  stroke="#e11d48"
+                  strokeWidth="2"
+                  strokeDasharray="4 3"
+                  className="opacity-90"
+                />
+              )}
+              {pontoEncomenda?.tipo === 'direita' && points.length > 0 && (
+                <line
+                  x1={points[points.length - 1].x}
+                  y1={yNivelSeguranca}
+                  x2={xSafetyEnd}
+                  y2={yNivelSeguranca}
+                  stroke="#e11d48"
+                  strokeWidth="2"
+                  strokeDasharray="4 3"
+                  className="opacity-90"
+                />
+              )}
               <text
-                x={svgWidth - padding.right}
+                x={points.length > 0 ? points[points.length - 1].x : xSafetyEnd}
                 y={yNivelSeguranca - 4}
                 textAnchor="end"
                 fontSize="9"
@@ -1120,16 +1348,48 @@ export default function GraficoPrevisaoStock({
                     className="transition-all duration-300 pointer-events-none"
                   />
 
-                  {/* Curva de Consumo Acumulado */}
-                  <path
-                    d={lineConsumoPath}
-                    fill="none"
-                    stroke="url(#strokeConsumoPrevisao)"
-                    strokeWidth="2.5"
-                    strokeDasharray="5 3"
-                    strokeLinecap="round"
-                    className="transition-all duration-300 pointer-events-none opacity-80"
-                  />
+                  {/* Linha de Prolongamento de Stock Projetado para a Esquerda */}
+                  {pontoEncomenda?.tipo === 'esquerda' && points.length > 0 && (
+                    <line
+                      x1={pontoEncomenda.x}
+                      y1={pontoEncomenda.y}
+                      x2={points[0].x}
+                      y2={points[0].yStock}
+                      stroke="url(#strokeStockPrevisao)"
+                      strokeWidth="3.5"
+                      strokeDasharray="5 3"
+                      strokeLinecap="round"
+                      className="opacity-95"
+                    />
+                  )}
+
+                  {/* Linha de Prolongamento de Stock Projetado para a Direita */}
+                  {pontoEncomenda?.tipo === 'direita' && points.length > 0 && (
+                    <line
+                      x1={points[points.length - 1].x}
+                      y1={points[points.length - 1].yStock}
+                      x2={pontoEncomenda.x}
+                      y2={pontoEncomenda.y}
+                      stroke="url(#strokeStockPrevisao)"
+                      strokeWidth="3.5"
+                      strokeDasharray="5 3"
+                      strokeLinecap="round"
+                      className="opacity-95"
+                    />
+                  )}
+
+                  {/* Curva de Consumo Acumulado (oculta quando o stock está a 0) */}
+                  {estatisticas.stockTotalInicial > 0 && lineConsumoPath && (
+                    <path
+                      d={lineConsumoPath}
+                      fill="none"
+                      stroke="url(#strokeConsumoPrevisao)"
+                      strokeWidth="2.5"
+                      strokeDasharray="5 3"
+                      strokeLinecap="round"
+                      className="transition-all duration-300 pointer-events-none opacity-80"
+                    />
+                  )}
 
                   {/* Pontos de Stock */}
                   {points.map((p, i) => {
@@ -1186,47 +1446,62 @@ export default function GraficoPrevisaoStock({
               )}
 
               {/* Ponto de Encomenda */}
-              {pontoEncomenda && (tipoGrafico === 'combinado' || tipoGrafico === 'tendencia') && (
-                <g className="pointer-events-none">
-                  {/* Ponto central */}
-                  <circle
-                    cx={pontoEncomenda.x}
-                    cy={pontoEncomenda.y}
-                    r="4.5"
-                    fill="#f43f5e"
-                    stroke="#ffffff"
-                    strokeWidth="1.5"
-                  />
-                  {/* Círculo externo estático a piscar (sem movimento de expansão) */}
-                  <circle
-                    cx={pontoEncomenda.x}
-                    cy={pontoEncomenda.y}
-                    r="9.5"
-                    fill="none"
-                    stroke="#e11d48"
-                    strokeWidth="2"
-                    style={{ animationDuration: '0.67s' }}
-                  >
-                    <animate
-                      attributeName="opacity"
-                      values="1;0.12;1"
-                      dur="0.67s"
-                      repeatCount="indefinite"
+              {pontoEncomenda && (tipoGrafico === 'combinado' || tipoGrafico === 'tendencia') && (() => {
+                const isNearTop = pontoEncomenda.y < 42;
+                return (
+                  <g className="pointer-events-none select-none">
+                    {/* Ponto central */}
+                    <circle
+                      cx={pontoEncomenda.x}
+                      cy={pontoEncomenda.y}
+                      r="4.5"
+                      fill="#f43f5e"
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
                     />
-                  </circle>
-                  <text
-                    x={pontoEncomenda.x}
-                    y={pontoEncomenda.y - 13}
-                    textAnchor="middle"
-                    fontSize="9.5"
-                    fontWeight="700"
-                    fill="#e11d48"
-                    className="select-none drop-shadow-sm"
-                  >
-                    {language === 'en' ? 'Reorder Point' : language === 'es' ? 'Punto de Pedido' : 'Ponto Encomenda'}
-                  </text>
-                </g>
-              )}
+                    {/* Círculo externo estático a piscar (sem movimento de expansão) */}
+                    <circle
+                      cx={pontoEncomenda.x}
+                      cy={pontoEncomenda.y}
+                      r="9.5"
+                      fill="none"
+                      stroke="#e11d48"
+                      strokeWidth="2"
+                      style={{ animationDuration: '0.67s' }}
+                    >
+                      <animate
+                        attributeName="opacity"
+                        values="1;0.12;1"
+                        dur="0.67s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+
+                    {/* Informação da data de encomenda e ponto de encomenda apenas junto ao ponto */}
+                    <text
+                      x={pontoEncomenda.x}
+                      y={isNearTop ? pontoEncomenda.y + 33 : pontoEncomenda.y - 24}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fontWeight="800"
+                      fill="#9f1239"
+                    >
+                      {pontoEncomenda.mesFormatado}
+                    </text>
+                    <text
+                      x={pontoEncomenda.x}
+                      y={isNearTop ? pontoEncomenda.y + 21 : pontoEncomenda.y - 13}
+                      textAnchor="middle"
+                      fontSize="9.5"
+                      fontWeight="700"
+                      fill="#e11d48"
+                      className="drop-shadow-sm"
+                    >
+                      {language === 'en' ? 'Reorder Point' : language === 'es' ? 'Punto de Pedido' : 'Ponto Encomenda'}
+                    </text>
+                  </g>
+                );
+              })()}
 
               {/* Linha de Referência Vertical no Hover */}
               {activePoint && (
@@ -1350,12 +1625,14 @@ export default function GraficoPrevisaoStock({
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-slate-300">{t.dashboard.forecastLegendConsumption}:</span>
-                  <span className="font-semibold text-teal-300">
-                    {activeItem.consumoAcumulado.toLocaleString(locale)} {t.dashboard.top10UnitsLabel}
-                  </span>
-                </div>
+                {estatisticas.stockTotalInicial > 0 && (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-slate-300">{t.dashboard.forecastLegendConsumption}:</span>
+                    <span className="font-semibold text-teal-300">
+                      {activeItem.consumoAcumulado.toLocaleString(locale)} {t.dashboard.top10UnitsLabel}
+                    </span>
+                  </div>
+                )}
 
                 {activeItem.stockExpiradoMes > 0 && (
                   <div className="flex items-center justify-between gap-4 text-rose-300 font-semibold">
@@ -1377,6 +1654,7 @@ export default function GraficoPrevisaoStock({
           );
         })()}
       </div>
+    </div>
 
       {/* Seção Inferior: Tabela Comparativa dos Top Produtos & Autonomia */}
       {artigosTopComparativo.length > 0 && (
