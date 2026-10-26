@@ -67,8 +67,11 @@ export interface DashboardSaidaItem {
   cliente_id: string;
   sigla?: string | null;
   artigo_cli: string;
-  artigo_codigo: string;
-  artigo_descricao: string;
+  artigo_id?: string;
+  descricao?: string;
+  artigo?: string;
+  artigo_codigo?: string;
+  artigo_descricao?: string;
   tipo_desc?: string;
   quantidade: number;
   data_movimento?: string | null;

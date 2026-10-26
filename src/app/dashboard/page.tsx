@@ -82,7 +82,7 @@ export default async function DashboardPage() {
       let q = supabase
         .from('vw_saidas')
         .select(
-          'id, cliente_id, sigla, artigo_cli, artigo_codigo, artigo_descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote',
+          'id, cliente_id, sigla, artigo_cli, artigo_id, descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote',
           countMode ? { count: countMode } : undefined
         )
         .range(from, to);

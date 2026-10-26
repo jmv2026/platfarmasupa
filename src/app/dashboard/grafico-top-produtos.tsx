@@ -106,18 +106,24 @@ export default function GraficoTopProdutos({
     let totalGeralUnidades = 0;
 
     saidasFiltradas.forEach((s) => {
-      const cod = s.artigo_codigo || s.artigo_cli || 'N/A';
+      const cod = s.artigo_id || s.artigo || s.artigo_codigo || s.artigo_cli || 'N/A';
+      const desc = s.descricao || s.artigo_descricao || s.artigo || cod;
       const qtd = Number(s.quantidade) || 0;
       totalGeralUnidades += qtd;
 
       if (!agrupamento[cod]) {
         agrupamento[cod] = {
           codigo: cod,
-          descricao: s.artigo_descricao || cod,
+          descricao: desc,
           tipo_desc: s.tipo_desc || '',
           quantidade: 0,
           docsSet: new Set(),
         };
+      } else {
+        const melhorDesc = s.descricao || s.artigo_descricao;
+        if (melhorDesc && (agrupamento[cod].descricao === cod || melhorDesc.length > agrupamento[cod].descricao.length)) {
+          agrupamento[cod].descricao = melhorDesc;
+        }
       }
       agrupamento[cod].quantidade += qtd;
       const docRef = s.documento_ref || s.id;
@@ -174,7 +180,7 @@ export default function GraficoTopProdutos({
     return Math.max(850, count * 70);
   }, [topProdutos.length]);
 
-  const svgHeight = 240;
+  const svgHeight = 280;
   const padding = { top: 25, right: 30, bottom: 42, left: 55 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
@@ -274,10 +280,10 @@ export default function GraficoTopProdutos({
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
                 {topLimit === 'top5'
-                  ? 'Top 5 Produtos Mais Pedidos'
+                  ? 'Top 5 Artigos Mais Pedidos'
                   : topLimit === 'top10'
-                  ? 'Top 10 Produtos Mais Pedidos'
-                  : 'Todos os Produtos Expedidos'}
+                  ? 'Top 10 Artigos Mais Pedidos'
+                  : 'Todos os Artigos Expedidos'}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/70 text-emerald-900 border border-emerald-200">
@@ -395,111 +401,113 @@ export default function GraficoTopProdutos({
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques (Tons Verde Pastel & Lima) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Total Unidades Selecionadas */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {topLimit === 'top5' ? 'Total Unidades Top 5' : topLimit === 'top10' ? t.dashboard.top10TotalUnits : 'Total Unidades Expedidas'}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.totalTop10.toLocaleString(locale)}
+      {/* Corpo Principal: Cards na Lateral Esquerda + Gráfico no Espaço Restante */}
+      <div className="flex flex-col lg:flex-row gap-3.5 sm:gap-4 my-4 items-stretch">
+        {/* Coluna Lateral Esquerda: Cartões de Métricas e Destaques */}
+        <div className="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-4 gap-2.5 sm:gap-3 w-full lg:w-56 xl:w-64 shrink-0">
+          {/* 1. Total Unidades Selecionadas */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {topLimit === 'top5' ? 'Total Unidades Top 5' : topLimit === 'top10' ? t.dashboard.top10TotalUnits : 'Total Unidades Expedidas'}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {topProdutos.length} {t.dashboard.top10ItemsCount}
-            </span>
-          </div>
-        </div>
-
-        {/* 2. Produto Nº 1 */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
-              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">emoji_events</span>
-              <span>{t.dashboard.top10ProductLeader}</span>
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
-              {t.dashboard.top10LeaderBadge}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.produtoLider
-                  ? estatisticas.produtoLider.quantidade.toLocaleString(locale)
-                  : 0}
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.totalTop10.toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
+                {topProdutos.length} {t.dashboard.top10ItemsCount}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
             </div>
-            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal break-all">
-              {estatisticas.produtoLider?.codigo || '-'}
-            </span>
           </div>
-        </div>
 
-        {/* 3. Média por Produto Selecionado */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {topLimit === 'top5' ? 'Média por Artigo Top 5' : topLimit === 'top10' ? t.dashboard.top10AveragePerItem : 'Média por Artigo'}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.mediaPorProduto.toLocaleString(locale)}
+          {/* 2. Produto Nº 1 */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
+                <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">emoji_events</span>
+                <span>{t.dashboard.top10ProductLeader}</span>
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
+                {t.dashboard.top10LeaderBadge}
+              </span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {topLimit === 'top5' ? 'Top 5' : topLimit === 'top10' ? 'Top 10' : 'Todos'}
-            </span>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.produtoLider
+                    ? estatisticas.produtoLider.quantidade.toLocaleString(locale)
+                    : 0}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              </div>
+              <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal break-all">
+                {estatisticas.produtoLider?.codigo || '-'}
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* 4. Concentração */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {topLimit === 'top5' ? 'Quota Top 5 no Total' : topLimit === 'top10' ? t.dashboard.top10ShareOfTotal : 'Representatividade'}
-            </span>
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
-              {estatisticas.concentracaoGeral}%
-            </span>
+          {/* 3. Média por Produto Selecionado */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {topLimit === 'top5' ? 'Média por Artigo Top 5' : topLimit === 'top10' ? t.dashboard.top10AveragePerItem : 'Média por Artigo'}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.mediaPorProduto.toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.top10UnitsLabel}</span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
+                {topLimit === 'top5' ? 'Top 5' : topLimit === 'top10' ? 'Top 10' : 'Todos'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+
+          {/* 4. Concentração */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {topLimit === 'top5' ? 'Quota Top 5 no Total' : topLimit === 'top10' ? t.dashboard.top10ShareOfTotal : 'Representatividade'}
+              </span>
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-200 text-lime-950 border border-lime-300 leading-none shrink-0">
                 {estatisticas.concentracaoGeral}%
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.chartMonthlyDesc ? '' : ''}</span>
             </div>
-            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-              {estatisticas.totalProdutosDistintos} {t.dashboard.top10ItemsCount}
-            </span>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.concentracaoGeral}%
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">{t.dashboard.chartMonthlyDesc ? '' : ''}</span>
+              </div>
+              <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
+                {estatisticas.totalProdutosDistintos} {t.dashboard.top10ItemsCount}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
-      <div
-        ref={containerRef}
-        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden"
-      >
-        {topProdutos.length > 0 ? (
-          <div className="w-full overflow-x-auto">
-            <svg
-              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[550px] max-h-[250px] select-none"
-            >
+        {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
+        <div
+          ref={containerRef}
+          className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
+        >
+          {topProdutos.length > 0 ? (
+            <div className="w-full overflow-x-auto flex items-center justify-center">
+              <svg
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                className="w-full h-auto min-w-[500px] select-none"
+              >
               <defs>
                 <linearGradient id="areaTopProdutos" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#84cc16" stopOpacity="0.4" />
@@ -760,7 +768,7 @@ export default function GraficoTopProdutos({
 
           return (
             <div
-              className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 max-w-[280px] min-w-[210px]"
+              className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-3.5 py-2.5 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 max-w-[300px] min-w-[220px]"
               style={{
                 left: `${leftPos}%`,
                 top: `${topPos}%`,
@@ -799,104 +807,18 @@ export default function GraficoTopProdutos({
               </div>
 
               {onSelectProdutoPrevisao && (
-                <div className="mt-2 pt-1 border-t border-white/15 text-[10px] text-lime-300 font-semibold flex items-center gap-1 justify-center">
-                  <span className="material-symbols-outlined text-xs">touch_app</span>
+                <div className="mt-2 pt-1.5 border-t border-white/15 text-xs text-lime-300 font-semibold flex items-center gap-1.5 justify-center">
+                  <span className="material-symbols-outlined text-sm">touch_app</span>
                   <span>{t.dashboard.top10TooltipClick}</span>
                 </div>
               )}
             </div>
           );
         })()}
+        </div>
       </div>
 
-      {/* Tabela / Lista dos Produtos com Acesso Direto à Previsão de Stock */}
-      {topProdutos.length > 0 && (
-        <div className="mt-5 pt-4 border-t border-outline-variant/20">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-emerald-700 text-lg">format_list_numbered</span>
-              <h3 className="text-xs sm:text-sm font-bold text-on-surface">
-                {topLimit === 'top5' ? 'Lista do Top 5 Produtos Mais Pedidos' : topLimit === 'top10' ? t.dashboard.top10TableTitle : 'Lista de Todos os Produtos Expedidos'}
-              </h3>
-            </div>
-            <span className="text-[11px] text-on-surface-variant font-medium">
-              {topLimit === 'todos' ? `A mostrar todos os ${topProdutos.length} artigos com saídas` : t.dashboard.top10TableSubtitle}
-            </span>
-          </div>
 
-          <div className="overflow-x-auto rounded-xl border border-outline-variant/30">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-surface-container-low text-on-surface-variant font-semibold border-b border-outline-variant/30 text-[11px]">
-                  <th className="py-2 px-3 w-16">{t.dashboard.top10ColRank}</th>
-                  <th className="py-2 px-3">{t.dashboard.top10ColCode}</th>
-                  <th className="py-2 px-3">{t.dashboard.top10ColDesc}</th>
-                  <th className="py-2 px-3">Tipo</th>
-                  <th className="py-2 px-3 text-right">{t.dashboard.top10ColQty}</th>
-                  <th className="py-2 px-3 text-right">{t.dashboard.top10ColOrders}</th>
-                  <th className="py-2 px-3 text-right">{t.dashboard.top10ColShare}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/20 bg-white">
-                {topProdutos.map((p) => {
-                  const isLeader = p.rank === 1;
-                  return (
-                    <tr
-                      key={p.codigo}
-                      className={`transition-colors hover:bg-lime-50/40 cursor-pointer ${
-                        isLeader ? 'bg-lime-50/60 font-semibold' : ''
-                      }`}
-                      onClick={() => onSelectProdutoPrevisao?.(p.codigo)}
-                    >
-                      <td className="py-2 px-3">
-                        {isLeader ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-lime-400 text-slate-950 border border-lime-500 shadow-2xs">
-                            {t.dashboard.top10LeaderBadge}
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 font-bold text-[11px]">
-                            #{p.rank}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 px-3">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectProdutoPrevisao?.(p.codigo);
-                          }}
-                          className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-lime-100/80 hover:bg-lime-300 text-emerald-950 hover:text-slate-950 border border-lime-300/80 shadow-2xs flex items-center gap-1 transition-all cursor-pointer"
-                          title={`${t.dashboard.top10TooltipClick} - ${p.codigo}`}
-                        >
-                          <span className="material-symbols-outlined text-xs text-lime-700">trending_up</span>
-                          <span>{p.codigo}</span>
-                        </button>
-                      </td>
-                      <td className="py-2 px-3 text-on-surface font-medium max-w-[280px] truncate" title={p.descricao}>
-                        {p.descricao}
-                      </td>
-                      <td className="py-2 px-3 text-on-surface font-medium truncate" title={p.tipo_desc}>
-                        {p.tipo_desc}
-                      </td>
-                      <td className="py-2 px-3 text-right font-bold text-emerald-950">
-                        {p.quantidade.toLocaleString(locale)}{' '}
-                        <span className="text-[10px] font-normal text-slate-500">{t.dashboard.top10UnitsLabel}</span>
-                      </td>
-                      <td className="py-2 px-3 text-right text-slate-700 font-medium">
-                        {p.nrPedidos} {p.nrPedidos === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural}
-                      </td>
-                      <td className="py-2 px-3 text-right font-semibold text-emerald-800">
-                        {p.percentagemTop}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

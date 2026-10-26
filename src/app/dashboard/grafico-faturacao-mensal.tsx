@@ -256,7 +256,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
 
   // Dimensões do SVG do gráfico
   const svgWidth = 800;
-  const svgHeight = 250;
+  const svgHeight = 280;
   const padding = { top: 38, right: 25, bottom: 40, left: 60 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
@@ -471,149 +471,153 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         </div>
       )}
 
-      {/* Cartões de Métricas e Destaques */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Total Faturado Líquido (Mercadoria - IVA - Descontos) */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug">
-              {tipoMetrica === 'faturacao' ? 'Faturação Líquida' : 'Total Expedido'}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+      {/* Corpo Principal: Cards na Lateral Esquerda + Gráfico no Espaço Restante */}
+      <div className="flex flex-col lg:flex-row gap-3.5 sm:gap-4 my-4 items-stretch">
+        {/* Coluna Lateral Esquerda: Cartões de Métricas e Destaques */}
+        <div className="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-4 gap-2.5 sm:gap-3 w-full lg:w-56 xl:w-64 shrink-0">
+          {/* 1. Total Faturado Líquido (Mercadoria - IVA - Descontos) */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {tipoMetrica === 'faturacao' ? 'Faturação Líquida' : 'Total Expedido'}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {tipoMetrica === 'faturacao'
+                    ? formatCurrency(estatisticas.totalLiquido)
+                    : `${estatisticas.totalQuantidade.toLocaleString(locale)} un`}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
                 {tipoMetrica === 'faturacao'
-                  ? formatCurrency(estatisticas.totalLiquido)
-                  : `${estatisticas.totalQuantidade.toLocaleString(locale)} un`}
+                  ? `Mercadoria: ${formatCurrency(estatisticas.totalMerc)}`
+                  : `${estatisticas.totalDocs.toLocaleString(locale)} documentos`}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight">
-              {tipoMetrica === 'faturacao'
-                ? `Mercadoria: ${formatCurrency(estatisticas.totalMerc)}`
-                : `${estatisticas.totalDocs.toLocaleString(locale)} documentos`}
-            </span>
+          </div>
+
+          {/* 2. Total de Descontos (Coluna Paralela) */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-rose-50/90 to-amber-50/50 border border-rose-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-rose-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                Total Descontos
+              </span>
+              <span className="w-2 h-2 rounded-full bg-rose-500 ring-4 ring-rose-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-rose-950 leading-none">
+                  {formatCurrency(estatisticas.totalDesc)}
+                </span>
+              </div>
+              <span className="text-[10px] text-rose-700/90 font-medium leading-tight whitespace-normal">
+                {estatisticas.totalMerc > 0
+                  ? `${((estatisticas.totalDesc / estatisticas.totalMerc) * 100).toFixed(1)}% da mercadoria`
+                  : 'Coluna paralela'}
+              </span>
+            </div>
+          </div>
+
+          {/* 3. Média Mensal */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                Média Mensal
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {tipoMetrica === 'faturacao'
+                    ? formatCurrency(estatisticas.mediaLiquida)
+                    : `${Math.round(estatisticas.mediaUnidades).toLocaleString(locale)} un`}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  /{language === 'en' ? 'mo' : 'mês'}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
+                {dadosMensais.length} meses analisados
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Mês Mais Recente & Tendência */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                Mês Mais Recente
+              </span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.variacaoUltimoMes > 0
+                  ? 'bg-lime-300 text-emerald-950'
+                  : estatisticas.variacaoUltimoMes < 0
+                    ? 'bg-rose-200 text-rose-900'
+                    : 'bg-slate-200 text-slate-800'
+                  }`}
+              >
+                {estatisticas.variacaoUltimoMes > 0
+                  ? `+${estatisticas.variacaoUltimoMes}%`
+                  : `${estatisticas.variacaoUltimoMes}%`}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {tipoMetrica === 'faturacao'
+                    ? formatCurrency(estatisticas.ultimoMes?.total_liquido || 0)
+                    : `${(estatisticas.ultimoMes?.total_quantidade || 0).toLocaleString(locale)} un`}
+                </span>
+              </div>
+              <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
+                vs. mês anterior
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 2. Total de Descontos (Coluna Paralela) */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-rose-50/90 to-amber-50/50 border border-rose-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-rose-900/80 uppercase tracking-wide leading-snug">
-              Total Descontos
-            </span>
-            <span className="w-2 h-2 rounded-full bg-rose-500 ring-4 ring-rose-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-rose-950 leading-none">
-                {formatCurrency(estatisticas.totalDesc)}
-              </span>
+        {/* Coluna Direita: Legenda + Janela do Gráfico */}
+        <div className="flex-1 min-w-0 flex flex-col gap-2">
+          {/* Legenda Explicativa das Colunas Paralelas */}
+          <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+            <div className="flex items-center gap-5 text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-lime-400 to-emerald-600 border border-emerald-700/60 shadow-2xs inline-block"></span>
+                <span className="text-slate-800">
+                  {tipoMetrica === 'faturacao'
+                    ? 'Faturação Líquida (Mercadoria − IVA − Descontos)'
+                    : 'Unidades Expedidas'}
+                </span>
+              </div>
+              {tipoMetrica === 'faturacao' && (
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-rose-400 to-rose-600 border border-rose-700/60 shadow-2xs inline-block"></span>
+                  <span className="text-slate-800">Total Descontos</span>
+                </div>
+              )}
             </div>
-            <span className="text-[10px] text-rose-700/90 font-medium leading-tight">
-              {estatisticas.totalMerc > 0
-                ? `${((estatisticas.totalDesc / estatisticas.totalMerc) * 100).toFixed(1)}% da mercadoria`
-                : 'Coluna paralela'}
-            </span>
-          </div>
-        </div>
 
-        {/* 3. Média Mensal */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug">
-              Média Mensal
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {tipoMetrica === 'faturacao'
-                  ? formatCurrency(estatisticas.mediaLiquida)
-                  : `${Math.round(estatisticas.mediaUnidades).toLocaleString(locale)} un`}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                /{language === 'en' ? 'mo' : 'mês'}
-              </span>
-            </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight">
-              {dadosMensais.length} meses analisados
+            <span className="text-[11px] text-slate-500 font-medium">
+              {tipoGrafico === 'barras' || tipoGrafico === 'combinado'
+                ? 'Colunas paralelas por mês'
+                : 'Curva de evolução'}
             </span>
           </div>
-        </div>
 
-        {/* 4. Mês Mais Recente & Tendência */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug">
-              Mês Mais Recente
-            </span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.variacaoUltimoMes > 0
-                ? 'bg-lime-300 text-emerald-950'
-                : estatisticas.variacaoUltimoMes < 0
-                  ? 'bg-rose-200 text-rose-900'
-                  : 'bg-slate-200 text-slate-800'
-                }`}
-            >
-              {estatisticas.variacaoUltimoMes > 0
-                ? `+${estatisticas.variacaoUltimoMes}%`
-                : `${estatisticas.variacaoUltimoMes}%`}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {tipoMetrica === 'faturacao'
-                  ? formatCurrency(estatisticas.ultimoMes?.total_liquido || 0)
-                  : `${(estatisticas.ultimoMes?.total_quantidade || 0).toLocaleString(locale)} un`}
-              </span>
-            </div>
-            <span className="text-[10px] text-teal-800 font-medium leading-tight">
-              vs. mês anterior
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Legenda Explicativa das Colunas Paralelas */}
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-2 px-1">
-        <div className="flex items-center gap-5 text-xs font-semibold">
-          <div className="flex items-center gap-2">
-            <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-lime-400 to-emerald-600 border border-emerald-700/60 shadow-2xs inline-block"></span>
-            <span className="text-slate-800">
-              {tipoMetrica === 'faturacao'
-                ? 'Faturação Líquida (Mercadoria − IVA − Descontos)'
-                : 'Unidades Expedidas'}
-            </span>
-          </div>
-          {tipoMetrica === 'faturacao' && (
-            <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-rose-400 to-rose-600 border border-rose-700/60 shadow-2xs inline-block"></span>
-              <span className="text-slate-800">Total Descontos</span>
-            </div>
-          )}
-        </div>
-
-        <span className="text-[11px] text-slate-500 font-medium">
-          {tipoGrafico === 'barras' || tipoGrafico === 'combinado'
-            ? 'Colunas paralelas por mês'
-            : 'Curva de evolução'}
-        </span>
-      </div>
-
-      {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
-      <div
-        ref={containerRef}
-        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden"
-      >
-        <div className="w-full overflow-x-auto">
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[580px] max-h-[260px] select-none"
+          {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
+          <div
+            ref={containerRef}
+            className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
           >
+            <div className="w-full overflow-x-auto flex items-center justify-center">
+              <svg
+                viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                className="w-full h-auto min-w-[500px] select-none"
+              >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#84cc16" stopOpacity="0.45" />
@@ -989,7 +993,9 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
             )}
           </div>
         )}
+        </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
