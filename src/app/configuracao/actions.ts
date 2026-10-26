@@ -1066,6 +1066,8 @@ export async function importarStockAction(rows: StockImportRow[], defaultCliente
         lote: r.lote ? r.lote.trim() : null,
         stock: Number(r.stock) || 0,
         data_stock: r.data_stock || null,
+        validade: r.validade || null,
+        data_fabrico: r.data_fabrico || null,
       };
     }).filter((r) => r.cliente_ser && r.artigo_id && r.armazem);
 

@@ -414,6 +414,7 @@ export interface StockAtual {
   armazem_descricao: string;
   armazem_loc: string;
   lote: string | null;
+  data_stock?: string | null;
   validade: string | null;
   data_fabrico: string | null;
   stock: number;
@@ -432,6 +433,7 @@ export interface StockPedido {
   tipo_artigo: TipoArtigo;
   tipo_armazenamento: TipoArmazenamento;
   lote: string | null;
+  data_stock?: string | null;
   validade: string | null;
   data_fabrico: string | null;
   stock: number;

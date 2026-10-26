@@ -31,9 +31,9 @@ export default async function StocksPage() {
   const userClientId = profile?.cliente_id;
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
-  let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('cliente_sigla');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
-  let stockZeroQuery = supabase.from('vw_stock_zero').select('*').order('cliente_sigla');
+  let stockAtualQuery = supabase.from('vw_stock_atual').select('*').order('artigo_id', { ascending: true });
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('artigo_id', { ascending: true });
+  let stockZeroQuery = supabase.from('vw_stock_zero').select('*').order('artigo_id', { ascending: true });
   let temposQuery = supabase.from('tempos').select('*');
 
   if (!isManagerOrAdmin && userClientId) {

@@ -29,6 +29,13 @@ interface StocksViewProps {
 }
 
 type TabType = 'pedidos' | 'consolidado' | 'artigos' | 'validade' | 'stock_zero';
+type StockSortField = 'artigo' | 'descricao';
+type StockSortOrder = 'asc' | 'desc';
+
+interface TabSortState {
+  field: StockSortField | 'default';
+  order: StockSortOrder;
+}
 
 export default function StocksView({
   stockAtual,
@@ -47,6 +54,29 @@ export default function StocksView({
   }, [stockAtual]);
 
   const [activeTab, setActiveTab] = useState<TabType>('pedidos');
+  const [tabSorts, setTabSorts] = useState<Record<TabType, TabSortState>>({
+    pedidos: { field: 'artigo', order: 'asc' },
+    consolidado: { field: 'artigo', order: 'asc' },
+    artigos: { field: 'artigo', order: 'asc' },
+    validade: { field: 'default', order: 'asc' },
+    stock_zero: { field: 'artigo', order: 'asc' },
+  });
+
+  const handleToggleSort = (field: StockSortField) => {
+    setTabSorts((prev) => {
+      const current = prev[activeTab];
+      const isSameField = current.field === field;
+      const newOrder: StockSortOrder = isSameField && current.order === 'asc' ? 'desc' : 'asc';
+      return {
+        ...prev,
+        [activeTab]: {
+          field,
+          order: newOrder,
+        },
+      };
+    });
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [selectedArmazenamento, setSelectedArmazenamento] = useState<string>('todos');
@@ -177,6 +207,74 @@ export default function StocksView({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // Helper para ordenação dinâmica (Artigo ou Descrição, crescente ou decrescente)
+  const compareStockItems = (
+    a: { artigo_id?: string | null; artigo_cli?: string | null; descricao?: string | null; validade?: string | null; lote?: string | null },
+    b: { artigo_id?: string | null; artigo_cli?: string | null; descricao?: string | null; validade?: string | null; lote?: string | null },
+    sortConfig: TabSortState
+  ) => {
+    const orderMultiplier = sortConfig.order === 'desc' ? -1 : 1;
+
+    if (sortConfig.field === 'descricao') {
+      const descA = (a.descricao || '').trim();
+      const descB = (b.descricao || '').trim();
+      const comp = descA.localeCompare(descB, undefined, { numeric: true, sensitivity: 'base' });
+      if (comp !== 0) return comp * orderMultiplier;
+      // Desempate pelo artigo
+      const artA = (a.artigo_id || a.artigo_cli || '').trim();
+      const artB = (b.artigo_id || b.artigo_cli || '').trim();
+      return artA.localeCompare(artB, undefined, { numeric: true, sensitivity: 'base' }) * orderMultiplier;
+    }
+
+    // sortConfig.field === 'artigo' ou 'default'
+    const artA = (a.artigo_id || a.artigo_cli || '').trim();
+    const artB = (b.artigo_id || b.artigo_cli || '').trim();
+    const comp = artA.localeCompare(artB, undefined, { numeric: true, sensitivity: 'base' });
+    if (comp !== 0) return comp * orderMultiplier;
+
+    // Desempate por validade ou lote se aplicável
+    if (a.validade && b.validade) {
+      const timeA = new Date(a.validade).getTime();
+      const timeB = new Date(b.validade).getTime();
+      if (timeA !== timeB) return timeA - timeB;
+    }
+    return (a.lote || '').localeCompare(b.lote || '', undefined, { numeric: true, sensitivity: 'base' });
+  };
+
+  // Botão interativo para o cabeçalho das tabelas (alterna asc/desc) com fundo verde lima suave
+  const renderSortableHeader = (field: StockSortField, label: string) => {
+    const activeSort = tabSorts[activeTab];
+    const isCurrent = activeSort.field === field;
+    const isAsc = activeSort.order === 'asc';
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleToggleSort(field)}
+        className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold transition-all text-left select-none cursor-pointer border shadow-2xs ${
+          isCurrent
+            ? 'bg-lime-200 hover:bg-lime-300/80 text-lime-950 border-lime-400 ring-1 ring-lime-400/50 shadow-xs'
+            : 'bg-lime-100 hover:bg-lime-200/80 text-lime-900 border-lime-200/90'
+        }`}
+        title={`Clique para alternar ordenação por ${label} (${isCurrent && isAsc ? 'decrescente' : 'crescente'})`}
+      >
+        <span className="leading-tight">{label}</span>
+        <span
+          className={`material-symbols-outlined transition-transform duration-200 shrink-0 ${
+            isCurrent
+              ? isAsc
+                ? 'text-lime-950 transform rotate-0'
+                : 'text-lime-950 transform rotate-180'
+              : 'text-lime-700/80 group-hover:text-lime-900'
+          }`}
+          style={{ fontSize: '15px' }}
+        >
+          {isCurrent ? 'arrow_upward' : 'swap_vert'}
+        </span>
+      </button>
+    );
+  };
+
   // KPIs
 
   const totalStockOutros = useMemo(() => {
@@ -242,82 +340,86 @@ export default function StocksView({
     return artigosSet.size;
   }, [stockAtualList]);
 
-  // Filtragem para Stock de Venda (vw_stock_pedidos)
+  // Filtragem para Stock de Venda (vw_stock_pedidos) - Ordenação dinâmica
   const filteredStockPedidos = useMemo(() => {
-    return stockPedidos.filter((item) => {
-      if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
-        return false;
-      }
-      if (
-        selectedArmazenamento !== 'todos' &&
-        item.tipo_armazenamento !== selectedArmazenamento
-      ) {
-        return false;
-      }
-      if (
-        selectedTipoArtigo !== 'todos' &&
-        item.tipo_artigo !== selectedTipoArtigo
-      ) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const matchCod =
-          item.artigo_id?.toLowerCase().includes(query) ||
-          item.artigo_cli?.toLowerCase().includes(query);
-        const matchDesc = item.descricao?.toLowerCase().includes(query);
-        const matchLote = item.lote?.toLowerCase().includes(query);
-        const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
-        if (!matchCod && !matchDesc && !matchLote && !matchCli) {
+    return stockPedidos
+      .filter((item) => {
+        if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
           return false;
         }
-      }
-      return true;
-    });
-  }, [stockPedidos, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm]);
+        if (
+          selectedArmazenamento !== 'todos' &&
+          item.tipo_armazenamento !== selectedArmazenamento
+        ) {
+          return false;
+        }
+        if (
+          selectedTipoArtigo !== 'todos' &&
+          item.tipo_artigo !== selectedTipoArtigo
+        ) {
+          return false;
+        }
+        if (searchTerm.trim()) {
+          const query = searchTerm.toLowerCase();
+          const matchCod =
+            item.artigo_id?.toLowerCase().includes(query) ||
+            item.artigo_cli?.toLowerCase().includes(query);
+          const matchDesc = item.descricao?.toLowerCase().includes(query);
+          const matchLote = item.lote?.toLowerCase().includes(query);
+          const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
+          if (!matchCod && !matchDesc && !matchLote && !matchCli) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => compareStockItems(a, b, tabSorts.pedidos));
+  }, [stockPedidos, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm, tabSorts.pedidos]);
 
-  // Filtragem para Stock Consolidado (vw_stock_atual)
+  // Filtragem para Stock Consolidado (vw_stock_atual) - Ordenação dinâmica
   const filteredStockAtual = useMemo(() => {
-    return stockAtualList.filter((item) => {
-      if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
-        return false;
-      }
-      if (
-        selectedArmazenamento !== 'todos' &&
-        item.tipo_armazenamento !== selectedArmazenamento
-      ) {
-        return false;
-      }
-      if (
-        selectedTipoArtigo !== 'todos' &&
-        item.tipo_artigo !== selectedTipoArtigo
-      ) {
-        return false;
-      }
-      if (
-        selectedTipoArmazem !== 'todos' &&
-        item.tipo_armazem !== selectedTipoArmazem
-      ) {
-        return false;
-      }
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const matchCod =
-          item.artigo_id?.toLowerCase().includes(query) ||
-          item.artigo_cli?.toLowerCase().includes(query);
-        const matchDesc = item.descricao?.toLowerCase().includes(query);
-        const matchLote = item.lote?.toLowerCase().includes(query);
-        const matchArmLoc = item.armazem_loc?.toLowerCase().includes(query);
-        const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
-        if (!matchCod && !matchDesc && !matchLote && !matchArmLoc && !matchCli) {
+    return stockAtualList
+      .filter((item) => {
+        if (selectedClientId !== 'todos' && item.cliente_id !== selectedClientId) {
           return false;
         }
-      }
-      return true;
-    });
-  }, [stockAtualList, selectedClientId, selectedArmazenamento, selectedTipoArtigo, selectedTipoArmazem, searchTerm]);
+        if (
+          selectedArmazenamento !== 'todos' &&
+          item.tipo_armazenamento !== selectedArmazenamento
+        ) {
+          return false;
+        }
+        if (
+          selectedTipoArtigo !== 'todos' &&
+          item.tipo_artigo !== selectedTipoArtigo
+        ) {
+          return false;
+        }
+        if (
+          selectedTipoArmazem !== 'todos' &&
+          item.tipo_armazem !== selectedTipoArmazem
+        ) {
+          return false;
+        }
+        if (searchTerm.trim()) {
+          const query = searchTerm.toLowerCase();
+          const matchCod =
+            item.artigo_id?.toLowerCase().includes(query) ||
+            item.artigo_cli?.toLowerCase().includes(query);
+          const matchDesc = item.descricao?.toLowerCase().includes(query);
+          const matchLote = item.lote?.toLowerCase().includes(query);
+          const matchArmLoc = item.armazem_loc?.toLowerCase().includes(query);
+          const matchCli = item.cliente_sigla?.toLowerCase().includes(query) || item.cliente_nome?.toLowerCase().includes(query);
+          if (!matchCod && !matchDesc && !matchLote && !matchArmLoc && !matchCli) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => compareStockItems(a, b, tabSorts.consolidado));
+  }, [stockAtualList, selectedClientId, selectedArmazenamento, selectedTipoArtigo, selectedTipoArmazem, searchTerm, tabSorts.consolidado]);
 
-  // Agrupamento por Artigo
+  // Agrupamento por Artigo - Ordenação dinâmica
   const resumoArtigos = useMemo(() => {
     const map = new Map<
       string,
@@ -380,19 +482,25 @@ export default function StocksView({
       }
     });
 
-    return Array.from(map.values()).sort((a, b) => b.stockTotal - a.stockTotal);
-  }, [filteredStockAtual]);
+    return Array.from(map.values()).sort((a, b) => compareStockItems(a, b, tabSorts.artigos));
+  }, [filteredStockAtual, tabSorts.artigos]);
 
-  // Lotes para Alerta de Validade (FEFO)
+  // Lotes para Alerta de Validade (FEFO com suporte a ordenação dinâmica por cabeçalho)
   const lotesValidade = useMemo(() => {
+    const sortConfig = tabSorts.validade;
     return [...filteredStockAtual]
       .filter((s) => s.validade)
       .sort((a, b) => {
+        if (sortConfig.field !== 'default') {
+          return compareStockItems(a, b, sortConfig);
+        }
         if (!a.validade) return 1;
         if (!b.validade) return -1;
-        return new Date(a.validade).getTime() - new Date(b.validade).getTime();
+        const diff = new Date(a.validade).getTime() - new Date(b.validade).getTime();
+        if (diff !== 0) return diff;
+        return compareStockItems(a, b, { field: 'artigo', order: 'asc' });
       });
-  }, [filteredStockAtual]);
+  }, [filteredStockAtual, tabSorts.validade]);
 
 
   // Set de artigos que têm stock positivo em armazém (o lote deve ser ignorado)
@@ -472,8 +580,8 @@ export default function StocksView({
         );
       }
       return true;
-    });
-  }, [stockZero, artigosComStockPositivo, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm]);
+    }).sort((a, b) => compareStockItems(a, b, tabSorts.stock_zero));
+  }, [stockZero, artigosComStockPositivo, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm, tabSorts.stock_zero]);
 
   // Exportar CSV
   const handleExportCSV = () => {
@@ -1117,8 +1225,8 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
@@ -1274,8 +1382,8 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém</th>
@@ -1409,8 +1517,8 @@ export default function StocksView({
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição do Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0 text-center">Nº Lotes</th>
@@ -1524,8 +1632,8 @@ export default function StocksView({
                     <tr>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Estado</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Descrição Artigo</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Data Validade</th>
                       <th className="py-3 px-3 bg-surface-container sticky top-0">Dias Restantes</th>
@@ -1653,8 +1761,8 @@ export default function StocksView({
                     <tr>
                       <th className="py-3 px-3">Estado</th>
                       <th className="py-3 px-3">Cliente</th>
-                      <th className="py-3 px-3">Artigo</th>
-                      <th className="py-3 px-3">Descrição do Artigo</th>
+                      <th className="py-3 px-3">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-3 px-3">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
                       <th className="py-3 px-3">Tipo Artigo</th>
                       <th className="py-3 px-3">Conservação</th>
                       <th className="py-3 px-3 text-right">Stock Atual</th>

@@ -388,11 +388,14 @@ export default function ImportacaoStockTab({
               <code className="font-mono">Entidade</code>,{' '}
               <code className="font-mono">Sigla</code>,{' '}
               <code className="font-mono">artigo_id</code> (ou artigo),{' '}
+              <code className="font-mono">descricao</code>,{' '}
               <code className="font-mono">armazem</code>,{' '}
               <code className="font-mono">localizacao</code>,{' '}
               <code className="font-mono">lote</code>,{' '}
               <code className="font-mono">stock</code>,{' '}
-              <code className="font-mono">datastock</code>.
+              <code className="font-mono">data_stock</code>,{' '}
+              <code className="font-mono">validade</code>,{' '}
+              <code className="font-mono">data_fabrico</code>.
             </p>
           </div>
 
@@ -575,6 +578,8 @@ export default function ImportacaoStockTab({
                   <th className="py-2.5 px-3">Lote</th>
                   <th className="py-2.5 px-3 text-right">Stock</th>
                   <th className="py-2.5 px-3 text-center">Data Stock</th>
+                  <th className="py-2.5 px-3 text-center">Validade</th>
+                  <th className="py-2.5 px-3 text-center">Data Fabrico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -623,6 +628,12 @@ export default function ImportacaoStockTab({
                     </td>
                     <td className="py-2.5 px-3 text-center font-mono text-[11px] text-on-surface-variant">
                       {r.data_stock || '-'}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-mono text-[11px] font-semibold text-primary">
+                      {r.validade || '-'}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-mono text-[11px] text-on-surface-variant">
+                      {r.data_fabrico || '-'}
                     </td>
                   </tr>
                 ))}

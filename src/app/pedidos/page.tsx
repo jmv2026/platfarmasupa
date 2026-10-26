@@ -28,7 +28,7 @@ export default async function PedidosPage() {
   const userClientId = profile?.cliente_id;
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('cliente_sigla');
+  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').order('artigo_id', { ascending: true });
   let destinosQuery = supabase.from('destinos').select('*').eq('ativo', true).order('codigo');
 
   if (!isManagerOrAdmin && userClientId) {

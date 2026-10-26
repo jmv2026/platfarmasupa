@@ -140,7 +140,9 @@ export default function NovoPedidoForm({
         existing.descricao = s.descricao;
       }
     });
-    return Array.from(map.values());
+    return Array.from(map.values()).sort((a, b) =>
+      (a.codigo || a.id).localeCompare(b.codigo || b.id, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }, [clientStock]);
 
   // Lotes disponíveis para o artigo selecionado, ordenados por FEFO (Validade Ascendente)

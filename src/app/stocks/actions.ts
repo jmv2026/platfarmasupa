@@ -8,6 +8,8 @@ export interface EditarStockInput {
   artigo_id: string;
   lote?: string | null;
   validade?: string | null;
+  data_fabrico?: string | null;
+  data_stock?: string | null;
   armazem_loc?: string | null;
   stock: number;
 }
@@ -129,9 +131,16 @@ export async function editarLinhaStockAction(input: EditarStockInput) {
     const updates: Record<string, any> = {
       artigo_id: artigoTrimmed,
       lote: input.lote ? input.lote.trim() : null,
-      data_stock: input.validade ? input.validade : null,
+      validade: input.validade ? input.validade : null,
       stock: qtd,
     };
+
+    if (input.data_stock !== undefined) {
+      updates.data_stock = input.data_stock ? input.data_stock : null;
+    }
+    if (input.data_fabrico !== undefined) {
+      updates.data_fabrico = input.data_fabrico ? input.data_fabrico : null;
+    }
 
     if (input.armazem_loc !== undefined && input.armazem_loc !== null) {
       const loc = input.armazem_loc.trim();

@@ -12,7 +12,9 @@ export interface StockImportRow {
   localizacao?: string | null;
   lote?: string | null;
   stock: number;
-  data_stock?: string | null; // YYYY-MM-DD
+  data_stock?: string | null; // YYYY-MM-DD (Data do registo / saldo de stock)
+  validade?: string | null; // YYYY-MM-DD (Data de validade do lote)
+  data_fabrico?: string | null; // YYYY-MM-DD (Data de fabrico do lote)
 }
 
 /**
@@ -186,11 +188,36 @@ function normalizeHeader(key: string): string {
     return 'stock';
   if (
     clean === 'datastock' ||
+    clean === 'data_stock' ||
     clean === 'data' ||
     clean === 'datasaldo' ||
-    clean === 'datacontagem'
+    clean === 'datacontagem' ||
+    clean === 'datasnapshot'
   )
     return 'data_stock';
+  if (
+    clean === 'validade' ||
+    clean === 'data_validade' ||
+    clean === 'datavalidade' ||
+    clean === 'caducidade' ||
+    clean === 'datacaducidade' ||
+    clean === 'expiracao' ||
+    clean === 'dataexpiracao' ||
+    clean === 'dtvalidade' ||
+    clean === 'val'
+  )
+    return 'validade';
+  if (
+    clean === 'datafabrico' ||
+    clean === 'data_fabrico' ||
+    clean === 'fabrico' ||
+    clean === 'datafabricacao' ||
+    clean === 'data_fabricacao' ||
+    clean === 'fabricacao' ||
+    clean === 'dtfabrico' ||
+    clean === 'dtfabricacao'
+  )
+    return 'data_fabrico';
   if (clean === 'estadostock' || clean === 'estado') return 'estado_stock'; // ignorado com segurança
 
   return clean;
@@ -265,6 +292,8 @@ export function parseStockTextFile(text: string, defaultCliente?: string): Stock
       lote: r['lote'] ? r['lote'].trim() : null,
       stock: parseNum(r['stock'], 0),
       data_stock: parseDateOnly(r['data_stock']),
+      validade: parseDateOnly(r['validade']),
+      data_fabrico: parseDateOnly(r['data_fabrico']),
     });
   }
 
@@ -340,6 +369,8 @@ export async function parseStockExcelFile(
         lote: r['lote'] ? String(r['lote']).trim() : null,
         stock: parseNum(r['stock'], 0),
         data_stock: parseDateOnly(r['data_stock']),
+        validade: parseDateOnly(r['validade']),
+        data_fabrico: parseDateOnly(r['data_fabrico']),
       });
     }
   });
@@ -393,7 +424,9 @@ export const STOCK_HEADERS = [
   'localizacao',
   'lote',
   'stock',
-  'datastock',
+  'data_stock',
+  'validade',
+  'data_fabrico',
 ] as const;
 
 export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
@@ -406,9 +439,11 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     descricao: 'Paracetamol 500mg 20 Comprimidos',
     armazem: 'AOP01',
     localizacao: 'AOP01',
-    lote: '<L01>',
-    stock: 0,
-    datastock: '',
+    lote: 'TREP2401',
+    stock: 150,
+    data_stock: '26/10/2026',
+    validade: '31/10/2027',
+    data_fabrico: '01/10/2024',
   },
   {
     id: '{4813C4C5-409F-43BF-A597-1F0A2D38EDEB}',
@@ -419,9 +454,11 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     descricao: 'Ibuprofeno 400mg 30 Comprimidos',
     armazem: 'AOP05',
     localizacao: 'AOP05.12B56',
-    lote: '<L01>',
-    stock: 0,
-    datastock: '',
+    lote: 'IFNK1050',
+    stock: 90,
+    data_stock: '26/10/2026',
+    validade: '23/10/2027',
+    data_fabrico: '15/10/2024',
   },
   {
     id: '{90D88731-AE2C-421F-B3C7-1199C66E4988}',
@@ -432,9 +469,11 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     descricao: 'Amoxicilina 500mg 16 Cápsulas',
     armazem: 'AOP05',
     localizacao: 'AOP05.16C12',
-    lote: 'TREC0186',
-    stock: 0,
-    datastock: '27/11/2023',
+    lote: 'TREC0348',
+    stock: 45,
+    data_stock: '26/10/2026',
+    validade: '27/03/2027',
+    data_fabrico: '10/03/2024',
   },
   {
     id: '{13FA3B08-8E5A-4E78-9DAE-0004C198333D}',
@@ -445,9 +484,11 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     descricao: 'Omeprazol 20mg 28 Cápsulas',
     armazem: 'AOP01',
     localizacao: 'AOP01.14B34',
-    lote: 'TREP1812',
-    stock: 0,
-    datastock: '03/06/2026',
+    lote: 'TREP2377',
+    stock: 234,
+    data_stock: '26/10/2026',
+    validade: '22/10/2027',
+    data_fabrico: '05/10/2024',
   },
   {
     id: '{E7F324D4-2224-4D19-8BEE-02C12CB19C8D}',
@@ -460,7 +501,9 @@ export const STOCK_SAMPLE_DATA: Record<string, any>[] = [
     localizacao: 'AOP06.01R01',
     lote: 'TREP1394',
     stock: 97,
-    datastock: '14/09/2026',
+    data_stock: '26/10/2026',
+    validade: '14/09/2027',
+    data_fabrico: '01/09/2024',
   },
 ];
 
@@ -502,7 +545,9 @@ export async function generateStockSampleExcel(): Promise<Blob> {
     localizacao: 18,
     lote: 18,
     stock: 14,
-    datastock: 16,
+    data_stock: 16,
+    validade: 16,
+    data_fabrico: 16,
   };
 
   worksheet.columns = STOCK_HEADERS.map((h) => ({
