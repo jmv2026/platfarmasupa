@@ -47,6 +47,29 @@ function extrairAnoMes(dateStr: string | null | undefined): { year: number; mont
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
+function BlinkingHint({ isInspecting }: { isInspecting: boolean }) {
+  const [isBold, setIsBold] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsBold((prev) => !prev);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <p
+      className={`text-[10px] text-center pt-1.5 transition-all duration-300 select-none ${
+        isBold ? 'font-bold text-slate-200' : 'font-normal text-slate-400/80'
+      }`}
+    >
+      {isInspecting
+        ? 'A inspecionar mês apontado'
+        : 'Passe o cursor sobre as colunas do gráfico'}
+    </p>
+  );
+}
+
 export default function GraficoFaturacaoMensal({ faturacao, clientName }: GraficoFaturacaoMensalProps) {
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
@@ -60,7 +83,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('barras');
   const [tipoMetrica, setTipoMetrica] = useState<TipoMetrica>(hasMonetaryData ? 'faturacao' : 'unidades');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSelectedMonthIndex(null);
+  }, [periodo]);
 
   useEffect(() => {
     if (!hasMonetaryData && tipoMetrica === 'faturacao') {
@@ -471,8 +499,28 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         </div>
       )}
 
-      {/* Corpo Principal: Cards na Lateral Esquerda + Gráfico no Espaço Restante */}
-      <div className="flex flex-col lg:flex-row gap-3.5 sm:gap-4 my-4 items-stretch">
+      {/* Legenda Explicativa das Colunas Paralelas */}
+      <div className="flex items-center justify-between flex-wrap gap-2 px-1 my-2">
+        <div className="flex items-center gap-5 text-xs font-semibold">
+          <div className="flex items-center gap-2">
+            <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-lime-400 to-emerald-600 border border-emerald-700/60 shadow-2xs inline-block"></span>
+            <span className="text-slate-800">
+              {tipoMetrica === 'faturacao'
+                ? 'Faturação Líquida (Mercadoria − IVA − Descontos)'
+                : 'Unidades Expedidas'}
+            </span>
+          </div>
+          {tipoMetrica === 'faturacao' && (
+            <div className="flex items-center gap-2">
+              <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-rose-400 to-rose-600 border border-rose-700/60 shadow-2xs inline-block"></span>
+              <span className="text-slate-800">Total Descontos</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Corpo Principal: Cards na Lateral Esquerda + Janela do Gráfico + Card Lateral Direito */}
+      <div className="flex flex-col lg:flex-row gap-3.5 sm:gap-4 my-2.5 items-stretch">
         {/* Coluna Lateral Esquerda: Cartões de Métricas e Destaques */}
         <div className="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-4 gap-2.5 sm:gap-3 w-full lg:w-56 xl:w-64 shrink-0">
           {/* 1. Total Faturado Líquido (Mercadoria - IVA - Descontos) */}
@@ -580,39 +628,11 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           </div>
         </div>
 
-        {/* Coluna Direita: Legenda + Janela do Gráfico */}
-        <div className="flex-1 min-w-0 flex flex-col gap-2">
-          {/* Legenda Explicativa das Colunas Paralelas */}
-          <div className="flex items-center justify-between flex-wrap gap-2 px-1">
-            <div className="flex items-center gap-5 text-xs font-semibold">
-              <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-lime-400 to-emerald-600 border border-emerald-700/60 shadow-2xs inline-block"></span>
-                <span className="text-slate-800">
-                  {tipoMetrica === 'faturacao'
-                    ? 'Faturação Líquida (Mercadoria − IVA − Descontos)'
-                    : 'Unidades Expedidas'}
-                </span>
-              </div>
-              {tipoMetrica === 'faturacao' && (
-                <div className="flex items-center gap-2">
-                  <span className="w-3.5 h-3.5 rounded-md bg-gradient-to-br from-rose-400 to-rose-600 border border-rose-700/60 shadow-2xs inline-block"></span>
-                  <span className="text-slate-800">Total Descontos</span>
-                </div>
-              )}
-            </div>
-
-            <span className="text-[11px] text-slate-500 font-medium">
-              {tipoGrafico === 'barras' || tipoGrafico === 'combinado'
-                ? 'Colunas paralelas por mês'
-                : 'Curva de evolução'}
-            </span>
-          </div>
-
-          {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
-          <div
-            ref={containerRef}
-            className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
-          >
+        {/* Janela Central: Área do Gráfico SVG */}
+        <div
+          ref={containerRef}
+          className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
+        >
             <div className="w-full overflow-x-auto flex items-center justify-center">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -729,6 +749,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       className="cursor-pointer"
                       onMouseEnter={() => setHoveredIndex(i)}
                       onMouseLeave={() => setHoveredIndex(null)}
+                      onClick={() => setSelectedMonthIndex((prev) => (prev === i ? null : i))}
                     />
 
                     {/* Coluna 1: Faturação Líquida */}
@@ -843,6 +864,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                         className="transition-all duration-150 cursor-pointer"
                         onMouseEnter={() => setHoveredIndex(i)}
                         onMouseLeave={() => setHoveredIndex(null)}
+                        onClick={() => setSelectedMonthIndex((prev) => (prev === i ? null : i))}
                       />
 
                       {isHovered && (
@@ -863,19 +885,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               </>
             )}
 
-            {/* Linha de Referência Vertical no Hover */}
-            {activePoint && (
-              <line
-                x1={activePoint.x}
-                y1={padding.top}
-                x2={activePoint.x}
-                y2={padding.top + chartHeight}
-                stroke="#65a30d"
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-                className="pointer-events-none"
-              />
-            )}
+
 
             {/* Rótulos do Eixo X (Meses) */}
             {points.map((p, i) => {
@@ -899,101 +909,130 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
             })}
           </svg>
         </div>
+      </div>
 
-        {/* Tooltip Detalhado Flutuante */}
-        {activeItem && activePoint && (
-          <div
-            className="absolute z-20 pointer-events-none bg-slate-900/95 text-white backdrop-blur-md px-4 py-3 rounded-xl shadow-2xl border border-lime-300/40 text-xs transition-all duration-75 min-w-[240px]"
-            style={{
-              right: '16px',
-              top: '16px',
-            }}
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-1 mb-2">
-              <span className="font-bold text-lime-300 flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs text-lime-400">event</span>
-                {activeItem.labelCompleto}
-              </span>
-              {activeItem.total_liquido === estatisticas.pico?.total_liquido && activeItem.total_liquido > 0 && (
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
-                  Máx
-                </span>
-              )}
+      {/* Coluna Lateral Direita: Card com Total Mercadorias e Total Líquido (conforme popup) */}
+      <div className="w-full lg:w-56 xl:w-64 shrink-0 flex flex-col">
+        {(() => {
+          const displayItem =
+            (hoveredIndex !== null ? dadosMensais[hoveredIndex] : null) ||
+            (selectedMonthIndex !== null ? dadosMensais[selectedMonthIndex] : null) ||
+            estatisticas.ultimoMes ||
+            dadosMensais[dadosMensais.length - 1];
+
+          if (!displayItem) {
+            return (
+              <div className="h-full min-h-[280px] rounded-2xl bg-slate-900/95 text-white backdrop-blur-md p-4 border border-lime-300/40 shadow-sm flex items-center justify-center text-xs text-slate-400">
+                Sem dados disponíveis
+              </div>
+            );
+          }
+
+          const isInspecting = hoveredIndex !== null;
+          const isPinned = selectedMonthIndex !== null && !isInspecting;
+          const isPeak = displayItem.total_liquido === estatisticas.pico?.total_liquido && displayItem.total_liquido > 0;
+
+          return (
+            <div className="h-full min-h-[280px] rounded-xl bg-slate-900/95 text-white backdrop-blur-md p-3.5 sm:p-4 border border-lime-300/40 shadow-lg flex flex-col justify-between text-xs transition-all duration-150">
+              <div>
+                {/* Cabeçalho do Card */}
+                <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2 mb-2.5">
+                  <span className="font-bold text-sm text-lime-300 truncate">
+                    {displayItem.labelCompleto}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isPeak && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
+                        Máx
+                      </span>
+                    )}
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none ${
+                        isInspecting
+                          ? 'bg-lime-400 text-slate-950 animate-pulse'
+                          : isPinned
+                          ? 'bg-lime-500/20 text-lime-300 border border-lime-400/30'
+                          : 'bg-white/10 text-slate-300'
+                      }`}
+                    >
+                      {isInspecting ? 'Em Inspeção' : isPinned ? 'Fixado' : 'Mais Recente'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Detalhe da Decomposição Conforme Apresentado no Popup */}
+                <div className="space-y-1.5">
+                  {/* Total Mercadorias */}
+                  <div className="flex items-baseline justify-between gap-2 p-1.5 rounded-lg bg-white/[0.04] border border-white/10">
+                    <span className="text-slate-300 font-semibold text-xs">Total Mercadorias:</span>
+                    <span className="font-bold text-xs text-slate-100">
+                      {formatCurrency(displayItem.total_merc)}
+                    </span>
+                  </div>
+
+                  {/* Total IVA */}
+                  <div className="flex items-baseline justify-between gap-2 px-1">
+                    <span className="text-slate-300 font-semibold text-xs">Total IVA:</span>
+                    <span className="font-bold text-xs text-amber-300">
+                      {formatCurrency(displayItem.total_iva)}
+                    </span>
+                  </div>
+
+                  {/* Total Descontos */}
+                  <div className="flex items-baseline justify-between gap-2 px-1 text-rose-300">
+                    <span className="font-bold flex items-center gap-1 text-xs">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                      Total Descontos:
+                    </span>
+                    <span className="font-bold text-xs">
+                      {formatCurrency(displayItem.total_desc)}
+                    </span>
+                  </div>
+
+                  {/* Total Líquido */}
+                  <div className="flex items-baseline justify-between gap-2 p-1.5 rounded-lg bg-lime-950/30 border border-lime-400/30 text-lime-300">
+                    <span className="font-bold flex items-center gap-1 text-xs">
+                      <span className="w-2 h-2 rounded-full bg-lime-400 inline-block"></span>
+                      Total Líquido:
+                    </span>
+                    <span className="font-extrabold text-sm text-lime-300">
+                      {formatCurrency(displayItem.total_liquido)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Secção Inferior: Documentos e vs. Mês Anterior */}
+              <div className="pt-2 border-t border-white/15 mt-2">
+                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                  <span>Documentos: <strong className="text-white">{displayItem.total_docs}</strong></span>
+                  <span className="text-slate-400">Faturação Mensal</span>
+                </div>
+
+                {displayItem.diffAnterior !== null && (
+                  <div className="flex items-center justify-between gap-2 mt-1 pt-1 border-t border-white/10 text-[11px]">
+                    <span className="text-slate-400">vs. Mês Anterior:</span>
+                    <span
+                      className={`font-semibold flex items-center gap-0.5 ${
+                        displayItem.diffAnterior > 0
+                          ? 'text-lime-400'
+                          : displayItem.diffAnterior < 0
+                          ? 'text-rose-400'
+                          : 'text-slate-300'
+                      }`}
+                    >
+                      {displayItem.diffAnterior > 0
+                        ? `+${displayItem.diffAnterior}%`
+                        : `${displayItem.diffAnterior}%`}
+                    </span>
+                  </div>
+                )}
+
+                <BlinkingHint isInspecting={isInspecting} />
+              </div>
             </div>
-
-            {/* Detalhe da Decomposição */}
-            <div className="space-y-1">
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="text-slate-300 font-semibold">Total Mercadorias:</span>
-                <span className="font-bold text-xs text-slate-200">
-                  {formatCurrency(activeItem.total_merc)}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="text-slate-300 font-semibold">Total IVA:</span>
-                <span className="font-bold text-xs text-amber-300">
-                  {formatCurrency(activeItem.total_iva)}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-4 text-rose-300">
-                <span className="font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
-                  Coluna 2 (Descontos):
-                </span>
-                <span className="font-bold text-xs">
-                  {formatCurrency(activeItem.total_desc)}
-                </span>
-              </div>
-
-              <div className="flex items-baseline justify-between gap-4 pt-1.5 border-t border-white/20 text-lime-300">
-                <span className="font-bold flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-lime-400 inline-block"></span>
-                  Coluna 1 (Líquido):
-                </span>
-                <span className="font-extrabold text-sm text-lime-300">
-                  {formatCurrency(activeItem.total_liquido)}
-                </span>
-              </div>
-
-              {/* Total de Artigos Vendidos */}
-              <div className="flex items-baseline justify-between gap-4 pt-1.5 border-t border-white/20 text-sky-300">
-                <span className="font-bold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-xs text-sky-400">inventory_2</span>
-                  Total Artigos Vendidos:
-                </span>
-                <span className="font-bold text-xs text-sky-200">
-                  {activeItem.total_quantidade.toLocaleString(locale)} un
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-4 mt-2 pt-1.5 border-t border-white/15 text-[10px] text-slate-300">
-              <span>Documentos: <strong>{activeItem.total_docs}</strong></span>
-              <span className="text-slate-400">Faturação Mensal</span>
-            </div>
-
-            {activeItem.diffAnterior !== null && (
-              <div className="flex items-center justify-between gap-4 mt-1 pt-1 border-t border-white/10 text-[10px]">
-                <span className="text-slate-400">vs. Mês Anterior:</span>
-                <span
-                  className={`font-semibold flex items-center gap-0.5 ${activeItem.diffAnterior > 0
-                    ? 'text-lime-400'
-                    : activeItem.diffAnterior < 0
-                      ? 'text-rose-400'
-                      : 'text-slate-300'
-                    }`}
-                >
-                  {activeItem.diffAnterior > 0
-                    ? `+${activeItem.diffAnterior}%`
-                    : `${activeItem.diffAnterior}%`}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-        </div>
+          );
+        })()}
       </div>
     </div>
   </div>
