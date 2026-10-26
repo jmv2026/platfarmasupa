@@ -179,7 +179,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
 
   // Dimensões do SVG do gráfico otimizadas para visualização na janela
   const svgWidth = 800;
-  const svgHeight = 240;
+  const svgHeight = 280;
   const padding = { top: 25, right: 25, bottom: 38, left: 45 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
@@ -352,129 +352,131 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         </div>
       </div>
 
-      {/* Cartões de Métricas e Destaques */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 items-stretch">
-        {/* 1. Total no Período */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.monthlyTotalOrders}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.total.toLocaleString(locale)}
+      {/* Corpo Principal: Cards na Lateral Esquerda + Gráfico no Espaço Restante */}
+      <div className="flex flex-col lg:flex-row gap-3.5 sm:gap-4 my-4 items-stretch">
+        {/* Coluna Lateral Esquerda: Cartões de Métricas e Destaques */}
+        <div className="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-4 gap-2.5 sm:gap-3 w-full lg:w-64 xl:w-72 shrink-0">
+          {/* 1. Total no Período */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {t.dashboard.monthlyTotalOrders}
               </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {estatisticas.total === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural}
+              <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.total.toLocaleString(locale)}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {estatisticas.total === 1 ? t.dashboard.top10OrdersSingle : t.dashboard.top10OrdersPlural}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
+                {dadosMensais.length} {language === 'en' ? (dadosMensais.length === 1 ? 'month' : 'months') : (dadosMensais.length === 1 ? 'mês' : 'meses')}
               </span>
             </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {dadosMensais.length} {t.dashboard.months[0] ? '' : ''}
-            </span>
+          </div>
+
+          {/* 2. Média Mensal */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {t.dashboard.monthlyAverage}
+              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.media.toLocaleString(locale, {
+                    minimumFractionDigits: 1,
+                    maximumFractionDigits: 1,
+                  })}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {t.dashboard.top10OrdersPlural}/{language === 'en' ? 'mo' : 'mês'}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
+                {t.dashboard.monthlyAverage}
+              </span>
+            </div>
+          </div>
+
+          {/* 3. Mês de Pico / Recorde */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
+                <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">military_tech</span>
+                <span>{t.dashboard.monthlyPeakMonth}</span>
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
+                Máx
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.pico ? estatisticas.pico.count.toLocaleString(locale) : 0}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {t.dashboard.top10OrdersPlural}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
+                {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
+              </span>
+            </div>
+          </div>
+
+          {/* 4. Mês Mais Recente & Tendência */}
+          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-start justify-between gap-1">
+              <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
+                {t.dashboard.monthlyRecentTrend}
+              </span>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
+                  estatisticas.variacaoUltimoMes > 0
+                    ? 'bg-lime-300 text-emerald-950'
+                    : estatisticas.variacaoUltimoMes < 0
+                    ? 'bg-rose-200 text-rose-900'
+                    : 'bg-slate-200 text-slate-800'
+                }`}
+              >
+                {estatisticas.variacaoUltimoMes > 0
+                  ? `+${estatisticas.variacaoUltimoMes}%`
+                  : `${estatisticas.variacaoUltimoMes}%`}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
+                  {estatisticas.ultimoMes ? estatisticas.ultimoMes.count.toLocaleString(locale) : 0}
+                </span>
+                <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
+                  {t.dashboard.top10OrdersPlural}
+                </span>
+              </div>
+              <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
+                {t.dashboard.monthlyVsPrevious}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 2. Média Mensal */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.monthlyAverage}
-            </span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.media.toLocaleString(locale, {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
-                })}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {t.dashboard.top10OrdersPlural}/{language === 'en' ? 'mo' : 'mês'}
-              </span>
-            </div>
-            <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-              {t.dashboard.monthlyAverage}
-            </span>
-          </div>
-        </div>
-
-        {/* 3. Mês de Pico / Recorde */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
-              <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">military_tech</span>
-              <span>{t.dashboard.monthlyPeakMonth}</span>
-            </span>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
-              Máx
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.pico ? estatisticas.pico.count.toLocaleString(locale) : 0}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {t.dashboard.top10OrdersPlural}
-              </span>
-            </div>
-            <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
-              {estatisticas.pico ? estatisticas.pico.labelCompleto : '-'}
-            </span>
-          </div>
-        </div>
-
-        {/* 4. Mês Mais Recente & Tendência */}
-        <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-              {t.dashboard.monthlyRecentTrend}
-            </span>
-            <span
-              className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${
-                estatisticas.variacaoUltimoMes > 0
-                  ? 'bg-lime-300 text-emerald-950'
-                  : estatisticas.variacaoUltimoMes < 0
-                  ? 'bg-rose-200 text-rose-900'
-                  : 'bg-slate-200 text-slate-800'
-              }`}
+        {/* Área do Gráfico SVG (Ocupa todo o espaço livre restante à direita) */}
+        <div
+          ref={containerRef}
+          className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
+        >
+          <div className="w-full overflow-x-auto flex items-center justify-center">
+            <svg
+              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              className="w-full h-auto min-w-[500px] select-none"
             >
-              {estatisticas.variacaoUltimoMes > 0
-                ? `+${estatisticas.variacaoUltimoMes}%`
-                : `${estatisticas.variacaoUltimoMes}%`}
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xl sm:text-2xl font-bold font-headline text-emerald-950 leading-none">
-                {estatisticas.ultimoMes ? estatisticas.ultimoMes.count.toLocaleString(locale) : 0}
-              </span>
-              <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                {t.dashboard.top10OrdersPlural}
-              </span>
-            </div>
-            <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-              {t.dashboard.monthlyVsPrevious}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Área do Gráfico SVG com Suporte a Hover & Tooltips */}
-      <div
-        ref={containerRef}
-        className="relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden"
-      >
-        <div className="w-full overflow-x-auto">
-          <svg
-            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-            className="w-full h-auto min-w-[550px] max-h-[250px] select-none"
-          >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#84cc16" stopOpacity="0.4" />
@@ -768,6 +770,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
             </div>
           );
         })()}
+        </div>
       </div>
     </div>
   );
