@@ -84,9 +84,9 @@ export default function PrevisaoStockView({
   }, [pedidos, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   return (
-    <main className="w-full px-4 sm:px-6 py-6 space-y-6">
+    <main className="w-full px-4 sm:px-6 py-6">
       {/* Top Bar com Botão de Retorno ao Dashboard, Título da Página e Seletores */}
-      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-t-2xl p-4 sm:p-5 shadow-xs flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-outline-variant/20">
         {/* Left Side: Botão Voltar ao Dashboard & Título */}
         <div className="flex flex-wrap items-center gap-4">
           <Link

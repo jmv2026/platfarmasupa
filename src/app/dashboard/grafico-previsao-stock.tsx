@@ -831,7 +831,11 @@ export default function GraficoPrevisaoStock({
   const activeItem = hoveredIndex !== null ? dadosPrevisao[hoveredIndex] : null;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
+    <div
+      className={`bg-surface-container-lowest border border-outline-variant/30 ${
+        hideHeaderControls ? 'rounded-b-2xl rounded-t-none border-t-0' : 'rounded-2xl'
+      } p-4 sm:p-6 shadow-sm hover:shadow-md transition-all`}
+    >
       {/* Header do Gráfico (ocultado quando os controlos e títulos estão integrados na barra superior da página) */}
       {!hideHeaderControls && (
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3.5 border-b border-outline-variant/20">
@@ -958,7 +962,7 @@ export default function GraficoPrevisaoStock({
       )}
 
       {/* Corpo Principal: 4 Cards na Lateral Esquerda + Gráfico de Previsão na Direita */}
-      <div className="flex flex-col lg:flex-row gap-3 sm:gap-3.5 my-4 items-stretch">
+      <div className={`flex flex-col lg:flex-row gap-3 sm:gap-3.5 ${hideHeaderControls ? 'mt-2 mb-4' : 'my-4'} items-stretch`}>
         {/* Coluna Esquerda: Cartão do Artigo + 3 Cartões de Métricas (tamanho uniforme compacto) */}
         <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-col gap-2.5 sm:gap-3 w-full lg:w-48 xl:w-56 shrink-0 justify-between">
           {/* Cartão do Artigo em Análise (reduzido ao tamanho dos cards do lado esquerdo) */}
