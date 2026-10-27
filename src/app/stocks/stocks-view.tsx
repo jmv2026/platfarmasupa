@@ -37,6 +37,18 @@ interface TabSortState {
   order: StockSortOrder;
 }
 
+// Formatador de datas ultra-rápido sem overhead do Intl.DateTimeFormat em grandes tabelas
+function formatDisplayDate(val: string | null | undefined): string {
+  if (!val) return '-';
+  if (val.length >= 10 && val[4] === '-' && val[7] === '-') {
+    return `${val.slice(8, 10)}/${val.slice(5, 7)}/${val.slice(0, 4)}`;
+  }
+  const d = new Date(val);
+  return isNaN(d.getTime())
+    ? '-'
+    : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 export default function StocksView({
   stockAtual,
   stockPedidos,
@@ -54,6 +66,20 @@ export default function StocksView({
   }, [stockAtual]);
 
   const [activeTab, setActiveTab] = useState<TabType>('pedidos');
+  const [visitedTabs, setVisitedTabs] = useState<Set<TabType>>(() => new Set(['pedidos']));
+
+  // Mapa de tempos por cliente para lookup O(1) instantâneo sem iterar arrays por linha
+  const temposMap = useMemo(() => new Map(tempos.map((tmp) => [tmp.id_cliente, tmp])), [tempos]);
+
+  const handleSelectTab = (tab: TabType) => {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  };
   const [tabSorts, setTabSorts] = useState<Record<TabType, TabSortState>>({
     pedidos: { field: 'artigo', order: 'asc' },
     consolidado: { field: 'artigo', order: 'asc' },
@@ -1123,7 +1149,7 @@ export default function StocksView({
           <div className="border-b border-slate-200/80 px-6 pt-3 bg-slate-50/70">
             <div className="flex items-center gap-2 overflow-x-auto">
               <button
-                onClick={() => setActiveTab('pedidos')}
+                onClick={() => handleSelectTab('pedidos')}
                 className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'pedidos'
                     ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
@@ -1138,7 +1164,7 @@ export default function StocksView({
               </button>
 
               <button
-                onClick={() => setActiveTab('consolidado')}
+                onClick={() => handleSelectTab('consolidado')}
                 className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'consolidado'
                     ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
@@ -1153,7 +1179,7 @@ export default function StocksView({
               </button>
 
               <button
-                onClick={() => setActiveTab('artigos')}
+                onClick={() => handleSelectTab('artigos')}
                 className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'artigos'
                     ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
@@ -1168,7 +1194,7 @@ export default function StocksView({
               </button>
 
               <button
-                onClick={() => setActiveTab('validade')}
+                onClick={() => handleSelectTab('validade')}
                 className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'validade'
                     ? 'border-sermail-green text-sermail-green-dark bg-white rounded-t-xl shadow-2xs'
@@ -1182,7 +1208,7 @@ export default function StocksView({
                 </span>
               </button>
               <button
-                onClick={() => setActiveTab('stock_zero')}
+                onClick={() => handleSelectTab('stock_zero')}
                 className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                   activeTab === 'stock_zero'
                     ? 'border-rose-600 text-rose-700 bg-white rounded-t-xl shadow-2xs'
@@ -1206,8 +1232,8 @@ export default function StocksView({
         <div className="p-6">
 
           {/* TAB 1: Stock Venda Livre (vw_stock_pedidos) */}
-          {activeTab === 'pedidos' && (
-            <div className="space-y-4">
+          {visitedTabs.has('pedidos') && (
+            <div className={activeTab === 'pedidos' ? 'block space-y-4' : 'hidden'}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-outline-variant/15 gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
@@ -1242,7 +1268,7 @@ export default function StocksView({
                         const isWarning = days !== null && days > 0 && days <= 90;
 
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
+                        const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1295,9 +1321,7 @@ export default function StocksView({
                             <td className="py-3 px-3">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-mono text-on-surface-variant">
-                                  {item.validade
-                                    ? new Date(item.validade).toLocaleDateString('pt-PT')
-                                    : '-'}
+                                  {formatDisplayDate(item.validade)}
                                 </span>
                                 {isExpired && (
                                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-100 text-rose-800">
@@ -1335,8 +1359,8 @@ export default function StocksView({
           )}
 
           {/* TAB 2: Stock Consolidado (vw_stock_atual) */}
-          {activeTab === 'consolidado' && (
-            <div className="space-y-4">
+          {visitedTabs.has('consolidado') && (
+            <div className={activeTab === 'consolidado' ? 'block space-y-4' : 'hidden'}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-outline-variant/15">
                 <div>
                   <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
@@ -1399,7 +1423,7 @@ export default function StocksView({
                       filteredStockAtual.map((item, idx) => {
                         const days = getDaysUntilExpiry(item.validade);
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
+                        const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1428,9 +1452,7 @@ export default function StocksView({
                             {item.lote}
                           </td>
                           <td className="py-3 px-3 font-mono text-on-surface-variant">
-                            {item.validade
-                              ? new Date(item.validade).toLocaleDateString('pt-PT')
-                              : '-'}
+                            {formatDisplayDate(item.validade)}
                           </td>
                           <td className="py-3 px-3 font-mono font-semibold text-secondary-600">
                             {item.armazem_loc}
@@ -1500,8 +1522,8 @@ export default function StocksView({
           )}
 
           {/* TAB 3: Resumo por Artigo */}
-          {activeTab === 'artigos' && (
-            <div className="space-y-4">
+          {visitedTabs.has('artigos') && (
+            <div className={activeTab === 'artigos' ? 'block space-y-4' : 'hidden'}>
               <div className="pb-3 border-b border-outline-variant/15">
                 <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-secondary">category</span>
@@ -1532,7 +1554,7 @@ export default function StocksView({
                       resumoArtigos.map((item, idx) => {
                         const days = getDaysUntilExpiry(item.primeiraValidade);
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
+                        const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1585,9 +1607,7 @@ export default function StocksView({
                             </span>
                           </td>
                           <td className="py-3 px-3 font-mono text-on-surface-variant">
-                            {item.primeiraValidade
-                              ? new Date(item.primeiraValidade).toLocaleDateString('pt-PT')
-                              : '-'}
+                            {formatDisplayDate(item.primeiraValidade)}
                           </td>
                           <td className="py-3 px-3 text-right font-mono font-semibold text-emerald-700">
                             {item.stockVenda.toLocaleString('pt-PT')}{' '}
@@ -1614,8 +1634,8 @@ export default function StocksView({
           )}
 
           {/* TAB 4: Controlo de Validades (FEFO Monitor) */}
-          {activeTab === 'validade' && (
-            <div className="space-y-4">
+          {visitedTabs.has('validade') && (
+            <div className={activeTab === 'validade' ? 'block space-y-4' : 'hidden'}>
               <div className="pb-3 border-b border-outline-variant/15">
                 <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
                   <span className="material-symbols-outlined text-secondary">event_upcoming</span>
@@ -1650,7 +1670,7 @@ export default function StocksView({
                         const isWarning = days !== null && days > 30 && days <= 90;
 
                         let threshold = null;
-                        const clientTempo = tempos.find(t => t.id_cliente === item.cliente_id);
+                        const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
                           switch (item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
@@ -1700,7 +1720,7 @@ export default function StocksView({
                             <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
                             <td className="py-3 px-3 font-mono font-bold text-secondary">{item.lote}</td>
                             <td className="py-3 px-3 font-mono font-semibold">
-                              {item.validade ? new Date(item.validade).toLocaleDateString('pt-PT') : '-'}
+                              {formatDisplayDate(item.validade)}
                             </td>
                             <td className="py-3 px-3 font-mono">
                               {days !== null ? (
@@ -1735,8 +1755,8 @@ export default function StocksView({
           )}
 
           {/* TAB 5: Artigos com Stock 0 (vw_stock_zero) */}
-          {activeTab === 'stock_zero' && (
-            <div className="space-y-4">
+          {visitedTabs.has('stock_zero') && (
+            <div className={activeTab === 'stock_zero' ? 'block space-y-4' : 'hidden'}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-outline-variant/15 gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">

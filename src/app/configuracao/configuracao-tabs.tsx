@@ -41,6 +41,19 @@ export interface ServerEmailConfig {
   supervisaoEmail: string;
 }
 
+export type ConfigTab =
+  | 'utilizadores'
+  | 'clientes'
+  | 'artigos'
+  | 'validades'
+  | 'tempo_entrega'
+  | 'movimentos'
+  | 'erp'
+  | 'stocks'
+  | 'email'
+  | 'transporte'
+  | 'comprovativos';
+
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
   clients: Client[];
@@ -64,7 +77,19 @@ export default function ConfiguracaoTabs({
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'utilizadores' | 'clientes' | 'artigos' | 'validades' | 'tempo_entrega' | 'movimentos' | 'erp' | 'stocks' | 'email' | 'transporte' | 'comprovativos'>('utilizadores');
+  const [activeTab, setActiveTab] = useState<ConfigTab>('utilizadores');
+  const [visitedTabs, setVisitedTabs] = useState<Set<ConfigTab>>(() => new Set(['utilizadores']));
+
+  const handleSelectTab = (tab: ConfigTab) => {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  };
+
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -456,7 +481,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('utilizadores');
+              handleSelectTab('utilizadores');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'utilizadores'
@@ -471,7 +496,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('clientes');
+              handleSelectTab('clientes');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'clientes'
@@ -486,7 +511,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('artigos');
+              handleSelectTab('artigos');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'artigos'
@@ -501,7 +526,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('validades');
+              handleSelectTab('validades');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'validades'
@@ -516,7 +541,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('tempo_entrega');
+              handleSelectTab('tempo_entrega');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'tempo_entrega'
@@ -531,7 +556,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('movimentos');
+              handleSelectTab('movimentos');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'movimentos'
@@ -546,7 +571,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('erp');
+              handleSelectTab('erp');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'erp'
@@ -561,7 +586,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('stocks');
+              handleSelectTab('stocks');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'stocks'
@@ -576,7 +601,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('transporte');
+              handleSelectTab('transporte');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'transporte'
@@ -591,7 +616,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('email');
+              handleSelectTab('email');
               setFeedback(null);
               setTestEmailFeedback(null);
             }}
@@ -607,7 +632,7 @@ export default function ConfiguracaoTabs({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('comprovativos');
+              handleSelectTab('comprovativos');
               setFeedback(null);
             }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'comprovativos'
@@ -638,8 +663,8 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA 1: UTILIZADORES */}
         {/* ========================================================================= */}
-        {activeTab === 'utilizadores' && (
-          <div className="space-y-8">
+        {visitedTabs.has('utilizadores') && (
+          <div className={activeTab === 'utilizadores' ? 'block space-y-8' : 'hidden'}>
             {/* Formulário Novo Utilizador */}
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
               <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
@@ -827,22 +852,26 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA TRANSPORTE */}
         {/* ========================================================================= */}
-        {activeTab === 'transporte' && (
-          <ImportacaoTransporteTab trackingData={trackingData} />
+        {visitedTabs.has('transporte') && (
+          <div className={activeTab === 'transporte' ? 'block' : 'hidden'}>
+            <ImportacaoTransporteTab trackingData={trackingData} />
+          </div>
         )}
 
         {/* ========================================================================= */}
         {/* ABA COMPROVATIVOS */}
         {/* ========================================================================= */}
-        {activeTab === 'comprovativos' && (
-          <ImportacaoComprovativosTab />
+        {visitedTabs.has('comprovativos') && (
+          <div className={activeTab === 'comprovativos' ? 'block' : 'hidden'}>
+            <ImportacaoComprovativosTab />
+          </div>
         )}
 
         {/* ========================================================================= */}
         {/* ABA 2: CLIENTES */}
         {/* ========================================================================= */}
-        {activeTab === 'clientes' && (
-          <div className="space-y-8">
+        {visitedTabs.has('clientes') && (
+          <div className={activeTab === 'clientes' ? 'block space-y-8' : 'hidden'}>
             {/* Formulário Novo Cliente */}
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
               <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
@@ -1285,8 +1314,8 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA 3: ARTIGOS */}
         {/* ========================================================================= */}
-        {activeTab === 'artigos' && (
-          <div className="space-y-8">
+        {visitedTabs.has('artigos') && (
+          <div className={activeTab === 'artigos' ? 'block space-y-8' : 'hidden'}>
             {/* Janela / Formulário Novo Artigo (Colapsável e Compacto para Reduzir Altura) */}
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-4 sm:p-5 shadow-sm transition-all">
               <div className="flex items-center justify-between gap-4">
@@ -1656,8 +1685,8 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA: VALIDADES (GESTÃO E CONFIGURAÇÃO) */}
         {/* ========================================================================= */}
-        {activeTab === 'validades' && (
-          <div className="space-y-6">
+        {visitedTabs.has('validades') && (
+          <div className={activeTab === 'validades' ? 'block space-y-6' : 'hidden'}>
             {/* Header da Aba Validades */}
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1829,43 +1858,48 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA 4: MOVIMENTOS (IMPORTAÇÃO E GESTÃO) */}
         {/* ========================================================================= */}
-        {activeTab === 'movimentos' && (
-          <ImportacaoMovimentosTab
-            
-            initialMovimentos={initialMovimentos}
-            clients={clients}
-            artigos={artigos}
-            armazens={armazens}
-            onRefresh={() => router.refresh()}
-          />
+        {visitedTabs.has('movimentos') && (
+          <div className={activeTab === 'movimentos' ? 'block' : 'hidden'}>
+            <ImportacaoMovimentosTab
+              initialMovimentos={initialMovimentos}
+              clients={clients}
+              artigos={artigos}
+              armazens={armazens}
+              onRefresh={() => router.refresh()}
+            />
+          </div>
         )}
 
         {/* ========================================================================= */}
         {/* ABA: ERP (IMPORTAÇÃO PLAT_MOVIMENTOS & SINCRONIZAÇÃO) */}
         {/* ========================================================================= */}
-        {activeTab === 'erp' && (
-          <ImportacaoErpTab
-            clients={clients}
-            onRefresh={() => router.refresh()}
-          />
+        {visitedTabs.has('erp') && (
+          <div className={activeTab === 'erp' ? 'block' : 'hidden'}>
+            <ImportacaoErpTab
+              clients={clients}
+              onRefresh={() => router.refresh()}
+            />
+          </div>
         )}
 
         {/* ========================================================================= */}
         {/* ABA: STOCKS (IMPORTAÇÃO TABELA STOCK) */}
         {/* ========================================================================= */}
-        {activeTab === 'stocks' && (
-          <ImportacaoStockTab
-            clients={clients}
-            onRefresh={() => router.refresh()}
-          />
+        {visitedTabs.has('stocks') && (
+          <div className={activeTab === 'stocks' ? 'block' : 'hidden'}>
+            <ImportacaoStockTab
+              clients={clients}
+              onRefresh={() => router.refresh()}
+            />
+          </div>
         )}
 
 
         {/* ========================================================================= */}
         {/* ABA 5: EMAIL & RESEND */}
         {/* ========================================================================= */}
-        {activeTab === 'email' && (
-          <div className="space-y-8">
+        {visitedTabs.has('email') && (
+          <div className={activeTab === 'email' ? 'block space-y-8' : 'hidden'}>
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-6">
                 <div>
@@ -2246,8 +2280,8 @@ export default function ConfiguracaoTabs({
         {/* ========================================================================= */}
         {/* ABA: TEMPO ENTREGA */}
         {/* ========================================================================= */}
-        {activeTab === 'tempo_entrega' && (
-          <div className="space-y-8">
+        {visitedTabs.has('tempo_entrega') && (
+          <div className={activeTab === 'tempo_entrega' ? 'block space-y-8' : 'hidden'}>
             <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
               <h3 className="text-base font-bold font-headline text-on-surface mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-secondary">local_shipping</span>

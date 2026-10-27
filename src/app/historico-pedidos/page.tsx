@@ -4,6 +4,9 @@ import AppHeader from '@/components/navigation/app-header';
 import HistoricoPedidosView from './historico-pedidos-view';
 import { Client, PedidoComLinhas, UserProfile } from '@/lib/supabase/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 export default async function HistoricoPedidosPage() {
   const supabase = await createClient();
   const {
@@ -27,21 +30,30 @@ export default async function HistoricoPedidosPage() {
     user.user_metadata?.role === 'admin';
   const userClientId = profile?.cliente_id;
 
-  // Função auxiliar para paginação rápida paralela de dados (ultrapassa limite de 1000 registos do PostgREST)
+  // Função auxiliar para paginação rápida paralela de dados (ultrapassa limite de 1000 registos do PostgREST sem COUNT(*) desnecessário)
   async function fetchAllRowsFast<T>(
     fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
-    pageSize = 1000
+    pageSize = 2000
   ): Promise<T[]> {
-    const firstPage = await fetchPage(0, pageSize - 1, 'exact');
+    // 1ª página rápida sem contagem exata para evitar SELECT COUNT(*) pesado na vista
+    const firstPage = await fetchPage(0, pageSize - 1);
     if (firstPage.error || !firstPage.data) {
       if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
       return [];
     }
 
     const allRows: T[] = [...firstPage.data];
-    const total = firstPage.count ?? allRows.length;
 
-    if (total <= pageSize || firstPage.data.length < pageSize) {
+    // Se a 1ª página já trouxe todos os dados (< pageSize), termina de imediato sem COUNT(*)
+    if (firstPage.data.length < pageSize) {
+      return allRows;
+    }
+
+    // Apenas se ultrapassar a 1ª página obtemos a contagem exata para paralelizar o restante
+    const countRes = await fetchPage(0, 0, 'exact');
+    const total = countRes.count ?? allRows.length;
+
+    if (total <= pageSize) {
       return allRows;
     }
 
@@ -88,7 +100,7 @@ export default async function HistoricoPedidosPage() {
         .from('VW_torrestir_last')
         .select('ref_ser, desc_estado_expedicao, url_comprovativo', countMode ? { count: countMode } : undefined)
         .range(from, to);
-    }),
+    }, 2000),
     fetchAllRowsFast<any>((from, to, countMode) => {
       let q = supabase
         .from('movimentos_linhas')
@@ -100,7 +112,7 @@ export default async function HistoricoPedidosPage() {
         q = q.eq('movimentos.cliente_id', userClientId);
       }
       return q.order('data_movimento', { ascending: false }).range(from, to);
-    }),
+    }, 2000),
   ]);
 
   const clientsMap = new Map<string, any>((clients || []).map((c: any) => [c.id, c]));

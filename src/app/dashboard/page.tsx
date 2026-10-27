@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import AppHeader from '@/components/navigation/app-header';
 import DashboardView from './dashboard-view';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const {
@@ -41,19 +44,27 @@ export default async function DashboardPage() {
   // Função auxiliar otimizada para paginação paralela ultra-rápida
   async function fetchAllRowsFast<T>(
     fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
-    pageSize = 1000
+    pageSize = 2000
   ): Promise<T[]> {
-    // 1ª página com contagem exata para determinar total de páginas
-    const firstPage = await fetchPage(0, pageSize - 1, 'exact');
+    // 1ª página rápida sem contagem exata para evitar SELECT COUNT(*) pesado na vista
+    const firstPage = await fetchPage(0, pageSize - 1);
     if (firstPage.error || !firstPage.data) {
       if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
       return [];
     }
 
     const allRows: T[] = [...firstPage.data];
-    const total = firstPage.count ?? allRows.length;
 
-    if (total <= pageSize || firstPage.data.length < pageSize) {
+    // Se a 1ª página já trouxe todos os dados (< pageSize), termina de imediato sem COUNT(*)
+    if (firstPage.data.length < pageSize) {
+      return allRows;
+    }
+
+    // Apenas se ultrapassar a 1ª página obtemos a contagem exata para paralelizar o restante
+    const countRes = await fetchPage(0, 0, 'exact');
+    const total = countRes.count ?? allRows.length;
+
+    if (total <= pageSize) {
       return allRows;
     }
 
@@ -82,7 +93,7 @@ export default async function DashboardPage() {
       let q = supabase
         .from('vw_saidas')
         .select(
-          'id, cliente_id, sigla, artigo_cli, artigo_id, descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref, lote',
+          'id, cliente_id, sigla, artigo_cli, artigo_id, descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref',
           countMode ? { count: countMode } : undefined
         )
         .range(from, to);
@@ -90,7 +101,7 @@ export default async function DashboardPage() {
         q = q.eq('cliente_id', userClientId);
       }
       return q;
-    });
+    }, 2000);
 
   // Buscar pedidos de forma paralela
   const fetchPedidos = () =>
@@ -106,7 +117,7 @@ export default async function DashboardPage() {
         q = q.eq('cliente_id', userClientId);
       }
       return q;
-    });
+    }, 2000);
 
   // Buscar todos os dados em paralelo
   const [

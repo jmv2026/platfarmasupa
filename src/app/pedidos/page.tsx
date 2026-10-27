@@ -4,6 +4,9 @@ import AppHeader from '@/components/navigation/app-header';
 import NovoPedidoForm from './novo-pedido-form';
 import { Client, StockPedido, UserProfile, Destino } from '@/lib/supabase/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 export default async function PedidosPage() {
   const supabase = await createClient();
   const {

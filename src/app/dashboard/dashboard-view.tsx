@@ -103,6 +103,7 @@ export default function DashboardView({
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
   const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao'>('pedidos');
+  const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao'>>(() => new Set(['pedidos']));
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function DashboardView({
       const tab = params.get('tab');
       if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao') {
         setGraficoAtivo(tab);
+        setVisitedCharts((prev) => new Set([...prev, tab]));
       }
       const clienteParam = params.get('cliente');
       if (clienteParam) {
@@ -122,6 +124,12 @@ export default function DashboardView({
   // Posiciona a página para colocar o gráfico no centro do ecrã
   const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao') => {
     setGraficoAtivo(tipo);
+    setVisitedCharts((prev) => {
+      if (prev.has(tipo)) return prev;
+      const next = new Set(prev);
+      next.add(tipo);
+      return next;
+    });
     setTimeout(() => {
       if (graficoContainerRef.current) {
         graficoContainerRef.current.scrollIntoView({
@@ -519,24 +527,34 @@ export default function DashboardView({
         </Link>
       </div>
 
-      {/* Container do Gráfico com Ref para Centralização Automática no Ecrã */}
+      {/* Container do Gráfico com Ref para Centralização Automática no Ecrã e transição instantânea de abas */}
       <div ref={graficoContainerRef} className="scroll-mt-8 transition-all">
-        {graficoAtivo === 'faturacao' && showFaturacao ? (
-          <GraficoFaturacaoMensal
-            faturacao={filteredFaturacao}
-            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-          />
-        ) : graficoAtivo === 'pedidos' ? (
-          <GraficoPedidosMensal
-            pedidos={filteredPedidos}
-            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-          />
-        ) : (
-          <GraficoTopProdutos
-            saidas={filteredSaidas}
-            clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
-            onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
-          />
+        {visitedCharts.has('pedidos') && (
+          <div className={graficoAtivo === 'pedidos' ? 'block' : 'hidden'}>
+            <GraficoPedidosMensal
+              pedidos={filteredPedidos}
+              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+            />
+          </div>
+        )}
+
+        {visitedCharts.has('top10') && (
+          <div className={graficoAtivo === 'top10' ? 'block' : 'hidden'}>
+            <GraficoTopProdutos
+              saidas={filteredSaidas}
+              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
+            />
+          </div>
+        )}
+
+        {showFaturacao && visitedCharts.has('faturacao') && (
+          <div className={graficoAtivo === 'faturacao' ? 'block' : 'hidden'}>
+            <GraficoFaturacaoMensal
+              faturacao={filteredFaturacao}
+              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+            />
+          </div>
         )}
       </div>
     </main>
