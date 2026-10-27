@@ -200,78 +200,34 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     return { success: false, error: `Erro ao criar cabeçalho do pedido: ${pedidoErr?.message}` };
   }
 
-  // 4. Inserir linhas do pedido e movimentos SS em tempo real
-  const armazemLoc = `${client.sigla}01`;
-
-  for (const linha of input.linhas) {
-    if (linha.quantidade <= 0) {
-      continue;
-    }
-
-    // Inserir linha do pedido
-          // We must ensure artigo_id is the artigo_cli format (SIGLA-ARTIGO)
-      let finalArtigoId = linha.artigo_id.trim();
-      if (!finalArtigoId.startsWith(client.sigla + '-')) {
-         finalArtigoId = client.sigla + '-' + finalArtigoId;
-      }
-      
-      const { error: linhaErr } = await supabase.from('pedido_linhas').insert({
+  // 4. Inserir linhas do pedido na tabela pedido_linhas
+  const linhasParaInserir = input.linhas
+    .filter((linha) => linha.quantidade > 0)
+    .map((linha) => {
+      const artigoCliFinal = linha.artigo_cli || linha.artigo_codigo || '';
+      return {
         pedido_id: pedido.id,
         cliente_id: targetClientId,
-        artigo_id: finalArtigoId,
-      artigo_codigo: linha.artigo_codigo,
-      descricao: linha.descricao,
-      lote: linha.lote,
-      validade: linha.validade || null,
-      quantidade: linha.quantidade,
+        artigo_id: linha.artigo_id.trim(),
+        artigo_cli: artigoCliFinal,
+        descricao: linha.descricao,
+        lote: linha.lote,
+        validade: linha.validade || null,
+        quantidade: linha.quantidade,
+      };
     });
 
-    if (linhaErr) {
-      console.error('Erro ao inserir linha do pedido:', linhaErr);
-      return { success: false, error: `Erro ao registar linha ${linha.artigo_codigo}: ${linhaErr.message}` };
-    }
+  if (linhasParaInserir.length > 0) {
+    const { error: linhasErr } = await supabase
+      .from('pedido_linhas')
+      .insert(linhasParaInserir);
 
-    // Assegurar cabeçalho em movimentos (1:N)
-    await supabase.from('movimentos').upsert({
-      documento_ref: nrPedido,
-      cliente_id: targetClientId,
-      sigla: client.sigla,
-      data_movimento: new Date().toISOString(),
-      entidade: input.nome_destinatario,
-      nome: input.nome_destinatario,
-      morada: input.morada,
-      localidade: input.localidade,
-      cod_postal: input.codigo_postal,
-      observacoes: input.observacoes || null,
-      created_by: user.id,
-    }, { onConflict: 'documento_ref' });
-
-    const prefixo = client.cli_primavera?.trim() || client.sigla;
-    const artigoCliFormatado = prefixo ? `${prefixo}-${finalArtigoId}` : finalArtigoId;
-
-    // Gerar linha de movimento SS em movimentos_linhas
-    const { error: movErr } = await supabase.from('movimentos_linhas').insert({
-      artigo_id: finalArtigoId,
-      artigo_cli: artigoCliFormatado,
-      
-      sigla: client.sigla,
-      tipo_movimento: 'ss',
-      quantidade: linha.quantidade,
-      tipo_armazem: '01',
-      armazem_loc: armazemLoc,
-      posicao: '01A01',
-      lote: linha.lote,
-      validade: linha.validade || null,
-      documento_ref: nrPedido,
-      doc_linha: `${nrPedido}-${linha.artigo_codigo}`,
-      observacoes: `Expedição para ${input.nome_destinatario} (${input.localidade}) - Pedido ${nrPedido}`,
-      created_by: user.id,
-      data_movimento: new Date().toISOString(),
-    });
-
-    if (movErr) {
-      console.error('Erro ao registar movimento SS:', movErr);
-      return { success: false, error: `Erro ao debitar stock do lote ${linha.lote}: ${movErr.message}` };
+    if (linhasErr) {
+      console.error('Erro ao inserir linhas do pedido em pedido_linhas:', linhasErr);
+      return {
+        success: false,
+        error: `Erro ao registar linhas do pedido: ${linhasErr.message}`,
+      };
     }
   }
 
@@ -299,7 +255,8 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     utilizador_nome: userProfile?.full_name || user.email?.split('@')[0],
     utilizador_email: user.email || userProfile?.email || 'admin@sermail.pt',
     linhas: input.linhas.map((l) => ({
-      artigo_codigo: l.artigo_codigo,
+      artigo_cli: l.artigo_cli || l.artigo_codigo || '',
+      artigo_codigo: l.artigo_cli || l.artigo_codigo || '',
       descricao: l.descricao,
       lote: l.lote,
       validade: l.validade,

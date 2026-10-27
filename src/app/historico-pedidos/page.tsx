@@ -171,6 +171,7 @@ export default async function HistoricoPedidosPage() {
 
       p.pedido_linhas.push({
         id: `${key}_${mov.artigo_cli}_${p.pedido_linhas.length}`,
+        artigo_cli: mov.artigo_cli,
         artigo_codigo: mov.artigo_cli,
         descricao: mov.artigo_cli,
         quantidade: mov.quantidade || 0,

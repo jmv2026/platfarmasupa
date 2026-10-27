@@ -2,7 +2,8 @@ import { Resend } from 'resend';
 import { gerarExcelPedido } from './excel';
 
 export interface LinhaPedidoEmail {
-  artigo_codigo: string;
+  artigo_cli?: string;
+  artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade?: string | null;
@@ -167,7 +168,7 @@ function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
     .map(
       (l, idx) => `
       <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; border-bottom: 1px solid #e2e8f0;">
-        <td style="padding: 12px 14px; font-weight: 600; color: #0284c7; font-family: monospace; font-size: 13px;">${l.artigo_codigo}</td>
+        <td style="padding: 12px 14px; font-weight: 600; color: #0284c7; font-family: monospace; font-size: 13px;">${l.artigo_cli || l.artigo_codigo || ''}</td>
         <td style="padding: 12px 14px; color: #1e293b; font-size: 13px;">${l.descricao}</td>
         <td style="padding: 12px 14px; color: #475569; font-family: monospace; font-size: 12px;"><span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${l.lote}</span></td>
         <td style="padding: 12px 14px; color: #64748b; font-size: 12px;">${l.validade || 'N/D'}</td>
@@ -327,7 +328,7 @@ function gerarEmailPedidoTexto(dados: EmailPedidoDados): string {
   const linhasTexto = dados.linhas
     .map(
       (l) =>
-        `- ${l.artigo_codigo} | ${l.descricao} | Lote: ${l.lote} | Validade: ${l.validade || 'N/D'} | Qtd: ${l.quantidade} un`
+        `- ${l.artigo_cli || l.artigo_codigo || ''} | ${l.descricao} | Lote: ${l.lote} | Validade: ${l.validade || 'N/D'} | Qtd: ${l.quantidade} un`
     )
     .join('\n');
 

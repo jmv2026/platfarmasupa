@@ -14,22 +14,49 @@ export default function PedidosLoading() {
         </div>
       </div>
 
-      {/* Form Fields Grid Skeleton */}
-      <div className="sermail-card p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <div className="h-3.5 w-24 bg-slate-200 rounded"></div>
-            <div className="h-10 w-full bg-slate-100 rounded-xl"></div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-3.5 w-28 bg-slate-200 rounded"></div>
-            <div className="h-10 w-full bg-slate-100 rounded-xl"></div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-3.5 w-20 bg-slate-200 rounded"></div>
-            <div className="h-10 w-full bg-slate-100 rounded-xl"></div>
+      {/* Form Panels Skeleton (Side by side) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* Left Panel: Dados do Pedido */}
+        <div className="lg:col-span-4 bg-slate-50 border border-slate-200/80 rounded-xl p-5 space-y-4">
+          <div className="h-4 w-32 bg-slate-200 rounded"></div>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="h-3 w-24 bg-slate-200 rounded"></div>
+              <div className="h-9 w-full bg-slate-100 rounded-lg"></div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-3 w-28 bg-slate-200 rounded"></div>
+              <div className="h-9 w-full bg-slate-100 rounded-lg"></div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-3 w-20 bg-slate-200 rounded"></div>
+              <div className="h-9 w-full bg-slate-100 rounded-lg"></div>
+            </div>
           </div>
         </div>
+
+        {/* Right Panel: Destino / Destinatário */}
+        <div className="lg:col-span-8 bg-slate-50 border border-slate-200/80 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="h-4 w-40 bg-slate-200 rounded"></div>
+            <div className="h-7 w-24 bg-slate-200 rounded-lg"></div>
+          </div>
+          <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              <div className="sm:col-span-4 h-8 bg-slate-100 rounded-lg"></div>
+              <div className="sm:col-span-8 h-8 bg-slate-100 rounded-lg"></div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="sm:col-span-7 h-9 bg-slate-100 rounded-lg"></div>
+            <div className="sm:col-span-5 h-9 bg-slate-100 rounded-lg"></div>
+            <div className="sm:col-span-12 h-9 bg-slate-100 rounded-lg"></div>
+            <div className="sm:col-span-4 h-9 bg-slate-100 rounded-lg"></div>
+            <div className="sm:col-span-5 h-9 bg-slate-100 rounded-lg"></div>
+            <div className="sm:col-span-3 h-9 bg-slate-100 rounded-lg"></div>
+          </div>
+        </div>
+      </div>
 
         {/* Lines Table Skeleton */}
         <div className="space-y-3 pt-4 border-t border-slate-100">
@@ -47,6 +74,5 @@ export default function PedidosLoading() {
           ))}
         </div>
       </div>
-    </div>
   );
 }

@@ -547,7 +547,8 @@ export interface PedidoLinha {
   cliente_id: string;
 
   artigo_id: string;
-  artigo_codigo: string;
+  artigo_cli: string;
+  artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade: string | null;
@@ -568,8 +569,8 @@ export interface PedidoComLinhas extends Pedido {
 
 export interface NovaLinhaPedidoInput {
   artigo_id: string;
-  artigo_cli?: string;
-  artigo_codigo: string;
+  artigo_cli: string;
+  artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade: string | null;

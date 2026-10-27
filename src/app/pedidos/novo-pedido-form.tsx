@@ -377,9 +377,11 @@ export default function NovoPedidoForm({
       updated[existingIndex].quantidade = novaQtd;
       setLinhas(updated);
     } else {
+      const codigoArtigoCli = currentLoteObj.artigo_cli || selectedArtigoId;
       const novaLinha: NovaLinhaPedidoInput = {
         artigo_id: selectedArtigoId,
-        artigo_codigo: currentLoteObj.artigo_cli || selectedArtigoId,
+        artigo_cli: codigoArtigoCli,
+        artigo_codigo: codigoArtigoCli,
         descricao: currentLoteObj.descricao || '',
         lote: currentLoteObj.lote || '',
         validade: currentLoteObj.validade,
@@ -520,17 +522,6 @@ export default function NovoPedidoForm({
       </div>
 
       <div className="bg-white border border-slate-200/90 rounded-2xl p-6 sm:p-8 shadow-2xs">
-        <div className="flex items-center justify-between pb-6 border-b border-slate-100 mb-6">
-          <div>
-            <h2 className="text-xl font-bold font-headline text-sermail-green-dark flex items-center gap-2">
-              <span className="material-symbols-outlined text-sermail-green">add_shopping_cart</span>
-              {t.pedidos.bannerTitle}
-            </h2>
-            <p className="text-xs text-slate-500 font-medium mt-1">
-              {t.pedidos.bannerSubtitle}
-            </p>
-          </div>
-        </div>
 
         {feedback && (
           <div
@@ -548,313 +539,336 @@ export default function NovoPedidoForm({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* SECÇÃO 1: Cliente & Dados Gerais */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-base">domain</span>
-              {t.pedidos.section1Title}
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* PAINEL SUPERIOR: Janela 1 (Dados do Pedido) + Janela 2 (Destino / Destinatário) Lado a Lado */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+            {/* JANELA 1: DADOS DO PEDIDO (Esquerda, 4 colunas) */}
+            <div className="lg:col-span-4 bg-surface-container/20 border border-outline-variant/30 rounded-xl p-5 flex flex-col justify-between space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.client} <span className="text-rose-600">*</span>
-                </label>
+                <div className="flex items-center gap-2 pb-3 mb-4 border-b border-outline-variant/20">
+                  <div className="w-7 h-7 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-base">domain</span>
+                  </div>
+                  <h3 className="text-xs font-bold text-secondary uppercase tracking-wider">
+                    {language === 'pt' ? '1. Dados do Pedido' : language === 'es' ? '1. Datos del Pedido' : '1. Order Details'}
+                  </h3>
+                </div>
 
-                {isManagerOrAdmin ? (
-                  <select
-                    value={selectedClientId}
-                    onChange={(e) => handleClientChange(e.target.value)}
-                    className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
-                    required
-                  >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        [{c.sigla}] {c.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : associatedClient ? (
+                <div className="space-y-4">
                   <div>
-                    <input
-                      type="text"
-                      readOnly
-                      disabled
-                      value={`[${associatedClient.sigla}] ${associatedClient.name}`}
-                      className="w-full bg-surface-container/70 border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface font-semibold cursor-not-allowed select-none opacity-90 shadow-inner"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs font-medium flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base text-rose-600">error</span>
-                    <span>{language === 'pt' ? 'O seu utilizador não tem cliente associado. Contacte a administração.' : language === 'es' ? 'Su usuario no tiene cliente asociado. Contacte a administración.' : 'Your user has no associated client. Contact administration.'}</span>
-                  </div>
-                )}
-              </div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {t.pedidos.client} <span className="text-rose-600">*</span>
+                    </label>
 
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.docRef}
-                </label>
-                <input
-                  type="text"
-                  value={refDocumento}
-                  onChange={(e) => setRefDocumento(e.target.value)}
-                  placeholder={t.pedidos.docRefPlaceholder}
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.deliveryDate}
-                </label>
-                <input
-                  type="date"
-                  value={dataEntrega}
-                  onChange={(e) => setDataEntrega(e.target.value)}
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* SECÇÃO 2: Dados de Destino / Morada (Com Classificação do Destino) */}
-          <div className="space-y-4 pt-4 border-t border-outline-variant/20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-base">local_shipping</span>
-                  {t.pedidos.destination} & {t.pedidos.recipientName}
-                </h3>
-                <p className="text-[11px] text-on-surface-variant mt-0.5">
-                  {language === 'pt' ? 'Introduza o código rápido, selecione no pull-down ou preencha manualmente com a respetiva classificação.' : language === 'es' ? 'Introduzca el código rápido, seleccione del desplegable o rellene manualmente con su clasificación.' : 'Enter the quick code, select from pull-down, or fill in manually with destination classification.'}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setNovoDestinoFeedback(null);
-                  setShowNovoDestinoModal(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/30 transition-colors w-fit cursor-pointer shadow-sm"
-              >
-                <span className="material-symbols-outlined text-sm">add_location_alt</span>
-                {t.pedidos.btnNovoDestino}
-              </button>
-            </div>
-
-            {/* Caixa de Seleção Rápida: Código Manual + Pull-Down */}
-            <div className="p-4 bg-surface-container/50 rounded-xl border border-outline-variant/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm text-secondary">bookmark</span>
-                  {t.pedidos.destination} ({clientDestinos.length})
-                </label>
-
-                {selectedDestinoObj && (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                      <span className="material-symbols-outlined text-xs">verified</span>
-                      {selectedDestinoObj.codigo}
-                      {selectedDestinoObj.classifica_destino && (
-                        <span className="ml-1 px-1.5 py-0.2 bg-emerald-200/70 text-emerald-900 rounded text-[10px]">
-                          {selectedDestinoObj.classifica_destino}
-                        </span>
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectDestino('')}
-                      className="px-2 py-1 rounded-lg text-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors flex items-center gap-1 cursor-pointer"
-                      title={t.common.cancel}
-                    >
-                      <span className="material-symbols-outlined text-xs">clear</span>
-                      {t.pedidos.btnClear}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
-                {/* Campo 1: Introdução Manual do Código */}
-                <div className="sm:col-span-4 lg:col-span-3">
-                  <label className="block text-[11px] font-semibold text-on-surface mb-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-secondary">pin</span>
-                    {t.pedidos.codeDestination}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={inputCodigoDestino}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase();
-                        setInputCodigoDestino(val);
-                        buscarDestinoPorCodigo(val);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          buscarDestinoPorCodigo(inputCodigoDestino);
-                        }
-                      }}
-                      placeholder={`Ex: ${clientSigla ? `${clientSigla}-0001` : '0001'}`}
-                      className={`w-full bg-surface-container-lowest border rounded-lg px-3 py-2 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-2 uppercase tracking-wide transition-all ${
-                        selectedDestinoObj
-                          ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/20 text-emerald-900'
-                          : codigoNotFound && inputCodigoDestino
-                          ? 'border-amber-500 focus:ring-amber-500 text-amber-900'
-                          : 'border-outline-variant/40 focus:ring-secondary'
-                      }`}
-                    />
-                    {selectedDestinoObj && (
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-emerald-600 material-symbols-outlined text-base pointer-events-none">
-                        check_circle
-                      </span>
+                    {isManagerOrAdmin ? (
+                      <select
+                        value={selectedClientId}
+                        onChange={(e) => handleClientChange(e.target.value)}
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                        required
+                      >
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            [{c.sigla}] {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : associatedClient ? (
+                      <div>
+                        <input
+                          type="text"
+                          readOnly
+                          disabled
+                          value={`[${associatedClient.sigla}] ${associatedClient.name}`}
+                          className="w-full bg-surface-container/70 border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface font-semibold cursor-not-allowed select-none opacity-90 shadow-inner"
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs font-medium flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-rose-600">error</span>
+                        <span>{language === 'pt' ? 'O seu utilizador não tem cliente associado. Contacte a administração.' : language === 'es' ? 'Su usuario no tiene cliente asociado. Contacte a administración.' : 'Your user has no associated client. Contact administration.'}</span>
+                      </div>
                     )}
                   </div>
-                  {codigoNotFound && inputCodigoDestino && (
-                    <p className="text-[10px] text-amber-700 font-medium mt-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-xs">info</span>
-                      &quot;{inputCodigoDestino}&quot; {language === 'pt' ? 'não encontrado para este cliente.' : language === 'es' ? 'no encontrado para este cliente.' : 'not found for this client.'}
-                    </p>
-                  )}
-                </div>
 
-                {/* Campo 2: Pull-Down / Seleção na Lista */}
-                <div className="sm:col-span-8 lg:col-span-9">
-                  <label className="block text-[11px] font-semibold text-on-surface mb-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-secondary">list</span>
-                    {t.pedidos.selectDestination}
-                  </label>
-                  <select
-                    value={selectedDestinoId}
-                    onChange={(e) => handleSelectDestino(e.target.value)}
-                    className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {t.pedidos.docRef}
+                    </label>
+                    <input
+                      type="text"
+                      value={refDocumento}
+                      onChange={(e) => setRefDocumento(e.target.value)}
+                      placeholder={t.pedidos.docRefPlaceholder}
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {t.pedidos.deliveryDate}
+                    </label>
+                    <input
+                      type="date"
+                      value={dataEntrega}
+                      onChange={(e) => setDataEntrega(e.target.value)}
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Informação contextual do cliente selecionado */}
+              {selectedClient && (
+                <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-between text-[11px] text-on-surface-variant">
+                  <span className="font-medium">Cliente ativo:</span>
+                  <span className="font-bold text-secondary">[{selectedClient.sigla}] {selectedClient.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* JANELA 2: DESTINO / DESTINATÁRIO (Direita, 8 colunas) */}
+            <div className="lg:col-span-8 bg-surface-container/20 border border-outline-variant/30 rounded-xl p-5 space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-outline-variant/20">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-base">local_shipping</span>
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-secondary uppercase tracking-wider">
+                        {language === 'pt' ? '2. Destino / Destinatário' : language === 'es' ? '2. Destino y Destinatario' : '2. Destination Details'}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNovoDestinoFeedback(null);
+                      setShowNovoDestinoModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/30 transition-colors w-fit cursor-pointer shadow-xs"
                   >
-                    <option value="">-- {t.pedidos.selectDestination} --</option>
-                    {clientDestinos.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        [{d.codigo}] {d.nome} {d.classifica_destino ? `(${d.classifica_destino})` : ''} - {d.localidade} ({d.codigo_postal})
-                      </option>
-                    ))}
-                  </select>
+                    <span className="material-symbols-outlined text-sm">add_location_alt</span>
+                    {t.pedidos.btnNovoDestino}
+                  </button>
+                </div>
+
+                <div className="space-y-3.5">
+                  {/* Caixa de Seleção Rápida: Código Manual + Pull-Down */}
+                  <div className="p-3 bg-surface-container/60 rounded-lg border border-outline-variant/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs text-secondary">bookmark</span>
+                        {t.pedidos.destination} ({clientDestinos.length})
+                      </label>
+
+                      {selectedDestinoObj && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="material-symbols-outlined text-xs">verified</span>
+                            {selectedDestinoObj.codigo}
+                            {selectedDestinoObj.classifica_destino && (
+                              <span className="ml-1 px-1.5 py-0.2 bg-emerald-200/70 text-emerald-900 rounded text-[10px]">
+                                {selectedDestinoObj.classifica_destino}
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectDestino('')}
+                            className="px-1.5 py-0.5 rounded text-xs text-on-surface-variant hover:text-on-surface hover:bg-surface-container border border-outline-variant/30 transition-colors flex items-center gap-0.5 cursor-pointer"
+                            title={t.common.cancel}
+                          >
+                            <span className="material-symbols-outlined text-xs">clear</span>
+                            {t.pedidos.btnClear}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-start">
+                      {/* Campo 1: Introdução Manual do Código */}
+                      <div className="sm:col-span-4">
+                        <label className="block text-[10px] font-semibold text-on-surface mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[11px] text-secondary">pin</span>
+                          {t.pedidos.codeDestination}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={inputCodigoDestino}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setInputCodigoDestino(val);
+                              buscarDestinoPorCodigo(val);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                buscarDestinoPorCodigo(inputCodigoDestino);
+                              }
+                            }}
+                            placeholder={`Ex: ${clientSigla ? `${clientSigla}-0001` : '0001'}`}
+                            className={`w-full bg-surface-container-lowest border rounded-lg px-2.5 py-1.5 text-xs text-on-surface font-mono font-bold focus:outline-none focus:ring-2 uppercase tracking-wide transition-all ${
+                              selectedDestinoObj
+                                ? 'border-emerald-500 ring-1 ring-emerald-500 bg-emerald-50/20 text-emerald-900'
+                                : codigoNotFound && inputCodigoDestino
+                                ? 'border-amber-500 focus:ring-amber-500 text-amber-900'
+                                : 'border-outline-variant/40 focus:ring-secondary'
+                            }`}
+                          />
+                          {selectedDestinoObj && (
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 material-symbols-outlined text-sm pointer-events-none">
+                              check_circle
+                            </span>
+                          )}
+                        </div>
+                        {codigoNotFound && inputCodigoDestino && (
+                          <p className="text-[10px] text-amber-700 font-medium mt-0.5 flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-xs">info</span>
+                            &quot;{inputCodigoDestino}&quot; {language === 'pt' ? 'não encontrado.' : 'no encontrado.'}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Campo 2: Pull-Down / Seleção na Lista */}
+                      <div className="sm:col-span-8">
+                        <label className="block text-[10px] font-semibold text-on-surface mb-0.5 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[11px] text-secondary">list</span>
+                          {t.pedidos.selectDestination}
+                        </label>
+                        <select
+                          value={selectedDestinoId}
+                          onChange={(e) => handleSelectDestino(e.target.value)}
+                          className="w-full bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                        >
+                          <option value="">-- {t.pedidos.selectDestination} --</option>
+                          {clientDestinos.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              [{d.codigo}] {d.nome} {d.classifica_destino ? `(${d.classifica_destino})` : ''} - {d.localidade} ({d.codigo_postal})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campos Detalhados do Destinatário */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    {/* Nome do Destinatário */}
+                    <div className="sm:col-span-7">
+                      <label className="block text-xs font-semibold text-on-surface mb-1">
+                        {t.pedidos.recipientName} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={nomeDestinatario}
+                        onChange={(e) => setNomeDestinatario(e.target.value)}
+                        placeholder="Ex: Farmácia Central de Lisboa / Hospital Santa Maria"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                        required
+                      />
+                    </div>
+
+                    {/* Classificação do Destino */}
+                    <div className="sm:col-span-5">
+                      <label className="block text-xs font-semibold text-on-surface mb-1 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs text-secondary">label</span>
+                        {t.pedidos.classificaDestino} <span className="text-rose-600">*</span>
+                      </label>
+                      <select
+                        value={classificaDestino}
+                        onChange={(e) => setClassificaDestino(e.target.value)}
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
+                        required
+                      >
+                        {CLASSIFICACOES_DESTINO.map((cl) => (
+                          <option key={cl} value={cl}>
+                            {cl}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Morada de Entrega */}
+                    <div className="sm:col-span-12">
+                      <label className="block text-xs font-semibold text-on-surface mb-1">
+                        {t.pedidos.address} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={morada}
+                        onChange={(e) => setMorada(e.target.value)}
+                        placeholder="Ex: Av. Professor Egas Moniz, Edifício Principal"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                        required
+                      />
+                    </div>
+
+                    {/* Código Postal */}
+                    <div className="sm:col-span-4">
+                      <label className="block text-xs font-semibold text-on-surface mb-1">
+                        {t.pedidos.postalCode} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={codigoPostal}
+                        onChange={(e) => setCodigoPostal(e.target.value)}
+                        placeholder="1649-035"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                        required
+                      />
+                    </div>
+
+                    {/* Localidade */}
+                    <div className="sm:col-span-5">
+                      <label className="block text-xs font-semibold text-on-surface mb-1">
+                        {t.pedidos.city} <span className="text-rose-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={localidade}
+                        onChange={(e) => setLocalidade(e.target.value)}
+                        placeholder="Lisboa"
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                        required
+                      />
+                    </div>
+
+                    {/* País */}
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-semibold text-on-surface mb-1">
+                        {t.pedidos.country}
+                      </label>
+                      <input
+                        type="text"
+                        value={pais}
+                        onChange={(e) => setPais(e.target.value)}
+                        className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
+
+              {/* Opção para guardar automaticamente o destino caso seja novo */}
+              {!selectedDestinoId && (
+                <div className="pt-2 border-t border-outline-variant/20">
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-on-surface-variant hover:text-on-surface font-medium">
+                    <input
+                      type="checkbox"
+                      checked={guardarNovoDestino}
+                      onChange={(e) => setGuardarNovoDestino(e.target.checked)}
+                      className="rounded border-outline-variant/50 text-secondary focus:ring-secondary cursor-pointer h-4 w-4"
+                    />
+                    <span>
+                      {language === 'pt' ? 'Guardar estes dados e classificação como novo destino arquivado' : language === 'es' ? 'Guardar estos datos y clasificación como nuevo destino registrado' : 'Save these details and classification as a registered destination'}
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Nome do Destinatário */}
-              <div className="lg:col-span-2">
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.recipientName} <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={nomeDestinatario}
-                  onChange={(e) => setNomeDestinatario(e.target.value)}
-                  placeholder="Ex: Farmácia Central de Lisboa / Hospital Santa Maria"
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
-                  required
-                />
-              </div>
-
-              {/* Classificação do Destino */}
-              <div className="lg:col-span-2">
-                <label className="block text-xs font-semibold text-on-surface mb-1 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs text-secondary">label</span>
-                  {t.pedidos.classificaDestino} <span className="text-rose-600">*</span>
-                </label>
-                <select
-                  value={classificaDestino}
-                  onChange={(e) => setClassificaDestino(e.target.value)}
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium cursor-pointer"
-                  required
-                >
-                  {CLASSIFICACOES_DESTINO.map((cl) => (
-                    <option key={cl} value={cl}>
-                      {cl}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Morada de Entrega */}
-              <div className="lg:col-span-2">
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.address} <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={morada}
-                  onChange={(e) => setMorada(e.target.value)}
-                  placeholder="Ex: Av. Professor Egas Moniz, Edifício Principal"
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                  required
-                />
-              </div>
-
-              {/* Código Postal */}
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.postalCode} <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={codigoPostal}
-                  onChange={(e) => setCodigoPostal(e.target.value)}
-                  placeholder="1649-035"
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                  required
-                />
-              </div>
-
-              {/* Localidade */}
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.city} <span className="text-rose-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={localidade}
-                  onChange={(e) => setLocalidade(e.target.value)}
-                  placeholder="Lisboa"
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                  required
-                />
-              </div>
-
-              {/* País */}
-              <div className="lg:col-span-2">
-                <label className="block text-xs font-semibold text-on-surface mb-1">
-                  {t.pedidos.country}
-                </label>
-                <input
-                  type="text"
-                  value={pais}
-                  onChange={(e) => setPais(e.target.value)}
-                  className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-                />
-              </div>
-            </div>
-
-            {/* Opção para guardar automaticamente o destino caso seja novo */}
-            {!selectedDestinoId && (
-              <div className="pt-2">
-                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-on-surface-variant hover:text-on-surface font-medium">
-                  <input
-                    type="checkbox"
-                    checked={guardarNovoDestino}
-                    onChange={(e) => setGuardarNovoDestino(e.target.checked)}
-                    className="rounded border-outline-variant/50 text-secondary focus:ring-secondary cursor-pointer h-4 w-4"
-                  />
-                  <span>
-                    {language === 'pt' ? 'Guardar estes dados e classificação como novo destino arquivado para futuros pedidos' : language === 'es' ? 'Guardar estos datos y clasificación como nuevo destino registrado' : 'Save these details and classification as a registered destination'}
-                  </span>
-                </label>
-              </div>
-            )}
           </div>
 
           {/* SECÇÃO 3: Adição de Linhas do Pedido (com FEFO Inteligente) */}
@@ -967,7 +981,7 @@ export default function NovoPedidoForm({
                     linhas.map((linha, idx) => (
                       <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
                         <td className="py-2.5 px-3 text-on-surface-variant font-mono">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_codigo}</td>
+                        <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_cli || linha.artigo_codigo}</td>
                         <td className="py-2.5 px-3 font-medium">{linha.descricao}</td>
                         <td className="py-2.5 px-3 font-mono font-semibold text-secondary">{linha.lote}</td>
                         <td className="py-2.5 px-3 font-mono text-on-surface-variant">
@@ -1016,14 +1030,7 @@ export default function NovoPedidoForm({
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <div className="text-xs text-on-surface-variant flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-emerald-600 text-sm">bolt</span>
-                <span>
-                  {language === 'pt' ? 'Os movimentos de saída SS serão criados automaticamente em tempo real.' : language === 'es' ? 'Los movimientos de salida SS se crearán automáticamente en tiempo real.' : 'SS dispatch inventory movements will be generated automatically in real-time.'}
-                </span>
-              </div>
-
+            <div className="flex justify-end pt-2">
               <button
                 type="submit"
                 disabled={loading || linhas.length === 0}

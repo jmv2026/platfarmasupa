@@ -1,7 +1,8 @@
 import ExcelJS from 'exceljs';
 
 export interface LinhaPedidoExcel {
-  artigo_codigo: string;
+  artigo_cli?: string;
+  artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade?: string | null;
@@ -162,7 +163,7 @@ export async function gerarExcelPedido(dados: ExcelPedidoDados): Promise<Buffer>
     totalUnidades += l.quantidade;
     const isEven = index % 2 === 0;
     const row = worksheet.addRow([
-      l.artigo_codigo,
+      l.artigo_cli || l.artigo_codigo || '',
       l.descricao,
       l.lote,
       l.validade || '-',

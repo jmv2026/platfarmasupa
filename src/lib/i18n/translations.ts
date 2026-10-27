@@ -608,8 +608,8 @@ export const translations: Record<Language, Translations> = {
     pedidos: {
       bannerTitle: 'Criar Pedido',
       bannerSubtitle: 'Registo e expedição de ordens de entrega com seleção por código e sugestão FEFO.',
-      section1Title: '1. Dados do Pedido & Destinatário',
-      section2Title: '2. Artigos & Quantidades (Seleção FEFO)',
+      section1Title: '1. Dados do Pedido',
+      section2Title: '3. Artigos & Quantidades (Seleção FEFO)',
       client: 'Cliente Proprietário',
       destination: 'Destino / Destinatário',
       selectDestination: 'Selecione um destino pré-cadastrado...',
@@ -997,8 +997,8 @@ export const translations: Record<Language, Translations> = {
     pedidos: {
       bannerTitle: 'Crear Pedido',
       bannerSubtitle: 'Registro y expedición de pedidos de entrega con selección por código y sugerencia FEFO.',
-      section1Title: '1. Datos del Pedido y Destinatario',
-      section2Title: '2. Artículos y Cantidades (Selección FEFO)',
+      section1Title: '1. Datos del Pedido',
+      section2Title: '3. Artículos y Cantidades (Selección FEFO)',
       client: 'Cliente Propietario',
       destination: 'Destino / Destinatario',
       selectDestination: 'Seleccione un destino registrado...',
@@ -1386,8 +1386,8 @@ export const translations: Record<Language, Translations> = {
     pedidos: {
       bannerTitle: 'Create Order',
       bannerSubtitle: 'Registration and dispatch of delivery orders with code selection and FEFO suggestion.',
-      section1Title: '1. Order & Destination Details',
-      section2Title: '2. Articles & Quantities (FEFO Selection)',
+      section1Title: '1. Order Details',
+      section2Title: '3. Articles & Quantities (FEFO Selection)',
       client: 'Owner Client',
       destination: 'Destination / Recipient',
       selectDestination: 'Select a registered destination...',
