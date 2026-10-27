@@ -98,7 +98,7 @@ export default function GraficoPrevisaoStock({
   const [internalHorizonte, setInternalHorizonte] = useState<HorizontePrevisao>('6m');
   const [internalTipoGrafico, setInternalTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [diasReposicao, setDiasReposicao] = useState<number>(90);
+  const [mesesReposicao, setMesesReposicao] = useState<number>(3);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const runRatePeriodo = propRunRatePeriodo ?? internalRunRate;
@@ -500,12 +500,12 @@ export default function GraficoPrevisaoStock({
         autonomiaDiasGlobal,
         totalExpirandoNoHorizonte,
         mesEsgotamentoPrevisto,
-        nivelSeguranca: Math.round(consumoMedioMensal * (diasReposicao / 30)),
+        nivelSeguranca: Math.round(consumoMedioMensal * mesesReposicao),
       },
       artigosTopComparativo,
       produtoAlvo: produtoAlvoObj,
     };
-  }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language, diasReposicao]);
+  }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language, mesesReposicao]);
 
   // Base SVG width e dimensões padrão
   const baseSvgWidth = useMemo(() => {
@@ -1150,11 +1150,13 @@ export default function GraficoPrevisaoStock({
               min="0"
               step="1"
               title={t.dashboard.forecastOrderLeadTimeTitle}
-              value={diasReposicao}
-              onChange={(e) => setDiasReposicao(Number(e.target.value) || 0)}
-              className="w-12 px-1 py-0.5 text-[10px] font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400 shadow-xs text-center"
+              value={Math.round(mesesReposicao)}
+              onChange={(e) => setMesesReposicao(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              className="w-11 px-1 py-0.5 text-[10px] font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded focus:outline-none focus:ring-1 focus:ring-rose-400 shadow-xs text-center"
             />
-            <span className="text-[9px] text-rose-700/80 font-semibold">{language === 'en' ? 'days' : 'dias'}</span>
+            <span className="text-[9px] text-rose-700/80 font-semibold">
+              {language === 'en' ? (mesesReposicao === 1 ? 'month' : 'months') : (mesesReposicao === 1 ? 'mês' : 'meses')}
+            </span>
           </div>
         </div>
 

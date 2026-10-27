@@ -59,8 +59,8 @@ function BlinkingHint({ isInspecting }: { isInspecting: boolean }) {
 
   return (
     <p
-      className={`text-[10px] text-center pt-1.5 transition-all duration-300 select-none ${
-        isBold ? 'font-bold text-slate-200' : 'font-normal text-slate-400/80'
+      className={`text-xs text-center pt-1.5 transition-all duration-300 select-none ${
+        isBold ? 'font-bold text-slate-200' : 'font-normal text-slate-400/90'
       }`}
     >
       {isInspecting
@@ -908,14 +908,35 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           const isPinned = selectedMonthIndex !== null && !isInspecting;
           const isPeak = displayItem.total_liquido === estatisticas.pico?.total_liquido && displayItem.total_liquido > 0;
 
+          // Percentagem de descontos sobre o valor de Mercadorias
+          const percDescontoMerc = displayItem.total_merc > 0
+            ? (displayItem.total_desc / displayItem.total_merc) * 100
+            : 0;
+          const percDescontoMercFormatado = displayItem.total_merc > 0
+            ? `${percDescontoMerc.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+            : '0,0%';
+
+          // Percentagem de descontos sobre o valor do total Líquido
+          const percDescontoLiquido = displayItem.total_liquido > 0
+            ? (displayItem.total_desc / displayItem.total_liquido) * 100
+            : 0;
+          const percDescontoLiquidoFormatado = displayItem.total_liquido > 0
+            ? `${percDescontoLiquido.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+            : '0,0%';
+
           return (
             <div className="h-full min-h-[280px] rounded-xl bg-slate-900/95 text-white backdrop-blur-md p-3.5 sm:p-4 border border-lime-300/40 shadow-lg flex flex-col justify-between text-xs transition-all duration-150">
               <div>
                 {/* Cabeçalho do Card */}
                 <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2 mb-2.5">
-                  <span className="font-bold text-sm text-lime-300 truncate">
-                    {displayItem.labelCompleto}
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-base text-lime-300 truncate leading-tight">
+                      {t.dashboard.months[displayItem.month] || String(displayItem.month + 1)}
+                    </span>
+                    <span className="text-xs font-semibold text-lime-300 leading-tight mt-0.5">
+                      {displayItem.year}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-1 shrink-0">
                     {isPeak && (
                       <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-lime-400 text-slate-950">
@@ -965,6 +986,17 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                     </span>
                   </div>
 
+                  {/* Desc. s/ Mercadoria (na mesma cor de Total Descontos) */}
+                  <div className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-rose-950/25 border border-rose-500/20 text-rose-300">
+                    <span className="font-semibold flex items-center gap-1 text-[11px] text-rose-300">
+                      <span className="material-symbols-outlined text-[13px] text-rose-400">percent</span>
+                      Desc. s/ Mercadoria:
+                    </span>
+                    <span className="font-bold text-xs text-rose-300 font-mono">
+                      {percDescontoMercFormatado}
+                    </span>
+                  </div>
+
                   {/* Total Líquido */}
                   <div className="flex items-baseline justify-between gap-2 p-1.5 rounded-lg bg-lime-950/30 border border-lime-400/30 text-lime-300">
                     <span className="font-bold flex items-center gap-1 text-xs">
@@ -975,21 +1007,32 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                       {formatCurrency(displayItem.total_liquido)}
                     </span>
                   </div>
+
+                  {/* Desc. s/ Total Líquido (abaixo de Total Líquido e na mesma cor) */}
+                  <div className="flex items-center justify-between gap-2 px-2 py-1 rounded-md bg-lime-950/25 border border-lime-400/20 text-lime-300">
+                    <span className="font-semibold flex items-center gap-1 text-[11px] text-lime-300">
+                      <span className="material-symbols-outlined text-[13px] text-lime-400">percent</span>
+                      Desc. s/ Líquido:
+                    </span>
+                    <span className="font-bold text-xs text-lime-300 font-mono">
+                      {percDescontoLiquidoFormatado}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Secção Inferior: Documentos e vs. Mês Anterior */}
-              <div className="pt-2 border-t border-white/15 mt-2">
-                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-300">
-                  <span>Documentos: <strong className="text-white">{displayItem.total_docs}</strong></span>
-                  <span className="text-slate-400">Faturação Mensal</span>
+              {/* Secção Inferior: Documentos e vs. Mês Anterior (Fontes aumentadas em 2 tamanhos) */}
+              <div className="pt-2 border-t border-white/15 mt-2 space-y-1">
+                <div className="flex items-center justify-between gap-2 text-sm text-slate-200">
+                  <span>Documentos: <strong className="text-white text-base ml-1">{displayItem.total_docs}</strong></span>
+                  <span className="text-slate-400 text-xs font-medium">Faturação Mensal</span>
                 </div>
 
                 {displayItem.diffAnterior !== null && (
-                  <div className="flex items-center justify-between gap-2 mt-1 pt-1 border-t border-white/10 text-[11px]">
-                    <span className="text-slate-400">vs. Mês Anterior:</span>
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10 text-sm">
+                    <span className="text-slate-300">vs. Mês Anterior:</span>
                     <span
-                      className={`font-semibold flex items-center gap-0.5 ${
+                      className={`font-bold text-sm sm:text-base flex items-center gap-0.5 ${
                         displayItem.diffAnterior > 0
                           ? 'text-lime-400'
                           : displayItem.diffAnterior < 0

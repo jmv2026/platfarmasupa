@@ -595,49 +595,49 @@ export default function ImportacaoMovimentosTab({
       {/* ========================================================================= */}
       <div className="space-y-6">
         {/* KPIs dos Movimentos */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-4 shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-2xs flex flex-col justify-between gap-1.5 sm:gap-2">
             <div className="flex items-center justify-between gap-1">
-              <p className="text-[11px] font-medium text-on-surface-variant truncate">Documentos (movimentos)</p>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight truncate">Documentos</p>
               {selectedClient && (
                 <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded shrink-0">
                   {selectedClient.sigla || selectedClient.name}
                 </span>
               )}
             </div>
-            <p className="text-xl font-bold font-headline text-secondary mt-0.5">
+            <p className="text-xl sm:text-2xl font-bold font-headline text-secondary leading-none">
               {totalDocsCount.toLocaleString('pt-PT')}
             </p>
-            <p className="text-[10px] text-on-surface-variant/80 mt-0.5">
-              {totalLinhasCount.toLocaleString('pt-PT')} linhas em movimentos_linhas
+            <p className="text-[10px] text-slate-500 font-medium leading-tight">
+              {totalLinhasCount.toLocaleString('pt-PT')} linhas
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-emerald-800">Entradas (ES)</p>
-            <p className="text-xl font-bold font-headline text-emerald-700 mt-0.5">
-              {countES.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+          <div className="bg-surface-container-lowest border border-emerald-200/60 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-2xs flex flex-col justify-between gap-1.5 sm:gap-2">
+            <p className="text-[10px] sm:text-[11px] font-bold text-emerald-800 uppercase tracking-wider leading-tight">Entradas (ES)</p>
+            <p className="text-xl sm:text-2xl font-bold font-headline text-emerald-700 leading-none">
+              {countES.toLocaleString('pt-PT')} <span className="text-[10px] font-normal text-slate-500">unid.</span>
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-rose-200/60 rounded-xl p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-rose-800">Saídas (SS)</p>
-            <p className="text-xl font-bold font-headline text-rose-700 mt-0.5">
-              {countSS.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+          <div className="bg-surface-container-lowest border border-rose-200/60 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-2xs flex flex-col justify-between gap-1.5 sm:gap-2">
+            <p className="text-[10px] sm:text-[11px] font-bold text-rose-800 uppercase tracking-wider leading-tight">Saídas (SS)</p>
+            <p className="text-xl sm:text-2xl font-bold font-headline text-rose-700 leading-none">
+              {countSS.toLocaleString('pt-PT')} <span className="text-[10px] font-normal text-slate-500">unid.</span>
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-cyan-200/60 rounded-xl p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-cyan-800">Entr. Transf. (ET)</p>
-            <p className="text-xl font-bold font-headline text-cyan-700 mt-0.5">
-              {countET.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+          <div className="bg-surface-container-lowest border border-cyan-200/60 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-2xs flex flex-col justify-between gap-1.5 sm:gap-2">
+            <p className="text-[10px] sm:text-[11px] font-bold text-cyan-800 uppercase tracking-wider leading-tight">Entr. Transf. (ET)</p>
+            <p className="text-xl sm:text-2xl font-bold font-headline text-cyan-700 leading-none">
+              {countET.toLocaleString('pt-PT')} <span className="text-[10px] font-normal text-slate-500">unid.</span>
             </p>
           </div>
 
-          <div className="bg-surface-container-lowest border border-amber-200/60 rounded-xl p-4 shadow-sm">
-            <p className="text-[11px] font-medium text-amber-800">Saídas Transf. (ST)</p>
-            <p className="text-xl font-bold font-headline text-amber-700 mt-0.5">
-              {countST.toLocaleString('pt-PT')} <span className="text-xs font-normal">unid.</span>
+          <div className="bg-surface-container-lowest border border-amber-200/60 rounded-xl px-3.5 py-2.5 sm:px-4 sm:py-3 shadow-2xs flex flex-col justify-between gap-1.5 sm:gap-2">
+            <p className="text-[10px] sm:text-[11px] font-bold text-amber-800 uppercase tracking-wider leading-tight">Saídas Transf. (ST)</p>
+            <p className="text-xl sm:text-2xl font-bold font-headline text-amber-700 leading-none">
+              {countST.toLocaleString('pt-PT')} <span className="text-[10px] font-normal text-slate-500">unid.</span>
             </p>
           </div>
         </div>

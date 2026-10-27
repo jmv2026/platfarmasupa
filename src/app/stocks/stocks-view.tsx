@@ -848,121 +848,121 @@ export default function StocksView({
       </div>
 
       <div className="space-y-6">
-        {/* KPIs Grid (4 Indicadores com espaço amplo, respiro e contraste WCAG AAA) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+        {/* KPIs Grid (4 Indicadores superiores compactos com o mesmo formato e altura do Dashboard) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 items-stretch">
           {/* 1. Stock Outros Armazéns */}
-          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
             <div className="flex items-start justify-between gap-2">
-              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+              <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                 Stock Outros Armazéns
               </span>
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-lg">warehouse</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-base">warehouse</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-              <span className="text-2xl sm:text-3xl font-extrabold font-headline text-slate-900 leading-none">
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+              <span className="text-xl sm:text-2xl font-extrabold font-headline text-slate-900 leading-none">
                 {totalStockOutros.toLocaleString('pt-PT')}{' '}
-                <span className="text-xs font-normal text-slate-500">un</span>
+                <span className="text-[10px] font-normal text-slate-500">un</span>
               </span>
-              <span className="text-[11px] text-amber-800 font-semibold flex items-center gap-1 leading-tight">
-                <span className="material-symbols-outlined text-xs shrink-0">info</span>
+              <span className="text-[10px] text-amber-800 font-semibold flex items-center gap-0.5 leading-tight">
+                <span className="material-symbols-outlined text-[11px] shrink-0">info</span>
                 <span>Quarentena / Devoluções</span>
               </span>
             </div>
           </div>
 
           {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
-          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDm}
                 </span>
-                <span className="text-[11px] font-semibold text-rose-700 leading-tight mt-0.5">
+                <span className="text-[10px] font-semibold text-rose-700 leading-tight mt-0.5">
                   Dispositivos Médicos
                 </span>
               </div>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeDM > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-lg">block</span>
+                <span className="material-symbols-outlined text-base">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDM}
               </span>
-              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeDM > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-xs shrink-0">error</span>
+                <span className="material-symbols-outlined text-[11px] shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
               </span>
             </div>
           </div>
 
           {/* 3. Alertas Validade DC e SA */}
-          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDcSa}
                 </span>
-                <span className="text-[11px] font-semibold text-rose-700 leading-tight mt-0.5">
+                <span className="text-[10px] font-semibold text-rose-700 leading-tight mt-0.5">
                   Dermocosméticos, Suplementos
                 </span>
               </div>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeDCSA > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-lg">block</span>
+                <span className="material-symbols-outlined text-base">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDCSA}
               </span>
-              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeDCSA > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-xs shrink-0">error</span>
+                <span className="material-symbols-outlined text-[11px] shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
               </span>
             </div>
           </div>
 
           {/* 4. Alertas Validade MH (< 180 dias) */}
-          <div className="sermail-card p-4 sm:p-5 flex flex-col justify-between gap-3">
+          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsMh}
                 </span>
-                <span className="text-[11px] font-semibold text-amber-700 leading-tight mt-0.5">
+                <span className="text-[10px] font-semibold text-amber-700 leading-tight mt-0.5">
                   Medicamentos Uso Humano
                 </span>
               </div>
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeMH > 0 ? 'bg-amber-50 text-amber-600 border-amber-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-lg">warning</span>
+                <span className="material-symbols-outlined text-base">warning</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-2 flex-wrap pt-1">
-              <span className={`text-2xl sm:text-3xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
+              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeMH}
               </span>
-              <span className={`text-[11px] font-semibold flex items-center gap-1 leading-tight ${
+              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeMH > 0 ? 'text-amber-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-xs shrink-0">schedule</span>
+                <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
                 <span>{t.stocks.inRisk} (&lt; 180d)</span>
               </span>
             </div>
