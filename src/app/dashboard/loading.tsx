@@ -1,17 +1,16 @@
 export default function DashboardLoading() {
   return (
     <div className="w-full px-4 sm:px-6 py-6 space-y-6 animate-pulse">
-      {/* Banner Skeleton */}
-      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] rounded-2xl px-6 py-4 shadow-sm border border-emerald-950/30">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md shrink-0"></div>
-            <div className="space-y-2">
-              <div className="h-5 w-48 bg-white/25 rounded-md"></div>
-              <div className="h-3.5 w-64 bg-white/15 rounded-md"></div>
+      {/* Banner Skeleton (48px / h-12) */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] rounded-xl px-4 sm:px-6 h-12 flex items-center shadow-sm border border-emerald-950/30">
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-md shrink-0"></div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-[2cm]">
+              <div className="h-4 w-40 bg-white/25 rounded-md"></div>
+              <div className="h-3 w-56 bg-white/15 rounded-md"></div>
             </div>
           </div>
-          <div className="h-6 w-28 bg-white/20 rounded-full"></div>
         </div>
       </div>
 

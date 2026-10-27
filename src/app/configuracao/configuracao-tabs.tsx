@@ -465,7 +465,7 @@ export default function ConfiguracaoTabs({
     <main className="w-full px-4 sm:px-6 py-6 space-y-6">
       {/* Banner Topo */}
       <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-[50px] w-full min-w-0">
+        <div className="relative z-10 flex items-center gap-[2cm] w-full min-w-0">
           <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
             {t.configuracao.bannerTitle}
           </h1>

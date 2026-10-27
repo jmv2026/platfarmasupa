@@ -277,7 +277,7 @@ export default function StocksView({
       <button
         type="button"
         onClick={() => handleToggleSort(field)}
-        className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-bold transition-all text-left select-none cursor-pointer border shadow-2xs ${
+        className={`group inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold transition-all text-left select-none cursor-pointer border shadow-2xs ${
           isCurrent
             ? 'bg-lime-200 hover:bg-lime-300/80 text-lime-950 border-lime-400 ring-1 ring-lime-400/50 shadow-xs'
             : 'bg-lime-100 hover:bg-lime-200/80 text-lime-900 border-lime-200/90'
@@ -293,7 +293,7 @@ export default function StocksView({
                 : 'text-lime-950 transform rotate-180'
               : 'text-lime-700/80 group-hover:text-lime-900'
           }`}
-          style={{ fontSize: '15px' }}
+          style={{ fontSize: '13px' }}
         >
           {isCurrent ? 'arrow_upward' : 'swap_vert'}
         </span>
@@ -852,143 +852,142 @@ export default function StocksView({
   };
 
   return (
-    <main className="w-full px-4 sm:px-6 py-6 space-y-6">
-      {/* Banner Sermail */}
-      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-2xl px-6 py-4 shadow-sm relative overflow-hidden border border-emerald-950/30">
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
-              <span className="material-symbols-outlined text-xl">inventory_2</span>
+    <main className="w-full px-4 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-6">
+      {/* Banner Sermail (Reduzido para 2/3 da altura: 48px / h-12) */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-xl px-4 sm:px-6 h-12 flex items-center shadow-sm relative overflow-hidden border border-emerald-950/30">
+        <div className="relative z-10 flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
+              <span className="material-symbols-outlined text-base">inventory_2</span>
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-bold font-headline leading-tight text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-[2cm] min-w-0">
+              <h1 className="text-sm sm:text-base font-bold font-headline leading-none text-white whitespace-nowrap shrink-0">
                 {t.stocks.bannerTitle}
               </h1>
-              <p className="text-xs sm:text-sm text-lime-300/90 font-medium">
+              <p className="text-xs sm:text-sm text-lime-300/90 font-medium leading-normal truncate">
                 {t.stocks.bannerSubtitle}
               </p>
             </div>
           </div>
-
         </div>
       </div>
 
       <div className="space-y-6">
-        {/* KPIs Grid (4 Indicadores superiores compactos com o mesmo formato e altura do Dashboard) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5 items-stretch">
+        {/* KPIs Grid (4 Indicadores superiores compactos a 2/3 da altura com o mesmo formato e elegância) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5 items-stretch">
           {/* 1. Stock Outros Armazéns */}
-          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
+          <div className="sermail-card px-3 py-1.5 sm:px-3.5 sm:py-2 flex flex-col justify-between gap-1">
+            <div className="flex items-start justify-between gap-1.5">
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                 Stock Outros Armazéns
               </span>
-              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-base">warehouse</span>
+              <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-sm">warehouse</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-              <span className="text-xl sm:text-2xl font-extrabold font-headline text-slate-900 leading-none">
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className="text-lg sm:text-xl font-extrabold font-headline text-slate-900 leading-none">
                 {totalStockOutros.toLocaleString('pt-PT')}{' '}
                 <span className="text-[10px] font-normal text-slate-500">un</span>
               </span>
-              <span className="text-[10px] text-amber-800 font-semibold flex items-center gap-0.5 leading-tight">
-                <span className="material-symbols-outlined text-[11px] shrink-0">info</span>
+              <span className="text-[9.5px] text-amber-800 font-semibold flex items-center gap-0.5 leading-tight">
+                <span className="material-symbols-outlined text-[10px] shrink-0">info</span>
                 <span>Quarentena / Devoluções</span>
               </span>
             </div>
           </div>
 
           {/* 2. Alertas Validade DM (Expirados - Dispositivos Médicos) */}
-          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-start justify-between gap-2">
+          <div className="sermail-card px-3 py-1.5 sm:px-3.5 sm:py-2 flex flex-col justify-between gap-1">
+            <div className="flex items-start justify-between gap-1.5">
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDm}
                 </span>
-                <span className="text-[10px] font-semibold text-rose-700 leading-tight mt-0.5">
+                <span className="text-[9px] font-semibold text-rose-700 leading-tight">
                   Dispositivos Médicos
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeDM > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-base">block</span>
+                <span className="material-symbols-outlined text-sm">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className={`text-lg sm:text-xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeDM > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDM}
               </span>
-              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
+              <span className={`text-[9.5px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeDM > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-[11px] shrink-0">error</span>
+                <span className="material-symbols-outlined text-[10px] shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
               </span>
             </div>
           </div>
 
           {/* 3. Alertas Validade DC e SA */}
-          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-start justify-between gap-2">
+          <div className="sermail-card px-3 py-1.5 sm:px-3.5 sm:py-2 flex flex-col justify-between gap-1">
+            <div className="flex items-start justify-between gap-1.5">
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsDcSa}
                 </span>
-                <span className="text-[10px] font-semibold text-rose-700 leading-tight mt-0.5">
+                <span className="text-[9px] font-semibold text-rose-700 leading-tight">
                   Dermocosméticos, Suplementos
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeDCSA > 0 ? 'bg-rose-50 text-rose-600 border-rose-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-base">block</span>
+                <span className="material-symbols-outlined text-sm">block</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className={`text-lg sm:text-xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeDCSA > 0 ? 'text-rose-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeDCSA}
               </span>
-              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
+              <span className={`text-[9.5px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeDCSA > 0 ? 'text-rose-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-[11px] shrink-0">error</span>
+                <span className="material-symbols-outlined text-[10px] shrink-0">error</span>
                 <span>{t.stocks.expired}</span>
               </span>
             </div>
           </div>
 
           {/* 4. Alertas Validade MH (< 180 dias) */}
-          <div className="sermail-card px-3.5 py-2.5 sm:px-4 sm:py-3 flex flex-col justify-between gap-1.5 sm:gap-2">
-            <div className="flex items-start justify-between gap-2">
+          <div className="sermail-card px-3 py-1.5 sm:px-3.5 sm:py-2 flex flex-col justify-between gap-1">
+            <div className="flex items-start justify-between gap-1.5">
               <div className="flex flex-col min-w-0">
-                <span className="text-[10px] sm:text-[11px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
+                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider leading-tight">
                   {t.stocks.alertsMh}
                 </span>
-                <span className="text-[10px] font-semibold text-amber-700 leading-tight mt-0.5">
+                <span className="text-[9px] font-semibold text-amber-700 leading-tight">
                   Medicamentos Uso Humano
                 </span>
               </div>
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
+              <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border ${
                 artigosAlertaValidadeMH > 0 ? 'bg-amber-50 text-amber-600 border-amber-200/60' : 'bg-emerald-50 text-emerald-600 border-emerald-200/60'
               }`}>
-                <span className="material-symbols-outlined text-base">warning</span>
+                <span className="material-symbols-outlined text-sm">warning</span>
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-1.5 flex-wrap">
-              <span className={`text-xl sm:text-2xl font-extrabold font-headline leading-none ${
+            <div className="flex items-baseline justify-between gap-1 flex-wrap">
+              <span className={`text-lg sm:text-xl font-extrabold font-headline leading-none ${
                 artigosAlertaValidadeMH > 0 ? 'text-amber-600' : 'text-emerald-700'
               }`}>
                 {artigosAlertaValidadeMH}
               </span>
-              <span className={`text-[10px] font-semibold flex items-center gap-0.5 leading-tight ${
+              <span className={`text-[9.5px] font-semibold flex items-center gap-0.5 leading-tight ${
                 artigosAlertaValidadeMH > 0 ? 'text-amber-800' : 'text-emerald-800'
               }`}>
-                <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
+                <span className="material-symbols-outlined text-[10px] shrink-0">schedule</span>
                 <span>{t.stocks.inRisk} (&lt; 180d)</span>
               </span>
             </div>
@@ -1250,14 +1249,14 @@ export default function StocksView({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Disponível</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Conservação</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Validade</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-right">Stock Disponível</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1286,19 +1285,19 @@ export default function StocksView({
 
                         return (
                           <tr key={idx} className={rowClass}>
-                            <td className="py-3 px-3 font-semibold">
-                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                            <td className="py-1 px-3 font-semibold">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                                 {item.cliente_sigla}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
-                            <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
-                            <td className="py-3 px-3">
+                            <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
+                            <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
+                            <td className="py-1 px-3">
                               <span className="text-[11px] text-on-surface-variant">
                                 {TIPO_ARTIGO_LABELS[item.tipo_artigo as TipoArtigo] || item.tipo_artigo}
                               </span>
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-1 px-3">
                               <span
                                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                   item.tipo_armazenamento === 'TF'
@@ -1315,10 +1314,10 @@ export default function StocksView({
                                   item.tipo_armazenamento}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-mono font-semibold text-secondary">
+                            <td className="py-1 px-3 font-mono font-semibold text-secondary">
                               {item.lote}
                             </td>
-                            <td className="py-3 px-3">
+                            <td className="py-1 px-3">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-mono text-on-surface-variant">
                                   {formatDisplayDate(item.validade)}
@@ -1335,7 +1334,7 @@ export default function StocksView({
                                 )}
                               </div>
                             </td>
-                            <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                            <td className="py-1 px-3 text-right font-bold text-sm text-secondary font-mono">
                               {Number(item.stock).toLocaleString('pt-PT')}{' '}
                               <span className="text-xs font-normal text-on-surface-variant">un</span>
                             </td>
@@ -1405,16 +1404,16 @@ export default function StocksView({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Validade</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Armazém</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Validade</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Armazém</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Tipo Armazém</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
                       {isAdmin && (
-                        <th className="py-3 px-3 bg-surface-container sticky top-0 text-center">Ações</th>
+                        <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-center">Ações</th>
                       )}
                     </tr>
                   </thead>
@@ -1441,25 +1440,25 @@ export default function StocksView({
 
                         return (
                         <tr key={item.stock_id || idx} className={rowClass}>
-                          <td className="py-3 px-3">
-                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                          <td className="py-1 px-3">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                               {item.cliente_sigla}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
-                          <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
-                          <td className="py-3 px-3 font-mono text-secondary font-semibold">
+                          <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
+                          <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
+                          <td className="py-1 px-3 font-mono text-secondary font-semibold">
                             {item.lote}
                           </td>
-                          <td className="py-3 px-3 font-mono text-on-surface-variant">
+                          <td className="py-1 px-3 font-mono text-on-surface-variant">
                             {formatDisplayDate(item.validade)}
                           </td>
-                          <td className="py-3 px-3 font-mono font-semibold text-secondary-600">
+                          <td className="py-1 px-3 font-mono font-semibold text-secondary-600">
                             {item.armazem_loc}
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-1 px-3">
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                 item.tipo_armazem === '01'
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : item.tipo_armazem === '05'
@@ -1476,28 +1475,28 @@ export default function StocksView({
                               {item.armazem_descricao || `Armazém ${item.tipo_armazem}`}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                          <td className="py-1 px-3 text-right font-bold text-sm text-secondary font-mono">
                             {Number(item.stock).toLocaleString('pt-PT')}{' '}
                             <span className="text-xs font-normal text-on-surface-variant">un</span>
                           </td>
                           {isAdmin && (
-                            <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <td className="py-1 px-3 text-center whitespace-nowrap">
                               <div className="flex items-center justify-center gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleOpenEdit(item)}
-                                  className="w-7 h-7 rounded-lg text-slate-500 hover:text-secondary hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
+                                  className="w-6 h-6 rounded text-slate-500 hover:text-secondary hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
                                   title="Editar linha de stock"
                                 >
-                                  <span className="material-symbols-outlined text-base">edit</span>
+                                  <span className="material-symbols-outlined text-sm">edit</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setDeletingStock(item)}
-                                  className="w-7 h-7 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+                                  className="w-6 h-6 rounded text-slate-500 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
                                   title="Apagar linha de stock"
                                 >
-                                  <span className="material-symbols-outlined text-base">delete</span>
+                                  <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1538,15 +1537,15 @@ export default function StocksView({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Conservação</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-center">Nº Lotes</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Próx. Validade</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Venda</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock Total</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Tipo Artigo</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Conservação</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-center">Nº Lotes</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Próx. Validade</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-right">Stock Venda</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-right">Stock Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1572,19 +1571,19 @@ export default function StocksView({
 
                         return (
                         <tr key={idx} className={rowClass}>
-                          <td className="py-3 px-3">
-                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                          <td className="py-1 px-3">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                               {item.cliente_sigla}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
-                          <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
-                          <td className="py-3 px-3">
+                          <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
+                          <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
+                          <td className="py-1 px-3">
                             <span className="text-[11px] text-on-surface-variant">
                               {TIPO_ARTIGO_LABELS[item.tipo_artigo] || item.tipo_artigo}
                             </span>
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-1 px-3">
                             <span
                               className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                 item.tipo_armazenamento === 'TF'
@@ -1601,19 +1600,19 @@ export default function StocksView({
                                 item.tipo_armazenamento}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-center font-mono font-semibold">
+                          <td className="py-1 px-3 text-center font-mono font-semibold">
                             <span className="px-2 py-0.5 bg-surface-container rounded-full text-[11px]">
                               {item.lotesCount.size}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono text-on-surface-variant">
+                          <td className="py-1 px-3 font-mono text-on-surface-variant">
                             {formatDisplayDate(item.primeiraValidade)}
                           </td>
-                          <td className="py-3 px-3 text-right font-mono font-semibold text-emerald-700">
+                          <td className="py-1 px-3 text-right font-mono font-semibold text-emerald-700">
                             {item.stockVenda.toLocaleString('pt-PT')}{' '}
                             <span className="text-[10px] text-on-surface-variant">un</span>
                           </td>
-                          <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                          <td className="py-1 px-3 text-right font-bold text-sm text-secondary font-mono">
                             {item.stockTotal.toLocaleString('pt-PT')}{' '}
                             <span className="text-xs font-normal text-on-surface-variant">un</span>
                           </td>
@@ -1650,15 +1649,15 @@ export default function StocksView({
                 <table className="w-full text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-10 bg-surface-container text-on-surface-variant font-bold uppercase tracking-wider text-[10px] border-b border-outline-variant/30 shadow-xs">
                     <tr>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Estado</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Cliente</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Lote</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Data Validade</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Dias Restantes</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
-                      <th className="py-3 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Estado</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Cliente</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">{renderSortableHeader('descricao', 'Descrição Artigo')}</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Lote</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Data Validade</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Dias Restantes</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0">Armazém Loc</th>
+                      <th className="py-1.5 px-3 bg-surface-container sticky top-0 text-right">Stock</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1688,41 +1687,41 @@ export default function StocksView({
 
                         return (
                           <tr key={idx} className={rowClass}>
-                            <td className="py-3 px-3">
+                            <td className="py-1 px-3">
                               {isExpired ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800">
                                   <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                                   EXPIRADO
                                 </span>
                               ) : isCritical ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800">
                                   <span className="w-1.5 h-1.5 rounded-full bg-orange-600 animate-pulse"></span>
                                   CRÍTICO (&le;30d)
                                 </span>
                               ) : isWarning ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
                                   ALERTA (&le;90d)
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                   NORMAL
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-3 font-semibold">
-                              <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                            <td className="py-1 px-3 font-semibold">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-secondary-container text-on-secondary-container">
                                 {item.cliente_sigla}
                               </span>
                             </td>
-                            <td className="py-3 px-3 font-mono font-medium">{item.artigo_id}</td>
-                            <td className="py-3 px-3 font-medium">{item.descricao || '-'}</td>
-                            <td className="py-3 px-3 font-mono font-bold text-secondary">{item.lote}</td>
-                            <td className="py-3 px-3 font-mono font-semibold">
+                            <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
+                            <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
+                            <td className="py-1 px-3 font-mono font-bold text-secondary">{item.lote}</td>
+                            <td className="py-1 px-3 font-mono font-semibold">
                               {formatDisplayDate(item.validade)}
                             </td>
-                            <td className="py-3 px-3 font-mono">
+                            <td className="py-1 px-3 font-mono">
                               {days !== null ? (
                                 <span className={days <= 30 ? 'text-rose-600 font-bold' : days <= 90 ? 'text-amber-700 font-semibold' : 'text-on-surface-variant'}>
                                   {days <= 0 ? `${Math.abs(days)} dias atrás` : `${days} dias`}
@@ -1731,10 +1730,10 @@ export default function StocksView({
                                 '-'
                               )}
                             </td>
-                            <td className="py-3 px-3 font-mono text-secondary-600 font-medium">
+                            <td className="py-1 px-3 font-mono text-secondary-600 font-medium">
                               {item.armazem_loc}
                             </td>
-                            <td className="py-3 px-3 text-right font-bold text-sm text-secondary font-mono">
+                            <td className="py-1 px-3 text-right font-bold text-sm text-secondary font-mono">
                               {Number(item.stock).toLocaleString('pt-PT')}{' '}
                               <span className="text-xs font-normal text-on-surface-variant">un</span>
                             </td>
@@ -1779,65 +1778,65 @@ export default function StocksView({
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50/80 text-slate-700 font-semibold border-b border-slate-200/80">
                     <tr>
-                      <th className="py-3 px-3">Estado</th>
-                      <th className="py-3 px-3">Cliente</th>
-                      <th className="py-3 px-3">{renderSortableHeader('artigo', 'Artigo')}</th>
-                      <th className="py-3 px-3">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
-                      <th className="py-3 px-3">Tipo Artigo</th>
-                      <th className="py-3 px-3">Conservação</th>
-                      <th className="py-3 px-3 text-right">Stock Atual</th>
-                      <th className="py-3 px-3 text-center">Atividade</th>
-                      <th className="py-3 px-3">Último Movimento</th>
+                      <th className="py-1.5 px-3">Estado</th>
+                      <th className="py-1.5 px-3">Cliente</th>
+                      <th className="py-1.5 px-3">{renderSortableHeader('artigo', 'Artigo')}</th>
+                      <th className="py-1.5 px-3">{renderSortableHeader('descricao', 'Descrição do Artigo')}</th>
+                      <th className="py-1.5 px-3">Tipo Artigo</th>
+                      <th className="py-1.5 px-3">Conservação</th>
+                      <th className="py-1.5 px-3 text-right">Stock Atual</th>
+                      <th className="py-1.5 px-3 text-center">Atividade</th>
+                      <th className="py-1.5 px-3">Último Movimento</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
                     {filteredStockZero.length > 0 ? (
                       filteredStockZero.map((item, idx) => (
                         <tr key={item.artigo_cli || item.artigo_id || idx} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                          <td className="py-1 px-3 whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
                               STOCK 0
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-semibold whitespace-nowrap">
-                            <span className="inline-block px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                          <td className="py-1 px-3 font-semibold whitespace-nowrap">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-800 border border-slate-200">
                               {item.cliente_sigla}
                             </span>
                           </td>
-                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          <td className="py-1 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
                             {item.artigo_id}
                           </td>
-                          <td className="py-3 px-3 font-medium text-slate-900 max-w-[280px] truncate" title={item.descricao || ''}>
+                          <td className="py-1 px-3 font-medium text-slate-900 max-w-[280px] truncate" title={item.descricao || ''}>
                             {item.descricao || '-'}
                           </td>
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          <td className="py-1 px-3 whitespace-nowrap">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
                               {item.tipo_artigo ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo as TipoArtigo] || item.tipo_artigo : '-'}
                             </span>
                           </td>
-                          <td className="py-3 px-3 whitespace-nowrap">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
+                          <td className="py-1 px-3 whitespace-nowrap">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
                               {item.tipo_armazenamento ? TIPO_ARMAZENAMENTO_LABELS[item.tipo_armazenamento as TipoArmazenamento] || item.tipo_armazenamento : '-'}
                             </span>
                           </td>
-                          <td className="py-3 px-3 text-right font-bold text-sm text-rose-700 font-mono whitespace-nowrap">
+                          <td className="py-1 px-3 text-right font-bold text-sm text-rose-700 font-mono whitespace-nowrap">
                             0 <span className="text-xs font-normal text-slate-500">un</span>
                           </td>
-                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                          <td className="py-1 px-3 text-center whitespace-nowrap">
                             {Number(item.total_movimentos || 0) > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200" title="Artigo já movimentado mas atualmente com stock esgotado">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200" title="Artigo já movimentado mas atualmente com stock esgotado">
                                 <span className="material-symbols-outlined text-xs">history</span>
                                 {item.total_movimentos} mov. (Esgotado)
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600" title="Artigo cadastrado no catálogo sem histórico de movimentos no período">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600" title="Artigo cadastrado no catálogo sem histórico de movimentos no período">
                                 <span className="material-symbols-outlined text-xs">inventory_2</span>
                                 Sem entradas
                               </span>
                             )}
                           </td>
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                          <td className="py-1 px-3 font-mono text-[11px] text-slate-600 whitespace-nowrap">
                             {item.ultimo_movimento ? new Date(item.ultimo_movimento).toLocaleString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
                           </td>
                         </tr>

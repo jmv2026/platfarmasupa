@@ -1,20 +1,16 @@
 export default function StocksLoading() {
   return (
     <div className="w-full px-4 sm:px-6 py-6 space-y-6 animate-pulse">
-      {/* Title & Stats Bar Skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs">
+      {/* Title & Stats Bar Skeleton (48px / h-12) */}
+      <div className="flex items-center justify-between gap-4 bg-emerald-950/10 border border-slate-200/90 rounded-xl px-4 sm:px-6 h-12 shadow-2xs">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-sermail-green flex items-center justify-center">
-            <span className="material-symbols-outlined text-sermail-green text-xl">inventory_2</span>
+          <div className="w-7 h-7 rounded-lg bg-emerald-100/60 text-sermail-green flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-sermail-green text-base">inventory_2</span>
           </div>
-          <div className="space-y-1.5">
-            <div className="h-5 w-32 bg-slate-200 rounded"></div>
-            <div className="h-3.5 w-48 bg-slate-100 rounded"></div>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-[2cm]">
+            <div className="h-4 w-32 bg-slate-200 rounded"></div>
+            <div className="h-3 w-48 bg-slate-100 rounded"></div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-32 bg-slate-100 rounded-xl"></div>
-          <div className="h-9 w-40 bg-slate-100 rounded-xl"></div>
         </div>
       </div>
 
