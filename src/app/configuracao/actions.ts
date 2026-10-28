@@ -40,7 +40,7 @@ export async function criarUtilizadorAction(input: {
   role: UserRole;
   empresa: string;
   cliente_id?: string | null;
-
+  idioma?: 'PT' | 'EN' | 'ES';
   ativo?: boolean;
 }) {
   const supabase = await createClient();
@@ -74,6 +74,10 @@ export async function criarUtilizadorAction(input: {
   }
 
   try {
+    const idiomaFinal = input.idioma && ['PT', 'EN', 'ES'].includes(input.idioma.toUpperCase())
+      ? (input.idioma.toUpperCase() as 'PT' | 'EN' | 'ES')
+      : 'PT';
+
     // 1. Criar utilizador no Supabase Auth
     const { data: authData, error: authErr } = await supabase.auth.signUp({
       email: input.email.trim().toLowerCase(),
@@ -83,6 +87,7 @@ export async function criarUtilizadorAction(input: {
           full_name: input.full_name,
           role: input.role,
           empresa: input.empresa || 'Sermail, Logística Integrada Lda',
+          idioma: idiomaFinal,
         },
       },
     });
@@ -111,6 +116,7 @@ export async function criarUtilizadorAction(input: {
         role: input.role,
         empresa: input.empresa || 'Sermail, Logística Integrada Lda',
         cliente_id: input.cliente_id ?? null,
+        idioma: idiomaFinal,
         ativo: input.ativo !== undefined ? input.ativo : true,
       });
 
@@ -125,6 +131,7 @@ export async function criarUtilizadorAction(input: {
           role: input.role,
           empresa: input.empresa || 'Sermail, Logística Integrada Lda',
           cliente_id: input.cliente_id ?? null,
+          idioma: idiomaFinal,
           ativo: input.ativo !== undefined ? input.ativo : true,
         })
         .eq('id', createdUserId);
@@ -867,12 +874,16 @@ export async function transferirPlatMovimentosParaMovimentosAction() {
     const documentos = typeof data === 'object' && data !== null 
       ? Number((data as any).documentos ?? 0) 
       : 0;
+    const ignoradas = typeof data === 'object' && data !== null
+      ? Number((data as any).linhas_existentes_ignoradas ?? 0)
+      : 0;
 
     return { 
       success: true, 
       count: linhas,
       linhas,
       documentos,
+      ignoradas,
       data 
     };
   } catch (err: unknown) {

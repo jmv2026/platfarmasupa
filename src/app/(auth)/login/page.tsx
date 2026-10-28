@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useLanguage } from '@/lib/i18n/context';
-import { Language } from '@/lib/i18n/translations';
+import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
+import { Language, translations } from '@/lib/i18n/translations';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,10 +56,10 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        // Verificar se o utilizador está ativo na tabela public.users
+        // Verificar se o utilizador está ativo e obter o idioma configurado na tabela public.users
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select('ativo, role, full_name')
+          .select('ativo, role, full_name, idioma')
           .eq('id', data.user.id)
           .single();
 
@@ -74,6 +74,17 @@ export default function LoginPage() {
           return;
         }
 
+        // Aplicar o idioma configurado do utilizador (PT, EN ou ES) ao iniciar a aplicação
+        const userLang = normalizeUserIdioma(profile?.idioma);
+        if (userLang) {
+          setLanguage(userLang);
+        }
+        try {
+          sessionStorage.setItem(SESSION_USER_LANG_INIT_KEY, data.user.id);
+        } catch {
+          // Ignorar se sessionStorage indisponível
+        }
+
         // Registar movimento de LOGIN na tabela public.log
         try {
           await supabase.rpc('registar_log_acesso', {
@@ -84,7 +95,8 @@ export default function LoginPage() {
           console.warn('Não foi possível registar log de login:', logErr);
         }
 
-        setSuccessMessage(t.login.loginSuccess);
+        const effectiveTrans = userLang ? translations[userLang] : t;
+        setSuccessMessage(effectiveTrans.login.loginSuccess);
         setTimeout(() => {
           router.push('/dashboard');
           router.refresh();

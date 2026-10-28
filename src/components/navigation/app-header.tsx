@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserProfile } from '@/lib/supabase/types';
-import { useLanguage } from '@/lib/i18n/context';
+import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
 import SignOutButton from '@/app/dashboard/sign-out-button';
 
 interface AppHeaderProps {
@@ -26,6 +26,23 @@ export default function AppHeader({
   useEffect(() => {
     setOptimisticTab(null);
   }, [pathname]);
+
+  // Ao iniciar a sessão / aplicação, aplicar o idioma predefinido do utilizador (tabela public.users.idioma)
+  useEffect(() => {
+    if (!userProfile?.id) return;
+    try {
+      const initializedForUser = sessionStorage.getItem(SESSION_USER_LANG_INIT_KEY);
+      if (initializedForUser !== userProfile.id) {
+        const userLang = normalizeUserIdioma(userProfile.idioma);
+        if (userLang) {
+          setLanguage(userLang);
+        }
+        sessionStorage.setItem(SESSION_USER_LANG_INIT_KEY, userProfile.id);
+      }
+    } catch {
+      // Ignorar caso sessionStorage não esteja disponível
+    }
+  }, [userProfile?.id, userProfile?.idioma, setLanguage]);
 
   const currentTab =
     optimisticTab ||

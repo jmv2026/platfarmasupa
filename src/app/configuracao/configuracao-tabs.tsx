@@ -100,6 +100,7 @@ export default function ConfiguracaoTabs({
   const [userRole, setUserRole] = useState<UserRole>('user1');
   const [userEmpresa, setUserEmpresa] = useState('');
   const [userClientId, setUserClientId] = useState<string>('');
+  const [userIdioma, setUserIdioma] = useState<'PT' | 'EN' | 'ES'>('PT');
   const [userAtivo, setUserAtivo] = useState(true);
 
   // Estados Aba Email & Teste
@@ -253,7 +254,7 @@ export default function ConfiguracaoTabs({
         role: userRole,
         empresa: userEmpresa || (userRole === 'admin' || userRole === 'gestor' ? 'Sermail, Logística Integrada Lda' : 'Cliente Farma'),
         cliente_id: userRole.startsWith('user') ? userClientId || null : null,
-
+        idioma: userIdioma,
         ativo: userAtivo,
       });
 
@@ -268,6 +269,7 @@ export default function ConfiguracaoTabs({
         setUserRole('user1');
         setUserEmpresa('');
         setUserClientId('');
+        setUserIdioma('PT');
         router.refresh();
       } else {
         setFeedback({ type: 'error', message: res.error || t.common.error });
@@ -769,6 +771,22 @@ export default function ConfiguracaoTabs({
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1">
+                      {language === 'pt' ? 'Idioma Predefinido' : language === 'es' ? 'Idioma Predeterminado' : 'Default Language'} <span className="text-rose-600">*</span>
+                    </label>
+                    <select
+                      value={userIdioma}
+                      onChange={(e) => setUserIdioma(e.target.value as 'PT' | 'EN' | 'ES')}
+                      className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary font-medium"
+                      required
+                    >
+                      <option value="PT">PT - Português</option>
+                      <option value="ES">ES - Español</option>
+                      <option value="EN">EN - English</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">
@@ -809,6 +827,7 @@ export default function ConfiguracaoTabs({
                       <th className="py-2.5 px-3">{t.configuracao.userEmail}</th>
                       <th className="py-2.5 px-3">{t.configuracao.userRole}</th>
                       <th className="py-2.5 px-3">{t.configuracao.userCompany}</th>
+                      <th className="py-2.5 px-3">Idioma</th>
                       <th className="py-2.5 px-3">{t.common.status}</th>
                       <th className="py-2.5 px-3 text-right rounded-r-lg">{t.common.date}</th>
                     </tr>
@@ -831,6 +850,11 @@ export default function ConfiguracaoTabs({
                           </span>
                         </td>
                         <td className="py-3 px-3 text-on-surface-variant">{u.empresa || 'Sermail'}</td>
+                        <td className="py-3 px-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            {(u.idioma || 'PT').toUpperCase()}
+                          </span>
+                        </td>
                         <td className="py-3 px-3">
                           <span className={`inline-flex items-center gap-1 font-medium ${u.ativo ? 'text-emerald-700' : 'text-slate-500'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${u.ativo ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>

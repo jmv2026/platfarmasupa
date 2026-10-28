@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useLanguage } from '@/lib/i18n/context';
+import { useLanguage, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
 
 export default function SignOutButton() {
   const router = useRouter();
@@ -20,6 +20,11 @@ export default function SignOutButton() {
       });
     } catch (logErr) {
       console.warn('Não foi possível registar log de logout:', logErr);
+    }
+    try {
+      sessionStorage.removeItem(SESSION_USER_LANG_INIT_KEY);
+    } catch {
+      // Ignorar se sessionStorage indisponível
     }
     await supabase.auth.signOut();
     router.push('/login');

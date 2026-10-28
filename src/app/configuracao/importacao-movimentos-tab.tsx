@@ -296,9 +296,11 @@ export default function ImportacaoMovimentosTab({
     try {
       const res = await transferirPlatMovimentosParaMovimentosAction();
       if (res.success) {
+        const ignoradas = (res as any).ignoradas ?? 0;
+        const msgIgnoradas = ignoradas > 0 ? ` (${ignoradas} linhas já existentes foram ignoradas)` : '';
         setFeedback({ 
           type: 'success', 
-          message: `Transferência concluída com sucesso! Foram transferidos ${res.documentos ?? 0} documentos para a tabela movimentos e ${res.linhas ?? res.count ?? 0} linhas para a tabela movimentos_linhas.` 
+          message: `Transferência concluída com sucesso! Foram transferidos ${res.documentos ?? 0} novos documentos para a tabela movimentos e ${res.linhas ?? res.count ?? 0} novas linhas para a tabela movimentos_linhas${msgIgnoradas}.` 
         });
         // Recarregar os movimentos atualizados da base de dados sem limite de 1000 registos
         const supabase = createClient();

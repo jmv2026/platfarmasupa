@@ -47,6 +47,8 @@ export interface Perfil {
   updated_at?: string;
 }
 
+export type IdiomaUtilizador = 'PT' | 'EN' | 'ES';
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -54,7 +56,7 @@ export interface UserProfile {
   role: UserRole;
   empresa: string | null;
   cliente_id: string | null;
-
+  idioma?: IdiomaUtilizador | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;
