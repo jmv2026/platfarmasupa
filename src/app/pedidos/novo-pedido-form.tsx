@@ -133,7 +133,7 @@ export default function NovoPedidoForm({
       if (!existing) {
         map.set(s.artigo_id, {
           id: s.artigo_id,
-          codigo: s.artigo_cli || s.artigo_id,
+          codigo: s.artigo_id,
           descricao: s.descricao || '',
         });
       } else if (!existing.descricao && s.descricao) {
@@ -381,7 +381,7 @@ export default function NovoPedidoForm({
       const novaLinha: NovaLinhaPedidoInput = {
         artigo_id: selectedArtigoId,
         artigo_cli: codigoArtigoCli,
-        artigo_codigo: codigoArtigoCli,
+        artigo_codigo: selectedArtigoId,
         descricao: currentLoteObj.descricao || '',
         lote: currentLoteObj.lote || '',
         validade: currentLoteObj.validade,
@@ -898,7 +898,7 @@ export default function NovoPedidoForm({
                   <option value="">-- {t.pedidos.selectArticle} --</option>
                   {availableArtigos.map((art) => (
                     <option key={art.id} value={art.id}>
-                      [{art.codigo}] {art.descricao}
+                      {art.descricao ? `${art.codigo}\u00A0\u00A0-\u00A0\u00A0${art.descricao}` : art.codigo}
                     </option>
                   ))}
                 </select>
@@ -981,7 +981,7 @@ export default function NovoPedidoForm({
                     linhas.map((linha, idx) => (
                       <tr key={idx} className="hover:bg-surface-container/30 transition-colors">
                         <td className="py-2.5 px-3 text-on-surface-variant font-mono">{idx + 1}</td>
-                        <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_cli || linha.artigo_codigo}</td>
+                        <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_id || linha.artigo_codigo || linha.artigo_cli}</td>
                         <td className="py-2.5 px-3 font-medium">{linha.descricao}</td>
                         <td className="py-2.5 px-3 font-mono font-semibold text-secondary">{linha.lote}</td>
                         <td className="py-2.5 px-3 font-mono text-on-surface-variant">
