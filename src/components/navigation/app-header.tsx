@@ -10,7 +10,7 @@ import SignOutButton from '@/app/dashboard/sign-out-button';
 interface AppHeaderProps {
   userProfile: UserProfile | null;
   userEmail?: string;
-  activeTab?: 'dashboard' | 'stocks' | 'pedidos' | 'historico-pedidos' | 'configuracao';
+  activeTab?: 'dashboard' | 'stocks' | 'pedidos' | 'historico-pedidos' | 'proc-pedidos' | 'configuracao';
 }
 
 export default function AppHeader({
@@ -49,10 +49,12 @@ export default function AppHeader({
     activeTab ||
     (pathname.includes('/stocks')
       ? 'stocks'
-      : pathname.includes('/pedidos')
-      ? 'pedidos'
+      : pathname.toLowerCase().includes('/proc_pedidos') || pathname.includes('/proc-pedidos')
+      ? 'proc-pedidos'
       : pathname.includes('/historico-pedidos')
       ? 'historico-pedidos'
+      : pathname.includes('/pedidos')
+      ? 'pedidos'
       : pathname.includes('/configuracao')
       ? 'configuracao'
       : 'dashboard');
@@ -141,6 +143,25 @@ export default function AppHeader({
               {t.nav.historicoPedidos}
             </Link>
 
+            {(userProfile?.role === 'gestor' ||
+              userProfile?.role === 'admin' ||
+              userProfile?.email === 'admin@sermail.pt' ||
+              userEmail === 'admin@sermail.pt') && (
+              <Link
+                href="/Proc_Pedidos"
+                prefetch={true}
+                onClick={() => setOptimisticTab('proc-pedidos')}
+                className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
+                  currentTab === 'proc-pedidos'
+                    ? 'bg-sermail-green text-white shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-sermail-green-dark hover:bg-slate-100/90 font-medium'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-sm ${currentTab === 'proc-pedidos' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>fact_check</span>
+                {t.nav.procPedidos}
+              </Link>
+            )}
+
             {(userProfile?.role === 'admin' || userProfile?.email === 'admin@sermail.pt' || userEmail === 'admin@sermail.pt') && (
               <Link
                 href="/configuracao"
@@ -186,6 +207,7 @@ export default function AppHeader({
               {currentTab === 'stocks' && t.nav.stocks}
               {currentTab === 'pedidos' && t.nav.criarPedido}
               {currentTab === 'historico-pedidos' && t.nav.historicoPedidos}
+              {currentTab === 'proc-pedidos' && t.nav.procPedidos}
               {currentTab === 'configuracao' && t.nav.configuracao}
             </span>
           </div>

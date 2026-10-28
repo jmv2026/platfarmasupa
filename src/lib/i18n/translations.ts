@@ -7,6 +7,7 @@ export interface Translations {
     stocks: string;
     criarPedido: string;
     historicoPedidos: string;
+    procPedidos: string;
     configuracao: string;
     terminarSessao: string;
     languageLabel: string;
@@ -385,6 +386,7 @@ export const translations: Record<Language, Translations> = {
       stocks: 'Stocks',
       criarPedido: 'Criar Pedido',
       historicoPedidos: 'Histórico Movimentos',
+      procPedidos: 'Proc_Pedidos',
       configuracao: 'Configuração',
       terminarSessao: 'Terminar Sessão',
       languageLabel: 'Idioma:',
@@ -774,6 +776,7 @@ export const translations: Record<Language, Translations> = {
       stocks: 'Stocks',
       criarPedido: 'Crear Pedido',
       historicoPedidos: 'Historial Pedidos',
+      procPedidos: 'Proc_Pedidos',
       configuracao: 'Configuración',
       terminarSessao: 'Cerrar Sesión',
       languageLabel: 'Idioma:',
@@ -1163,6 +1166,7 @@ export const translations: Record<Language, Translations> = {
       stocks: 'Stocks',
       criarPedido: 'Create Order',
       historicoPedidos: 'Order History',
+      procPedidos: 'Proc_Pedidos',
       configuracao: 'Settings',
       terminarSessao: 'Sign Out',
       languageLabel: 'Language:',

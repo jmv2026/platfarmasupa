@@ -537,6 +537,8 @@ export interface Pedido {
   data_pedido: string;
   data_entrega: string | null;
   status: StatusPedido | string;
+  processado?: boolean;
+  processar?: boolean;
   observacoes: string | null;
   created_by?: string | null;
   created_at?: string;
