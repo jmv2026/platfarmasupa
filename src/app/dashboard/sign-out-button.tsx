@@ -14,10 +14,18 @@ export default function SignOutButton() {
   const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await supabase.rpc('registar_log_acesso', {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { error: logRpcErr } = await supabase.rpc('registar_log_acesso', {
         p_tipo_movimento: 'LOGOUT',
         p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        p_observacoes: null,
+        p_user_id: user?.id || null,
       });
+      if (logRpcErr) {
+        console.warn('Erro RPC registar_log_acesso (logout):', logRpcErr);
+      }
     } catch (logErr) {
       console.warn('Não foi possível registar log de logout:', logErr);
     }

@@ -87,10 +87,15 @@ export default function LoginPage() {
 
         // Registar movimento de LOGIN na tabela public.log
         try {
-          await supabase.rpc('registar_log_acesso', {
+          const { error: logRpcErr } = await supabase.rpc('registar_log_acesso', {
             p_tipo_movimento: 'LOGIN',
             p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            p_observacoes: null,
+            p_user_id: data.user.id,
           });
+          if (logRpcErr) {
+            console.warn('Erro RPC registar_log_acesso (login):', logRpcErr);
+          }
         } catch (logErr) {
           console.warn('Não foi possível registar log de login:', logErr);
         }

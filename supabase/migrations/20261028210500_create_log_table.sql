@@ -45,6 +45,11 @@ DECLARE
     v_user record;
     v_sigla text;
 BEGIN
+    -- Se for a reinserção interna de ordenação (pg_trigger_depth > 1), manter a linha intacta
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
     -- Normalizar tipo_movimento em maiúsculas
     IF NEW.tipo_movimento IS NOT NULL THEN
         NEW.tipo_movimento := UPPER(TRIM(NEW.tipo_movimento));
@@ -102,6 +107,7 @@ FOR EACH ROW
 EXECUTE FUNCTION public.fn_autofill_log_user_data();
 
 -- 4. Trigger AFTER INSERT para manter a tabela public.log fisicamente ordenada por data DESC, hora DESC
+-- Utiliza CTE direta sem tabelas temporárias para evitar invalidação de OID em sessões pooled do PostgREST
 CREATE OR REPLACE FUNCTION public.fn_keep_log_ordered_desc()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -113,19 +119,13 @@ BEGIN
         RETURN NULL;
     END IF;
 
-    CREATE TEMP TABLE IF NOT EXISTS _tmp_log_order ON COMMIT DROP AS
-    SELECT * FROM public.log WITH NO DATA;
-
-    TRUNCATE _tmp_log_order;
-
-    INSERT INTO _tmp_log_order
-    SELECT * FROM public.log
-    ORDER BY data DESC, hora DESC, created_at DESC;
-
-    DELETE FROM public.log;
-
+    WITH deleted AS (
+        DELETE FROM public.log
+        WHERE id IS NOT NULL
+        RETURNING *
+    )
     INSERT INTO public.log
-    SELECT * FROM _tmp_log_order
+    SELECT * FROM deleted
     ORDER BY data DESC, hora DESC, created_at DESC;
 
     RETURN NULL;
@@ -139,10 +139,12 @@ FOR EACH STATEMENT
 EXECUTE FUNCTION public.fn_keep_log_ordered_desc();
 
 -- 5. Função RPC para registar facilmente login/logout a partir da aplicação
+DROP FUNCTION IF EXISTS public.registar_log_acesso(text, text, text);
 CREATE OR REPLACE FUNCTION public.registar_log_acesso(
     p_tipo_movimento text,
     p_user_agent text DEFAULT NULL,
-    p_observacoes text DEFAULT NULL
+    p_observacoes text DEFAULT NULL,
+    p_user_id uuid DEFAULT NULL
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -153,7 +155,7 @@ DECLARE
     v_uid uuid;
     v_log_id uuid;
 BEGIN
-    v_uid := auth.uid();
+    v_uid := COALESCE(auth.uid(), p_user_id);
     IF v_uid IS NULL THEN
         RETURN NULL;
     END IF;
@@ -177,8 +179,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.registar_log_acesso(text, text, text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.registar_log_acesso(text, text, text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.registar_log_acesso(text, text, text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.registar_log_acesso(text, text, text, uuid) TO anon, authenticated, service_role;
 
 -- 6. Ativar Row Level Security (RLS) e Políticas de Acesso
 ALTER TABLE public.log ENABLE ROW LEVEL SECURITY;
@@ -213,3 +215,5 @@ FROM public.log
 ORDER BY data DESC, hora DESC, created_at DESC;
 
 GRANT SELECT ON public.vw_log TO authenticated, service_role;
+
+NOTIFY pgrst, 'reload schema';
