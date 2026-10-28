@@ -1,2 +1,5 @@
-export { default, dynamic, revalidate } from '../Proc_Pedidos/page';
+import { redirect } from 'next/navigation';
 
+export default function ProcPedidosRedirectPage() {
+  redirect('/Proc_Pedidos');
+}
