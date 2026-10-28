@@ -13,6 +13,14 @@ export default function SignOutButton() {
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
+    try {
+      await supabase.rpc('registar_log_acesso', {
+        p_tipo_movimento: 'LOGOUT',
+        p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+      });
+    } catch (logErr) {
+      console.warn('Não foi possível registar log de logout:', logErr);
+    }
     await supabase.auth.signOut();
     router.push('/login');
     router.refresh();

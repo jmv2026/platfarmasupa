@@ -615,3 +615,21 @@ export interface Tempo {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface LogAcesso {
+  id: string;
+  user_id?: string | null;
+  nome: string;
+  email?: string | null;
+  role?: string | null;
+  cliente_id?: string | null;
+  cliente_sigla?: string | null;
+  empresa?: string | null;
+  tipo_movimento: 'LOGIN' | 'LOGOUT';
+  data: string;
+  hora: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  observacoes?: string | null;
+  created_at?: string;
+}

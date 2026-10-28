@@ -74,6 +74,16 @@ export default function LoginPage() {
           return;
         }
 
+        // Registar movimento de LOGIN na tabela public.log
+        try {
+          await supabase.rpc('registar_log_acesso', {
+            p_tipo_movimento: 'LOGIN',
+            p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          });
+        } catch (logErr) {
+          console.warn('Não foi possível registar log de login:', logErr);
+        }
+
         setSuccessMessage(t.login.loginSuccess);
         setTimeout(() => {
           router.push('/dashboard');
