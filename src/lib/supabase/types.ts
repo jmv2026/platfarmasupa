@@ -539,6 +539,7 @@ export interface Pedido {
   status: StatusPedido | string;
   processado?: boolean;
   processar?: boolean;
+  datetime_proc?: string | null;
   observacoes: string | null;
   created_by?: string | null;
   created_at?: string;

@@ -72,6 +72,23 @@ export default function ProcPedidosView({
     }
   };
 
+  const formatDateTime = (dtStr: string | null | undefined) => {
+    if (!dtStr) return '-';
+    try {
+      const locale = language === 'en' ? 'en-GB' : language === 'es' ? 'es-ES' : 'pt-PT';
+      return new Date(dtStr).toLocaleString(locale, {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return dtStr;
+    }
+  };
+
   // Stock disponível do cliente do pedido em edição
   const editingClientStock = useMemo(() => {
     if (!editingPedido?.cliente_id) return [];
@@ -212,8 +229,19 @@ export default function ProcPedidosView({
     setFeedback(null);
 
     // Atualização otimista
+    const nowIso = new Date().toISOString();
     setPedidosList((prev) =>
-      prev.map((p) => (p.id === pedidoId ? { ...p, [field]: newValue } : p))
+      prev.map((p) =>
+        p.id === pedidoId
+          ? {
+              ...p,
+              [field]: newValue,
+              ...(field === 'processar'
+                ? { datetime_proc: newValue ? nowIso : null }
+                : {}),
+            }
+          : p
+      )
     );
 
     const res = await atualizarProcessamentoPedidoAction(pedidoId, { [field]: newValue });
@@ -344,6 +372,9 @@ export default function ProcPedidosView({
               observacoes: payloadParaGuardar.observacoes || null,
               processar: payloadParaGuardar.processar,
               processado: payloadParaGuardar.processado,
+              datetime_proc: payloadParaGuardar.processar
+                ? p.datetime_proc || new Date().toISOString()
+                : null,
               pedido_linhas:
                 res.linhas && res.linhas.length > 0
                   ? res.linhas
@@ -557,6 +588,7 @@ export default function ProcPedidosView({
                 <th className="py-3 px-4 text-center">Linhas</th>
                 <th className="py-3 px-4 text-center">Estado</th>
                 <th className="py-3 px-4 text-center">Processar</th>
+                <th className="py-3 px-4 text-center">D/H PROCESSAR</th>
                 <th className="py-3 px-4 text-center">Processado</th>
                 <th className="py-3 px-4 text-right">Ações</th>
               </tr>
@@ -564,7 +596,7 @@ export default function ProcPedidosView({
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredPedidos.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={12} className="py-10 text-center text-slate-400 font-medium">
                     Nenhum pedido encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -619,6 +651,9 @@ export default function ProcPedidosView({
                           className="h-4 w-4 rounded border-slate-300 text-sermail-green focus:ring-sermail-green cursor-pointer disabled:opacity-50"
                           title="Marcar para processar"
                         />
+                      </td>
+                      <td className="py-3 px-4 text-center text-slate-600 whitespace-nowrap font-mono text-[11px]">
+                        {formatDateTime(p.datetime_proc)}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <input

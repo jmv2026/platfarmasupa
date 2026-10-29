@@ -45,12 +45,18 @@ export async function atualizarProcessamentoPedidoAction(
     return { success: false, error: authErr };
   }
 
+  const payload: Record<string, any> = {
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (typeof updates.processar === 'boolean') {
+    payload.datetime_proc = updates.processar ? new Date().toISOString() : null;
+  }
+
   const { error } = await supabase
     .from('pedidos')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq('id', pedidoId);
 
   if (error) {
