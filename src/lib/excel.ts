@@ -1,12 +1,18 @@
+import path from 'path';
 import ExcelJS from 'exceljs';
 
 export interface LinhaPedidoExcel {
+  artigo_id?: string;
   artigo_cli?: string;
   artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade?: string | null;
   quantidade: number;
+  armazem?: string | null;
+  tipo_artigo?: string | null;
+  familia?: string | null;
+  sub_familia?: string | null;
 }
 
 export interface ExcelPedidoDados {
@@ -14,6 +20,7 @@ export interface ExcelPedidoDados {
   ref_documento?: string | null;
   cliente_nome: string;
   cliente_sigla: string;
+  cliente_nif?: string | null;
   nome_destinatario: string;
   morada: string;
   codigo_postal: string;
@@ -28,7 +35,8 @@ export interface ExcelPedidoDados {
 }
 
 /**
- * Gera um ficheiro Excel (.xlsx) profissional e formatado com os dados e linhas do pedido.
+ * Gera um ficheiro Excel (.xlsx) profissional e formatado com os dados e linhas do pedido
+ * (Guia de Expedição de Pedido enviada na notificação ao executante).
  * Retorna um Buffer pronto para envio como anexo no Resend ou download.
  */
 export async function gerarExcelPedido(dados: ExcelPedidoDados): Promise<Buffer> {
@@ -232,6 +240,127 @@ export async function gerarExcelPedido(dados: ExcelPedidoDados): Promise<Buffer>
   footerRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
   // Gerar Buffer
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+/**
+ * Gera o ficheiro Excel (.xlsx) para importação ERP a partir do template oficial
+ * `public/templates/Template-Pedidos.xlsx` (folha "Vendas"), destinado a ser enviado
+ * num email separado exclusivamente para o administrador.
+ *
+ * Regras de preenchimento definidas até ao momento:
+ * - Coluna A (1 - Nr.Documento Ext): número do pedido efetuado (`dados.nr_pedido`)
+ * - Coluna C (3 - Artigo(*)): código simples do artigo (`linha.artigo_id`)
+ * - Coluna D (4 - Descrição (*)): descrição do artigo (`linha.descricao`)
+ * - Coluna E (5 - Quant.(*)): quantidade pedida (`linha.quantidade`)
+ * - Coluna K (11 - Contribuinte(*)): NIF / contribuinte do cliente (`dados.cliente_nif`)
+ * - Coluna L (12 - Nome): nome do destinatário do pedido (`dados.nome_destinatario`)
+ * - Coluna N (14 - Morada): morada do destinatário do pedido (`dados.morada`)
+ * - Coluna P (16 - Localidade): localidade do destinatário do pedido (`dados.localidade`)
+ * - Coluna R (18 - Cod.Postal): código postal do destinatário do pedido (`dados.codigo_postal`)
+ * - Coluna T (20 - Localidade Cod.Postal): localidade do código postal do destinatário (`dados.localidade`)
+ * - Coluna AB (28 - Referência): referência do documento do pedido (`dados.ref_documento`)
+ * - Coluna AH (34 - Local Descarga): localidade do destinatário do pedido (`dados.localidade`)
+ * - Coluna AL (38 - Armazém): armazém da linha (`linha.armazem`)
+ * - Coluna AN (40 - Lote): lote da linha (`linha.lote`)
+ * - Coluna AO (41 - Tipo Artigo): código numérico `id_tipo_artigo` da tabela `artigos` (`linha.tipo_artigo`)
+ * - Coluna AP (42 - Familia): família do artigo (`linha.familia`)
+ * - Coluna AQ (43 - Sub.Familia): subfamília do artigo (`linha.sub_familia`)
+ * - Coluna AZ (52 - Tipo Doc): texto fixo `"ECL"`
+ */
+export async function gerarExcelTemplatePedido(dados: ExcelPedidoDados): Promise<Buffer> {
+  const templatePath = path.join(process.cwd(), 'public', 'templates', 'Template-Pedidos.xlsx');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(templatePath);
+
+  const worksheet = workbook.getWorksheet('Vendas') || workbook.worksheets[0];
+  if (!worksheet) {
+    throw new Error('Folha "Vendas" não encontrada no ficheiro Template-Pedidos.xlsx');
+  }
+
+  // A linha 3 contém os cabeçalhos ("Nr.Documento Ext", "Data Doc.", "Artigo(*)", "Descrição (*)", "Quant.(*)", ..., "Contribuinte(*)", etc.)
+  // As linhas de dados começam na linha 4
+  const START_ROW = 4;
+  const clienteNif = dados.cliente_nif ? dados.cliente_nif.trim() : '';
+  const nomeDestinatario = dados.nome_destinatario ? dados.nome_destinatario.trim() : '';
+  const moradaDestinatario = dados.morada ? dados.morada.trim() : '';
+  const localidadeDestinatario = dados.localidade ? dados.localidade.trim() : '';
+  const codPostalDestinatario = dados.codigo_postal ? dados.codigo_postal.trim() : '';
+  const refDocumento = dados.ref_documento ? dados.ref_documento.trim() : '';
+  const defaultArmazem = dados.cliente_sigla ? `${dados.cliente_sigla.trim().toUpperCase()}01` : '';
+
+  const preencherDadosComunsLinha = (row: ExcelJS.Row, rowNumber: number) => {
+    // Coluna A (1): Nr.Documento Ext
+    row.getCell(1).value = dados.nr_pedido;
+    // Coluna K (11): Contribuinte(*)
+    row.getCell(11).value = clienteNif;
+    // Coluna L (12): Nome
+    row.getCell(12).value = nomeDestinatario;
+    // Coluna N (14): Morada
+    row.getCell(14).value = moradaDestinatario;
+    // Coluna P (16): Localidade
+    row.getCell(16).value = localidadeDestinatario;
+    // Coluna R (18): Cod.Postal
+    row.getCell(18).value = codPostalDestinatario;
+    // Coluna T (20): Localidade Cod.Postal
+    row.getCell(20).value = localidadeDestinatario;
+    // Coluna AB (28): Referência
+    row.getCell(28).value = refDocumento;
+    // Coluna AH (34): Local Descarga
+    row.getCell(34).value = localidadeDestinatario;
+    // Coluna AZ (52): Tipo Doc -> Texto fixo "ECL"
+    row.getCell(52).value = 'ECL';
+
+    // Garantir fórmulas de contagem de caracteres (Caract.) nas linhas 4 e 5 caso estejam vazias no template
+    if (!row.getCell(13).value) row.getCell(13).value = { formula: `LEN(L${rowNumber})` };
+    if (!row.getCell(15).value) row.getCell(15).value = { formula: `LEN(N${rowNumber})` };
+    if (!row.getCell(17).value) row.getCell(17).value = { formula: `LEN(P${rowNumber})` };
+    if (!row.getCell(19).value) row.getCell(19).value = { formula: `LEN(R${rowNumber})` };
+    if (!row.getCell(21).value) row.getCell(21).value = { formula: `LEN(T${rowNumber})` };
+  };
+
+  if (dados.linhas.length === 0) {
+    const row = worksheet.getRow(START_ROW);
+    preencherDadosComunsLinha(row, START_ROW);
+    row.commit();
+  } else {
+    dados.linhas.forEach((linha, i) => {
+      const rowNumber = START_ROW + i;
+      const row = worksheet.getRow(rowNumber);
+
+      // Obter artigo_id simples (sem prefixo de cliente caso não venha isolado)
+      const artigoSimples =
+        linha.artigo_id?.trim() ||
+        (linha.artigo_cli?.includes('-')
+          ? linha.artigo_cli.substring(linha.artigo_cli.indexOf('-') + 1).trim()
+          : linha.artigo_cli?.trim()) ||
+        linha.artigo_codigo?.trim() ||
+        '';
+
+      preencherDadosComunsLinha(row, rowNumber);
+
+      // Coluna C (3): Artigo(*)
+      row.getCell(3).value = artigoSimples;
+      // Coluna D (4): Descrição (*)
+      row.getCell(4).value = linha.descricao || '';
+      // Coluna E (5): Quant.(*)
+      row.getCell(5).value = Number(linha.quantidade) || 0;
+      // Coluna AL (38): Armazém
+      row.getCell(38).value = linha.armazem?.trim() || defaultArmazem;
+      // Coluna AN (40): Lote
+      row.getCell(40).value = linha.lote?.trim() || '';
+      // Coluna AO (41): Tipo Artigo
+      row.getCell(41).value = linha.tipo_artigo?.trim() || '';
+      // Coluna AP (42): Familia
+      row.getCell(42).value = linha.familia?.trim() || '';
+      // Coluna AQ (43): Sub.Familia
+      row.getCell(43).value = linha.sub_familia?.trim() || '';
+
+      row.commit();
+    });
+  }
+
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);
 }

@@ -1,13 +1,18 @@
 import { Resend } from 'resend';
-import { gerarExcelPedido } from './excel';
+import { gerarExcelPedido, gerarExcelTemplatePedido } from './excel';
 
 export interface LinhaPedidoEmail {
+  artigo_id?: string;
   artigo_cli?: string;
   artigo_codigo?: string;
   descricao: string;
   lote: string;
   validade?: string | null;
   quantidade: number;
+  armazem?: string | null;
+  tipo_artigo?: string | null;
+  familia?: string | null;
+  sub_familia?: string | null;
 }
 
 export interface EmailPedidoDados {
@@ -15,6 +20,7 @@ export interface EmailPedidoDados {
   ref_documento?: string | null;
   cliente_nome: string;
   cliente_sigla: string;
+  cliente_nif?: string | null;
   nome_destinatario: string;
   morada: string;
   codigo_postal: string;
@@ -65,9 +71,13 @@ async function enviarMensagemResend(params: {
     path?: string;
     contentType?: string;
   }[];
+  attachmentRecipients?: string[];
 }): Promise<EmailEnvioResult> {
   const resend = getResendClient();
-  const { from, recipients, subject, html, text, attachments } = params;
+  const { from, recipients, subject, html, text, attachments, attachmentRecipients } = params;
+  const allowedAttachSet = attachmentRecipients
+    ? new Set(attachmentRecipients.map((e) => e.toLowerCase().trim()))
+    : null;
 
   if (!resend) {
     const aviso = 'Chave RESEND_API_KEY não configurada ou em modo simulação no .env.local';
@@ -85,13 +95,18 @@ async function enviarMensagemResend(params: {
 
   for (const email of recipients) {
     try {
+      const emailAttachments =
+        !allowedAttachSet || allowedAttachSet.has(email.toLowerCase().trim())
+          ? attachments
+          : undefined;
+
       const response = await resend.emails.send({
         from,
         to: [email],
         subject,
         html,
         text,
-        attachments,
+        attachments: emailAttachments,
       });
 
       if (response.error) {
@@ -101,7 +116,7 @@ async function enviarMensagemResend(params: {
           reason: response.error.message || 'Erro na API Resend',
         });
       } else {
-        console.log(`[Resend Email Success] Email entregue para ${email} (ID: ${response.data?.id}) com ${attachments?.length || 0} anexo(s)`);
+        console.log(`[Resend Email Success] Email entregue para ${email} (ID: ${response.data?.id}) com ${emailAttachments?.length || 0} anexo(s)`);
         delivered.push(email);
         if (response.data) {
           responsesData[email] = response.data;
@@ -400,6 +415,92 @@ export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Pro
   return enviarMensagemResend({
     from: fromEmail,
     recipients,
+    subject,
+    html,
+    text,
+    attachments,
+  });
+}
+
+/**
+ * Envia um email separado exclusivamente para o administrador contendo em anexo
+ * o ficheiro Excel gerado a partir de `public/templates/Template-Pedidos.xlsx`.
+ */
+export async function enviarEmailTemplatePedidoAdmin(dados: EmailPedidoDados): Promise<EmailEnvioResult> {
+  const adminNotification = process.env.RESEND_NOTIFICATION_EMAIL || 'jccmmelo@gmail.com';
+  const defaultAdmin = 'joao.melo@sermail.pt';
+
+  // Destinatários exclusivos de administração
+  const adminRecipients = Array.from(
+    new Set(
+      [adminNotification, defaultAdmin]
+        .map((e) => e.toLowerCase().trim())
+        .filter((e) => e && e.includes('@'))
+    )
+  );
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
+  const filename = `Template-Pedidos_${dados.nr_pedido}.xlsx`;
+  const subject = `[Plataforma Farma] Ficheiro Template Pedido: ${dados.nr_pedido} (${dados.cliente_sigla})`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <title>Template Pedido ${dados.nr_pedido}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #334155;">
+  <div style="max-width: 600px; margin: 24px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);">
+    <div style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 24px 28px; color: #ffffff;">
+      <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; margin-bottom: 6px;">
+        Plataforma Farma • Administração
+      </div>
+      <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Ficheiro de Importação do Pedido ${dados.nr_pedido}</h2>
+    </div>
+    <div style="padding: 24px 28px; font-size: 14px; line-height: 1.6;">
+      <p style="margin-top: 0;">Segue em anexo o ficheiro Excel gerado a partir do modelo <strong>Template-Pedidos.xlsx</strong> referente ao pedido fechado:</p>
+      <ul style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px 14px 34px; margin: 16px 0;">
+        <li><strong>Nº Pedido (Nr.Documento Ext):</strong> ${dados.nr_pedido}</li>
+        <li><strong>Cliente:</strong> ${dados.cliente_nome} (${dados.cliente_sigla})</li>
+        <li><strong>Destinatário:</strong> ${dados.nome_destinatario}</li>
+        <li><strong>Data do Pedido:</strong> ${new Date(dados.data_pedido).toLocaleDateString('pt-PT')}</li>
+        <li><strong>Total de Linhas:</strong> ${dados.linhas.length}</li>
+      </ul>
+      <p style="margin-bottom: 0; font-size: 13px; color: #166534;">
+        📎 <strong>Anexo:</strong> <span style="font-family: monospace;">${filename}</span>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+
+  const text = [
+    `PLATAFORMA FARMA - FICHEIRO TEMPLATE PEDIDO (${dados.nr_pedido})`,
+    `Cliente: ${dados.cliente_nome} (${dados.cliente_sigla})`,
+    `Destinatário: ${dados.nome_destinatario}`,
+    `Data do Pedido: ${dados.data_pedido}`,
+    `Total de Linhas: ${dados.linhas.length}`,
+    `Anexo: ${filename}`,
+  ].join('\n');
+
+  let attachments: { filename: string; content: Buffer }[] | undefined = undefined;
+  try {
+    const templateBuffer = await gerarExcelTemplatePedido(dados);
+    attachments = [
+      {
+        filename,
+        content: templateBuffer,
+      },
+    ];
+  } catch (err) {
+    console.error('[Template Excel Attachment Error] Falha ao gerar o ficheiro Template-Pedidos:', err);
+  }
+
+  return enviarMensagemResend({
+    from: fromEmail,
+    recipients: adminRecipients,
     subject,
     html,
     text,

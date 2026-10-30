@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { NovoPedidoInput, NovoDestinoInput, Destino } from '@/lib/supabase/types';
-import { enviarEmailConfirmacaoPedido } from '@/lib/email';
+import { enviarEmailConfirmacaoPedido, enviarEmailTemplatePedidoAdmin } from '@/lib/email';
 
 export async function criarDestinoAction(input: NovoDestinoInput) {
   const supabase = await createClient();
@@ -129,10 +129,10 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     return { success: false, error: 'O pedido deve conter pelo menos uma linha de artigo' };
   }
 
-  // 1. Obter a sigla do cliente para compor o armazem_loc
+  // 1. Obter a sigla e NIF do cliente
   const { data: client, error: clientErr } = await supabase
     .from('clientes')
-    .select('id, sigla, name, cli_primavera')
+    .select('id, sigla, name, cli_primavera, nif')
     .eq('id', targetClientId)
     .single();
 
@@ -231,19 +231,39 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     }
   }
 
-  // 5. Obter perfil do utilizador para envio de email
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('full_name, email')
-    .eq('id', user.id)
-    .single();
+  // 5. Obter perfil do utilizador + metadados dos artigos (id_tipo_artigo, familia, subfamilia) e armazém em stock
+  const uniqueArtigoIds = Array.from(
+    new Set(input.linhas.map((l) => l.artigo_id.trim()).filter(Boolean))
+  );
 
-  // 6. Enviar emails automáticos via Resend (utilizador criador + joao.melo@sermail.pt)
-  const emailResult = await enviarEmailConfirmacaoPedido({
+  const [{ data: userProfile }, { data: artigosInfo }, { data: stockInfo }] = await Promise.all([
+    supabase.from('users').select('full_name, email').eq('id', user.id).single(),
+    uniqueArtigoIds.length > 0
+      ? supabase
+          .from('artigos')
+          .select('artigo_id, artigo_cli, id_tipo_artigo, familia, subfamilia')
+          .in('artigo_id', uniqueArtigoIds)
+      : Promise.resolve({ data: [] as any[] }),
+    uniqueArtigoIds.length > 0
+      ? supabase
+          .from('stock')
+          .select('artigo_id, lote, armazem')
+          .eq('cliente_ser', client.sigla)
+          .in('artigo_id', uniqueArtigoIds)
+      : Promise.resolve({ data: [] as any[] }),
+  ]);
+
+  const defaultArmazem = `${client.sigla.toUpperCase()}01`;
+
+  // 6. Enviar emails automáticos via Resend:
+  //    a) Email de confirmação do pedido (com a guia Pedido_<nr_pedido>.xlsx) para o executante
+  //    b) Email separado exclusivamente para o administrador com o ficheiro Template-Pedidos_<nr_pedido>.xlsx
+  const dadosEmail = {
     nr_pedido: pedido.nr_pedido,
     ref_documento: pedido.ref_documento,
     cliente_nome: client.name,
     cliente_sigla: client.sigla,
+    cliente_nif: client.nif,
     nome_destinatario: pedido.nome_destinatario,
     morada: pedido.morada,
     codigo_postal: pedido.codigo_postal,
@@ -254,15 +274,43 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     observacoes: pedido.observacoes,
     utilizador_nome: userProfile?.full_name || user.email?.split('@')[0],
     utilizador_email: user.email || userProfile?.email || 'admin@sermail.pt',
-    linhas: input.linhas.map((l) => ({
-      artigo_cli: l.artigo_cli || l.artigo_codigo || '',
-      artigo_codigo: l.artigo_cli || l.artigo_codigo || '',
-      descricao: l.descricao,
-      lote: l.lote,
-      validade: l.validade,
-      quantidade: l.quantidade,
-    })),
-  });
+    linhas: input.linhas.map((l) => {
+      const artIdClean = l.artigo_id.trim();
+      const artCliClean = (l.artigo_cli || l.artigo_codigo || '').trim();
+      const loteClean = (l.lote || '').trim();
+
+      const artMeta =
+        (artigosInfo || []).find(
+          (a) => a.artigo_cli === artCliClean || a.artigo_id === artIdClean
+        ) || null;
+
+      const stockMatch =
+        (stockInfo || []).find(
+          (s) => s.artigo_id === artIdClean && (s.lote || '').trim() === loteClean
+        ) ||
+        (stockInfo || []).find((s) => s.artigo_id === artIdClean) ||
+        null;
+
+      return {
+        artigo_id: artIdClean,
+        artigo_cli: artCliClean,
+        artigo_codigo: artCliClean,
+        descricao: l.descricao,
+        lote: l.lote,
+        validade: l.validade,
+        quantidade: l.quantidade,
+        armazem: stockMatch?.armazem || defaultArmazem,
+        tipo_artigo: artMeta?.id_tipo_artigo || '',
+        familia: artMeta?.familia || '',
+        sub_familia: artMeta?.subfamilia || '',
+      };
+    }),
+  };
+
+  const [emailResult] = await Promise.all([
+    enviarEmailConfirmacaoPedido(dadosEmail),
+    enviarEmailTemplatePedidoAdmin(dadosEmail),
+  ]);
 
   revalidatePath('/pedidos');
   revalidatePath('/dashboard');
