@@ -167,17 +167,19 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     }
   }
 
-  // 2. Gerar número de pedido único sequencial (ex: PED-2026-0001)
+  // 2. Gerar número de pedido único sequencial (ex: PED-2026-0001) e sigla_pedido (ex: AOP-PED-2026-0001)
   const today = new Date();
   const year = today.getFullYear();
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const nrPedido = `PED-${year}-${randomSuffix}`;
+  const siglaPedido = `${client.sigla.trim().toUpperCase()}-${nrPedido}`;
 
   // 3. Inserir cabeçalho do pedido
   const { data: pedido, error: pedidoErr } = await supabase
     .from('pedidos')
     .insert({
       nr_pedido: nrPedido,
+      sigla_pedido: siglaPedido,
       ref_documento: input.ref_documento || null,
       cliente_id: targetClientId,
       destino_id: finalDestinoId,

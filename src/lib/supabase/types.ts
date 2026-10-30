@@ -524,6 +524,7 @@ export interface NovoDestinoInput {
 export interface Pedido {
   id: string;
   nr_pedido: string;
+  sigla_pedido?: string | null;
   ref_documento: string | null;
   cliente_id: string;
 
