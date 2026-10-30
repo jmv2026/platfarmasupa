@@ -7,6 +7,10 @@ import { Artigo, Client, PedidoComLinhas, StockPedido, UserProfile } from '@/lib
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+export const metadata = {
+  title: 'Processar Pedidos | PlatFarma',
+};
+
 export default async function ProcPedidosPage() {
   const supabase = await createClient();
   const {

@@ -229,6 +229,17 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
     .eq('pedido_id', input.id)
     .order('created_at', { ascending: true });
 
+  // Se o pedido estiver ou passar a estar concluído, garantir sincronização com movimentos e movimentos_linhas
+  if (input.status === 'concluido') {
+    const { error: syncError } = await (supabase.rpc as any)(
+      'sincronizar_pedido_para_movimentos',
+      { p_pedido_id: input.id }
+    );
+    if (syncError) {
+      console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
+    }
+  }
+
   revalidatePath('/Proc_Pedidos');
   revalidatePath('/proc-pedidos');
   revalidatePath('/historico-pedidos');

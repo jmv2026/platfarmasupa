@@ -482,7 +482,7 @@ export default function ProcPedidosView({
             fact_check
           </span>
           <h1 className="text-xl font-bold tracking-tight text-sermail-lime-vibrant">
-            Controlo e Processamento de Pedidos
+            Processar Pedidos
           </h1>
         </div>
 

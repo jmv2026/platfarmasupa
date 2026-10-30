@@ -40,11 +40,13 @@ export async function atualizarEstadoPedido(
     // Validar status
     const statusValidos: StatusPedido[] = [
       'pendente',
+      'processado',
+      'concluido',
+      'cancelado',
       'confirmado',
       'em_preparacao',
       'expedido',
       'entregue',
-      'cancelado',
     ];
 
     if (!statusValidos.includes(novoStatus)) {
@@ -63,6 +65,17 @@ export async function atualizarEstadoPedido(
     if (updateError) {
       console.error('Erro ao atualizar estado do pedido:', updateError);
       return { success: false, error: `Erro no banco de dados: ${updateError.message}` };
+    }
+
+    // Se o pedido foi marcado como concluído, assegurar sincronização com movimentos e movimentos_linhas
+    if (novoStatus === 'concluido') {
+      const { error: syncError } = await (supabase.rpc as any)(
+        'sincronizar_pedido_para_movimentos',
+        { p_pedido_id: pedidoId }
+      );
+      if (syncError) {
+        console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
+      }
     }
 
     // Revalidar caminhos

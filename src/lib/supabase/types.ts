@@ -459,7 +459,15 @@ export interface StockZero {
   lotes_historico: string;
 }
 
-export type StatusPedido = 'pendente' | 'confirmado' | 'em_preparacao' | 'expedido' | 'entregue' | 'cancelado';
+export type StatusPedido =
+  | 'pendente'
+  | 'confirmado'
+  | 'em_preparacao'
+  | 'expedido'
+  | 'entregue'
+  | 'cancelado'
+  | 'processado'
+  | 'concluido';
 
 export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {
   pendente: 'Pendente',
@@ -468,6 +476,8 @@ export const STATUS_PEDIDO_LABELS: Record<StatusPedido, string> = {
   expedido: 'Expedido',
   entregue: 'Entregue',
   cancelado: 'Cancelado',
+  processado: 'Processado',
+  concluido: 'Concluído',
 };
 
 export const CLASSIFICACOES_DESTINO = [
