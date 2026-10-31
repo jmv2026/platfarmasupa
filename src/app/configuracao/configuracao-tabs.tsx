@@ -25,6 +25,8 @@ import {
   criarArtigoAction,
   limparArtigosAction,
   enviarEmailTesteConfigAction,
+  guardarConfiguracaoAction,
+  enviarEmailTesteTemplateAction,
 } from './actions';
 import ImportacaoMovimentosTab from './importacao-movimentos-tab';
 import ImportacaoErpTab from './importacao-erp-tab';
@@ -63,6 +65,7 @@ interface ConfiguracaoTabsProps {
   tempos?: Tempo[];
   serverEmailConfig?: ServerEmailConfig;
   trackingData?: any[];
+  templateEmailRecipients?: string;
 }
 
 export default function ConfiguracaoTabs({
@@ -74,6 +77,7 @@ export default function ConfiguracaoTabs({
   tempos = [],
   serverEmailConfig,
   trackingData = [],
+  templateEmailRecipients = '',
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -113,6 +117,25 @@ export default function ConfiguracaoTabs({
     delivered?: string[];
     details?: string;
   } | null>(null);
+
+  // Estados Aba Email: Destinatários do Ficheiro Excel (Template de Pedidos)
+  const [templateEmails, setTemplateEmails] = useState(templateEmailRecipients || '');
+  const [savingTemplateEmails, setSavingTemplateEmails] = useState(false);
+  const [templateEmailsFeedback, setTemplateEmailsFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [sendingTemplateTest, setSendingTemplateTest] = useState(false);
+  const [templateTestFeedback, setTemplateTestFeedback] = useState<{
+    type: 'success' | 'warning' | 'error';
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (templateEmailRecipients) {
+      setTemplateEmails(templateEmailRecipients);
+    }
+  }, [templateEmailRecipients]);
 
   // Estados Formulário Cliente
   const [clientName, setClientName] = useState('');
@@ -458,6 +481,76 @@ export default function ConfiguracaoTabs({
       });
     } finally {
       setTestEmailLoading(false);
+    }
+  };
+
+  // Handler: Guardar Endereços de Email do Template de Pedidos
+  const handleSaveTemplateEmails = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSavingTemplateEmails(true);
+    setTemplateEmailsFeedback(null);
+
+    try {
+      const res = await guardarConfiguracaoAction(
+        'email_template_pedidos_destinatarios',
+        templateEmails
+      );
+
+      if (res.success) {
+        setTemplateEmailsFeedback({
+          type: 'success',
+          message:
+            language === 'pt'
+              ? 'Destinatários do template de pedidos guardados com sucesso!'
+              : language === 'es'
+              ? '¡Destinatarios de la plantilla de pedidos guardados con éxito!'
+              : 'Order template email recipients saved successfully!',
+        });
+        router.refresh();
+      } else {
+        setTemplateEmailsFeedback({
+          type: 'error',
+          message: res.error || t.common.error,
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t.common.error;
+      setTemplateEmailsFeedback({ type: 'error', message: msg });
+    } finally {
+      setSavingTemplateEmails(false);
+    }
+  };
+
+  // Handler: Emitir Email de Teste com o Template de Pedidos (Excel)
+  const handleSendTemplateTestEmail = async () => {
+    setSendingTemplateTest(true);
+    setTemplateTestFeedback(null);
+
+    try {
+      const res = await enviarEmailTesteTemplateAction(templateEmails);
+      if (res.success) {
+        const dests =
+          res.recipients && res.recipients.length > 0 ? res.recipients.join(', ') : templateEmails;
+        setTemplateTestFeedback({
+          type: 'success',
+          message:
+            language === 'pt'
+              ? `Email de teste com ficheiro Excel Template-Pedidos enviado com sucesso para: ${dests}`
+              : language === 'es'
+              ? `Email de prueba con archivo Excel Template-Pedidos enviado con éxito a: ${dests}`
+              : `Test email with Template-Pedidos Excel file successfully sent to: ${dests}`,
+        });
+      } else {
+        setTemplateTestFeedback({
+          type: 'error',
+          message: res.error || 'Falha ao enviar o email de teste do template de pedidos.',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : t.common.error;
+      setTemplateTestFeedback({ type: 'error', message: msg });
+    } finally {
+      setSendingTemplateTest(false);
     }
   };
 
@@ -1944,6 +2037,138 @@ export default function ConfiguracaoTabs({
                 </div>
               </div>
 
+              {/* Secção / Janela: Destinatários do Ficheiro Excel (Template de Pedidos) */}
+              <div className="bg-surface-container-lowest border border-emerald-500/30 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/20 pb-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-700 flex-shrink-0">
+                      <span className="material-symbols-outlined text-2xl">table_chart</span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                        {language === 'pt' ? 'Destinatários do Ficheiro Excel (Template de Pedidos)' : language === 'es' ? 'Destinatarios del Archivo Excel (Plantilla de Pedidos)' : 'Excel File Recipients (Order Template)'}
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Template-Pedidos.xlsx
+                        </span>
+                      </h4>
+                      <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                        {language === 'pt'
+                          ? 'Indique um ou mais endereços de email para envio automático do ficheiro Excel gerado a partir do modelo Template-Pedidos.xlsx.'
+                          : language === 'es'
+                          ? 'Indique una o más direcciones de correo para el envío automático del archivo Excel generado a partir de Template-Pedidos.xlsx.'
+                          : 'Specify one or more email addresses for automated sending of the Excel file generated from Template-Pedidos.xlsx.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+                  <span className="material-symbols-outlined text-amber-700 text-base mt-0.5 flex-shrink-0">
+                    info
+                  </span>
+                  <div>
+                    <strong>{language === 'pt' ? 'Atenção:' : language === 'es' ? 'Atención:' : 'Important notice:'}</strong>{' '}
+                    {language === 'pt'
+                      ? 'Ao configurar esta lista, o ficheiro Excel do template deixa de ser enviado para o administrador e passa a ser remetido exclusivamente para os endereços aqui indicados.'
+                      : language === 'es'
+                      ? 'Al configurar esta lista, el archivo Excel de la plantilla deja de enviarse al administrador y pasa a enviarse exclusivamente a las direcciones aquí indicadas.'
+                      : 'By setting this list, the template Excel file will no longer be sent to the administrator and will be sent exclusively to the addresses specified here.'}
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveTemplateEmails} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-on-surface mb-1.5 flex items-center justify-between">
+                      <span>{language === 'pt' ? 'Endereços de Email Destinatários:' : language === 'es' ? 'Direcciones de Correo Destinatarios:' : 'Recipient Email Addresses:'}</span>
+                      <span className="text-[11px] font-normal text-on-surface-variant">
+                        {language === 'pt' ? 'Separe múltiplos emails por vírgula (,) ou nova linha' : language === 'es' ? 'Separe múltiples correos con coma (,) o salto de línea' : 'Separate multiple emails with comma (,) or new line'}
+                      </span>
+                    </label>
+                    <div className="relative">
+                      <textarea
+                        value={templateEmails}
+                        onChange={(e) => setTemplateEmails(e.target.value)}
+                        placeholder="exemplo1@empresa.pt, exemplo2@cliente.com"
+                        rows={3}
+                        className="w-full p-3 text-xs bg-surface-container/30 border border-outline-variant/50 rounded-xl text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/40 font-mono leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Feedback da Gravação */}
+                  {templateEmailsFeedback && (
+                    <div
+                      className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 transition-all ${
+                        templateEmailsFeedback.type === 'success'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        {templateEmailsFeedback.type === 'success' ? 'check_circle' : 'error'}
+                      </span>
+                      <span>{templateEmailsFeedback.message}</span>
+                    </div>
+                  )}
+
+                  {/* Feedback do Teste */}
+                  {templateTestFeedback && (
+                    <div
+                      className={`p-3.5 rounded-xl text-xs font-medium flex items-center gap-2 transition-all ${
+                        templateTestFeedback.type === 'success'
+                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-base">
+                        {templateTestFeedback.type === 'success' ? 'mark_email_read' : 'error'}
+                      </span>
+                      <span>{templateTestFeedback.message}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                    <button
+                      type="submit"
+                      disabled={savingTemplateEmails}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-bold shadow-xs hover:bg-secondary/90 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {savingTemplateEmails ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-on-secondary border-t-transparent rounded-full animate-spin"></span>
+                          {language === 'pt' ? 'A guardar...' : language === 'es' ? 'Guardando...' : 'Saving...'}
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm">save</span>
+                          {language === 'pt' ? 'Guardar Destinatários' : language === 'es' ? 'Guardar Destinatarios' : 'Save Recipients'}
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSendTemplateTestEmail}
+                      disabled={sendingTemplateTest || savingTemplateEmails}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-surface-container border border-outline-variant/60 text-on-surface rounded-xl text-xs font-semibold hover:bg-surface-container-high transition-all cursor-pointer disabled:opacity-50"
+                      title={language === 'pt' ? 'Dispara um email de teste com anexo Template-Pedidos.xlsx para a lista configurada' : 'Sends a test email with Template-Pedidos.xlsx attachment'}
+                    >
+                      {sendingTemplateTest ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-on-surface border-t-transparent rounded-full animate-spin"></span>
+                          {language === 'pt' ? 'A enviar teste...' : language === 'es' ? 'Enviando prueba...' : 'Sending test...'}
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-sm text-secondary">send</span>
+                          {language === 'pt' ? 'Enviar Teste com Anexo Excel' : language === 'es' ? 'Enviar Prueba con Excel' : 'Send Test with Excel'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
               {/* Secção de Disparo de Teste */}
               <div className="bg-gradient-to-br from-secondary/5 via-primary/5 to-surface-container/50 border border-secondary/20 rounded-2xl p-6 sm:p-7 space-y-5">
                 <div className="flex items-start gap-4">
@@ -2041,6 +2266,9 @@ export default function ConfiguracaoTabs({
                     </li>
                     <li>
                       Remetente oficial: <strong>{serverEmailConfig?.fromEmail || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>'}</strong>.
+                    </li>
+                    <li>
+                      Ficheiro <strong>Template-Pedidos.xlsx</strong>: enviado exclusivamente para os endereços indicados no painel <strong>Destinatários do Ficheiro Excel</strong>.
                     </li>
                   </ul>
                 </div>

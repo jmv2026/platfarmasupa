@@ -29,7 +29,7 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Armazéns, Tempos e Tracking em paralelo
+  // Carregar dados de Utilizadores, Clientes, Artigos, Armazéns, Tempos, Tracking e Configurações em paralelo
   const [
     { data: usersList },
     { data: clientsList },
@@ -37,6 +37,7 @@ export default async function ConfiguracaoPage() {
     { data: armazensList },
     { data: temposList },
     { data: trackingListRaw },
+    { data: configuracoesList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clientes').select('*').order('name'),
@@ -48,9 +49,15 @@ export default async function ConfiguracaoPage() {
       .select('id, ref_ser, ref_comprovativo, data_estado, hora_estado, ref_trans, cod_estado, cod_incide, data_reg_incide, hora_reg_incide, desc_estado_expedicao, obs_expedicao, created_at')
       .order('created_at', { ascending: false })
       .limit(1000),
+    supabase.from('configuracoes').select('*'),
   ]);
 
   const trackingList = trackingListRaw || [];
+
+  const templateConfigRow = configuracoesList?.find(
+    (c: any) => c.chave === 'email_template_pedidos_destinatarios'
+  );
+  const templateEmailRecipients = templateConfigRow?.valor || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -83,6 +90,7 @@ export default async function ConfiguracaoPage() {
         tempos={(temposList as Tempo[]) || []}
         trackingData={(trackingList as any[]) || []}
         serverEmailConfig={serverEmailConfig}
+        templateEmailRecipients={templateEmailRecipients}
       />
     </div>
   );

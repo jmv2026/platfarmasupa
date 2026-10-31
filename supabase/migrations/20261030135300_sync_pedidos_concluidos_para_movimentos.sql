@@ -14,6 +14,8 @@ DECLARE
     v_cliente record;
     v_doc_ref text;
     v_sigla text;
+    v_tipo_mov text;
+    v_doc_mov text;
     v_linhas_count integer := 0;
 BEGIN
     -- Obter os dados do pedido
@@ -35,6 +37,8 @@ BEGIN
     END IF;
 
     v_sigla := UPPER(TRIM(v_cliente.sigla));
+    v_tipo_mov := UPPER(TRIM(COALESCE(v_pedido.tipo_movimento, 'SS')));
+    v_doc_mov := COALESCE(NULLIF(TRIM(v_pedido.doc_primavera), ''), v_pedido.nr_pedido);
 
     -- Definir documento_ref baseado em sigla_pedido ou compor [SIGLA]-[nr_pedido]
     v_doc_ref := COALESCE(
@@ -54,6 +58,7 @@ BEGIN
         tipo_doc,
         num_doc,
         documento,
+        chave1,
         tipo_movimento,
         tipomovimento,
         data,
@@ -95,9 +100,10 @@ BEGIN
         COALESCE(v_cliente.cli_primavera, v_sigla),
         'ECL',
         v_pedido.nr_pedido,
-        v_pedido.nr_pedido,
-        'SS',
-        'SS',
+        v_doc_mov,
+        v_pedido.doc_primavera,
+        v_tipo_mov,
+        v_tipo_mov,
         v_pedido.data_pedido,
         COALESCE(v_pedido.data_pedido::timestamp with time zone, now()),
         v_pedido.ref_documento,
@@ -128,8 +134,10 @@ BEGIN
         cliente_ser = EXCLUDED.cliente_ser,
         cli_primavera = EXCLUDED.cli_primavera,
         entidade = EXCLUDED.entidade,
-        tipo_movimento = 'SS',
-        tipomovimento = 'SS',
+        documento = EXCLUDED.documento,
+        chave1 = EXCLUDED.chave1,
+        tipo_movimento = EXCLUDED.tipo_movimento,
+        tipomovimento = EXCLUDED.tipomovimento,
         data = EXCLUDED.data,
         data_movimento = EXCLUDED.data_movimento,
         requisicao = EXCLUDED.requisicao,
@@ -174,6 +182,7 @@ BEGIN
         cli_primavera,
         sigla,
         documento,
+        chave1,
         tipo_doc,
         num_doc,
         requisicao,
@@ -217,7 +226,8 @@ BEGIN
         v_sigla AS cliente_ser,
         v_cliente.cli_primavera AS cli_primavera,
         v_sigla AS sigla,
-        v_pedido.nr_pedido AS documento,
+        v_doc_mov AS documento,
+        v_pedido.doc_primavera AS chave1,
         'ECL' AS tipo_doc,
         v_pedido.nr_pedido AS num_doc,
         v_pedido.ref_documento AS requisicao,
@@ -234,7 +244,7 @@ BEGIN
         a.familia AS familia,
         a.subfamilia AS sub_familia,
         nl.validade AS validade,
-        'ss' AS tipo_movimento,
+        v_tipo_mov AS tipo_movimento,
         COALESCE(
             SUBSTRING(COALESCE(st.armazem, v_sigla || '01') FROM '[0-9]{2}$'),
             '01'

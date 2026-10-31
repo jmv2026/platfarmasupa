@@ -192,6 +192,8 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       data_pedido: input.data_pedido || today.toISOString().split('T')[0],
       data_entrega: input.data_entrega || null,
       status: 'pendente',
+      tipo_movimento: 'SS',
+      doc_primavera: null,
       observacoes: input.observacoes || null,
       created_by: user.id,
     })

@@ -551,6 +551,8 @@ export interface Pedido {
   processado?: boolean;
   processar?: boolean;
   datetime_proc?: string | null;
+  tipo_movimento?: string | null;
+  doc_primavera?: string | null;
   observacoes: string | null;
   created_by?: string | null;
   created_at?: string;
@@ -577,7 +579,8 @@ export interface PedidoComLinhas extends Pedido {
   clients?: Client;
   destinos?: Destino;
   pedido_linhas?: PedidoLinha[];
-  tipo_movimento?: string;
+  tipo_movimento?: string | null;
+  doc_primavera?: string | null;
   requisicao?: string | null;
   cod_postal?: string | null;
   cod_postal_localidade?: string | null;
@@ -648,4 +651,12 @@ export interface LogAcesso {
   user_agent?: string | null;
   observacoes?: string | null;
   created_at?: string;
+}
+
+export interface Configuracao {
+  chave: string;
+  valor: string | null;
+  descricao?: string | null;
+  updated_at?: string;
+  updated_by?: string | null;
 }

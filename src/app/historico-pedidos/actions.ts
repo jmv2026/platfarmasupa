@@ -76,6 +76,45 @@ export async function atualizarEstadoPedido(
       if (syncError) {
         console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
       }
+
+      // Enviar ficheiro Excel gerado a partir do template para os destinatários configurados na plataforma
+      try {
+        const { data: pedCompleto } = await supabase
+          .from('pedidos')
+          .select('*, clientes(name, sigla, nif), pedido_linhas(*)')
+          .eq('id', pedidoId)
+          .single();
+
+        if (pedCompleto) {
+          const { enviarEmailTemplatePedidoAdmin } = await import('@/lib/email');
+          const dadosEmail = {
+            nr_pedido: pedCompleto.nr_pedido,
+            ref_documento: pedCompleto.ref_documento,
+            cliente_nome: pedCompleto.clientes?.name || 'Cliente',
+            cliente_sigla: pedCompleto.clientes?.sigla || 'CLI',
+            cliente_nif: pedCompleto.clientes?.nif,
+            nome_destinatario: pedCompleto.nome_destinatario,
+            morada: pedCompleto.morada,
+            codigo_postal: pedCompleto.codigo_postal,
+            localidade: pedCompleto.localidade,
+            pais: pedCompleto.pais || 'Portugal',
+            data_pedido: pedCompleto.data_pedido,
+            observacoes: pedCompleto.observacoes,
+            utilizador_email: user.email || 'admin@sermail.pt',
+            linhas: (pedCompleto.pedido_linhas || []).map((l: any) => ({
+              artigo_id: l.artigo_id,
+              artigo_cli: l.artigo_cli,
+              descricao: l.descricao,
+              lote: l.lote,
+              validade: l.validade,
+              quantidade: l.quantidade,
+            })),
+          };
+          await enviarEmailTemplatePedidoAdmin(dadosEmail);
+        }
+      } catch (emailErr) {
+        console.warn('[historico-pedidos] Falha ao enviar email do template para os destinatários:', emailErr);
+      }
     }
 
     // Revalidar caminhos

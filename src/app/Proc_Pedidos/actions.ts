@@ -45,6 +45,26 @@ export async function atualizarProcessamentoPedidoAction(
     return { success: false, error: authErr };
   }
 
+  // REGRA DE NEGÓCIO: O campo doc_primavera só depois de preenchido é que se poderá assinalar o campo processar
+  if (updates.processar === true) {
+    const { data: pedidoAtual, error: fetchErr } = await supabase
+      .from('pedidos')
+      .select('doc_primavera')
+      .eq('id', pedidoId)
+      .single();
+
+    if (fetchErr || !pedidoAtual) {
+      return { success: false, error: 'Pedido não encontrado.' };
+    }
+
+    if (!pedidoAtual.doc_primavera || !pedidoAtual.doc_primavera.trim()) {
+      return {
+        success: false,
+        error: 'É obrigatório preencher o Documento Primavera antes de assinalar o pedido como "A Processar".',
+      };
+    }
+  }
+
   const payload: Record<string, any> = {
     ...updates,
     updated_at: new Date().toISOString(),
@@ -83,6 +103,8 @@ export interface EditarPedidoInput {
   ref_documento?: string | null;
   classifica_destino?: string | null;
   status: string;
+  tipo_movimento?: string | null;
+  doc_primavera?: string | null;
   observacoes?: string | null;
   processar: boolean;
   processado: boolean;
@@ -113,6 +135,14 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
     return { success: false, error: 'O pedido deve manter pelo menos uma linha de artigo.' };
   }
 
+  // REGRA DE NEGÓCIO: O campo doc_primavera só depois de preenchido é que se poderá assinalar o campo processar
+  if (input.processar && (!input.doc_primavera || !input.doc_primavera.trim())) {
+    return {
+      success: false,
+      error: 'É obrigatório preencher o Documento Primavera antes de assinalar o pedido como "A Processar".',
+    };
+  }
+
   const { error: pedidoError } = await supabase
     .from('pedidos')
     .update({
@@ -126,9 +156,12 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
       ref_documento: input.ref_documento?.trim() || null,
       classifica_destino: input.classifica_destino?.trim() || null,
       status: input.status,
+      tipo_movimento: input.tipo_movimento?.trim() || 'SS',
+      doc_primavera: input.doc_primavera?.trim() || null,
       observacoes: input.observacoes?.trim() || null,
       processar: Boolean(input.processar),
       processado: Boolean(input.processado),
+      datetime_proc: input.processar ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.id);
@@ -238,6 +271,45 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
     if (syncError) {
       console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
     }
+
+    // Enviar ficheiro Excel gerado a partir do template para os destinatários configurados na plataforma
+    try {
+      const { data: pedCompleto } = await supabase
+        .from('pedidos')
+        .select('*, clientes(name, sigla, nif)')
+        .eq('id', input.id)
+        .single();
+
+      if (pedCompleto) {
+        const { enviarEmailTemplatePedidoAdmin } = await import('@/lib/email');
+        const dadosEmail = {
+          nr_pedido: pedCompleto.nr_pedido,
+          ref_documento: pedCompleto.ref_documento,
+          cliente_nome: pedCompleto.clientes?.name || 'Cliente',
+          cliente_sigla: pedCompleto.clientes?.sigla || 'CLI',
+          cliente_nif: pedCompleto.clientes?.nif,
+          nome_destinatario: pedCompleto.nome_destinatario,
+          morada: pedCompleto.morada,
+          codigo_postal: pedCompleto.codigo_postal,
+          localidade: pedCompleto.localidade,
+          pais: pedCompleto.pais || 'Portugal',
+          data_pedido: pedCompleto.data_pedido,
+          observacoes: pedCompleto.observacoes,
+          utilizador_email: 'admin@sermail.pt',
+          linhas: (linhasAtualizadas || []).map((l: any) => ({
+            artigo_id: l.artigo_id,
+            artigo_cli: l.artigo_cli,
+            descricao: l.descricao,
+            lote: l.lote,
+            validade: l.validade,
+            quantidade: l.quantidade,
+          })),
+        };
+        await enviarEmailTemplatePedidoAdmin(dadosEmail);
+      }
+    } catch (emailErr) {
+      console.warn('[Proc_Pedidos] Falha ao enviar email do template para os destinatários:', emailErr);
+    }
   }
 
   revalidatePath('/Proc_Pedidos');
@@ -261,6 +333,54 @@ export async function apagarPedidoAction(pedidoId: string) {
 
   if (error) {
     return { success: false, error: `Erro ao apagar pedido: ${error.message}` };
+  }
+
+  revalidatePath('/Proc_Pedidos');
+  revalidatePath('/proc-pedidos');
+  revalidatePath('/historico-pedidos');
+  revalidatePath('/dashboard');
+
+  return { success: true };
+}
+
+export async function atualizarDocPrimaveraAction(
+  pedidoId: string,
+  docPrimavera: string | null
+) {
+  const { supabase, allowed, error: authErr } = await checkGestorOrAdmin();
+  if (!allowed) {
+    return { success: false, error: authErr };
+  }
+
+  const trimmed = docPrimavera?.trim() || null;
+
+  const { data: pedidoAtual, error: fetchErr } = await supabase
+    .from('pedidos')
+    .select('id, processar')
+    .eq('id', pedidoId)
+    .single();
+
+  if (fetchErr || !pedidoAtual) {
+    return { success: false, error: 'Pedido não encontrado.' };
+  }
+
+  const payload: Record<string, any> = {
+    doc_primavera: trimmed,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!trimmed && pedidoAtual.processar) {
+    payload.processar = false;
+    payload.datetime_proc = null;
+  }
+
+  const { error } = await supabase
+    .from('pedidos')
+    .update(payload)
+    .eq('id', pedidoId);
+
+  if (error) {
+    return { success: false, error: error.message };
   }
 
   revalidatePath('/Proc_Pedidos');

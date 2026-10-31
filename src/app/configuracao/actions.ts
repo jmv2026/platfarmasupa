@@ -1305,3 +1305,160 @@ export async function obterFaturasStatsAction() {
     return { success: false, count: 0 };
   }
 }
+
+// 19. AÇÃO: Guardar Parâmetro de Configuração
+export async function guardarConfiguracaoAction(chave: string, valor: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
+    return { success: false, error: 'Apenas administradores e gestores podem alterar configurações.' };
+  }
+
+  if (!chave?.trim()) {
+    return { success: false, error: 'Chave de configuração inválida.' };
+  }
+
+  const cleanChave = chave.trim();
+  const cleanValor = valor?.trim() || '';
+
+  // Validação específica se for lista de emails do template de pedidos
+  if (cleanChave === 'email_template_pedidos_destinatarios' && cleanValor) {
+    const emails = cleanValor
+      .split(/[,;\n\r\s]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const invalidEmails = emails.filter((e) => !emailRegex.test(e));
+    if (invalidEmails.length > 0) {
+      return {
+        success: false,
+        error: `Os seguintes endereços de email são inválidos: ${invalidEmails.join(', ')}`,
+      };
+    }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('configuracoes')
+      .upsert({
+        chave: cleanChave,
+        valor: cleanValor,
+        updated_at: new Date().toISOString(),
+        updated_by: user.id,
+      });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    revalidatePath('/configuracao');
+    return { success: true, valor: cleanValor };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Erro ao guardar configuração.';
+    return { success: false, error: msg };
+  }
+}
+
+// 20. AÇÃO: Obter Parâmetro de Configuração
+export async function obterConfiguracaoAction(chave: string) {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase
+      .from('configuracoes')
+      .select('chave, valor, descricao, updated_at')
+      .eq('chave', chave)
+      .maybeSingle();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : 'Erro ao consultar configuração' };
+  }
+}
+
+// 21. AÇÃO: Enviar Email de Teste com o Template de Pedidos (Excel)
+export async function enviarEmailTesteTemplateAction(destinatariosCustom?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, recipients: [] as string[], error: 'Sessão expirada. Inicie sessão como Administrador ou Gestor.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, full_name, email')
+    .eq('id', user.id)
+    .single();
+
+  const { isManagerOrAdmin } = checkUserRole(user, profile);
+  if (!isManagerOrAdmin) {
+    return { success: false, recipients: [] as string[], error: 'Apenas administradores e gestores podem disparar emails de teste.' };
+  }
+
+  const { enviarEmailTemplatePedidoAdmin, obterDestinatariosTemplatePedidos } = await import('@/lib/email');
+
+  let recipients: string[] = [];
+  if (destinatariosCustom && destinatariosCustom.trim()) {
+    recipients = destinatariosCustom
+      .split(/[,;\n\r\s]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e && e.includes('@'));
+  } else {
+    recipients = await obterDestinatariosTemplatePedidos();
+  }
+
+  if (recipients.length === 0) {
+    return { success: false, recipients: [] as string[], error: 'Nenhum destinatário válido indicado para o envio de teste.' };
+  }
+
+  const dadosMock = {
+    nr_pedido: 'TESTE-TEMPLATE',
+    ref_documento: 'REF-DIAGNOSTICO',
+    cliente_nome: 'Farmácia de Demonstração',
+    cliente_sigla: 'DEMO',
+    cliente_nif: '501234567',
+    nome_destinatario: 'Farmácia Central de Teste',
+    morada: 'Avenida Principal, Lote 1',
+    codigo_postal: '1000-001',
+    localidade: 'Lisboa',
+    pais: 'Portugal',
+    data_pedido: new Date().toISOString().split('T')[0],
+    observacoes: 'Email de teste enviado a partir da configuração do Servidor de Email.',
+    utilizador_nome: profile?.full_name || 'Administrador Farma',
+    utilizador_email: user.email || 'admin@sermail.pt',
+    linhas: [
+      {
+        artigo_id: 'ART-001',
+        descricao: 'Artigo Demonstração Teste A',
+        lote: 'LOTE-TESTE-1',
+        validade: '2027-12-31',
+        quantidade: 10,
+        armazem: 'DEMO01',
+        tipo_artigo: '80',
+        familia: 'MED',
+        sub_familia: 'FARMA',
+      },
+    ],
+  };
+
+  const result = await enviarEmailTemplatePedidoAdmin(dadosMock, recipients);
+  return result;
+}

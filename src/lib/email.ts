@@ -423,21 +423,52 @@ export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Pro
 }
 
 /**
- * Envia um email separado exclusivamente para o administrador contendo em anexo
- * o ficheiro Excel gerado a partir de `public/templates/Template-Pedidos.xlsx`.
+ * Obtém a lista de destinatários configurada para o envio do ficheiro Excel (Template de Pedidos).
+ * Lê da tabela public.configuracoes chave 'email_template_pedidos_destinatarios'.
  */
-export async function enviarEmailTemplatePedidoAdmin(dados: EmailPedidoDados): Promise<EmailEnvioResult> {
-  const adminNotification = process.env.RESEND_NOTIFICATION_EMAIL || 'jccmmelo@gmail.com';
-  const defaultAdmin = 'joao.melo@sermail.pt';
+export async function obterDestinatariosTemplatePedidos(): Promise<string[]> {
+  try {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'email_template_pedidos_destinatarios')
+      .maybeSingle();
 
-  // Destinatários exclusivos de administração
-  const adminRecipients = Array.from(
-    new Set(
-      [adminNotification, defaultAdmin]
-        .map((e) => e.toLowerCase().trim())
-        .filter((e) => e && e.includes('@'))
-    )
-  );
+    if (data?.valor && data.valor.trim()) {
+      const emails = data.valor
+        .split(/[,;\n\r\s]+/)
+        .map((e: string) => e.trim().toLowerCase())
+        .filter((e: string) => e && e.includes('@') && e.includes('.'));
+
+      if (emails.length > 0) {
+        return Array.from(new Set(emails));
+      }
+    }
+  } catch (err) {
+    console.warn('[Email] Erro ao ler destinatários do template de pedidos da BD:', err);
+  }
+
+  // Fallback se ainda não estiver configurado
+  const fallback = [
+    process.env.RESEND_NOTIFICATION_EMAIL || 'jccmmelo@gmail.com',
+    'joao.melo@sermail.pt',
+  ];
+  return Array.from(new Set(fallback.map((e) => e.trim().toLowerCase()).filter(Boolean)));
+}
+
+/**
+ * Envia um email contendo em anexo o ficheiro Excel gerado a partir de `public/templates/Template-Pedidos.xlsx`.
+ * Os destinatários são os endereços indicados na configuração da plataforma (aba Servidor de Email).
+ */
+export async function enviarEmailTemplatePedidoAdmin(
+  dados: EmailPedidoDados,
+  destinatariosParam?: string[]
+): Promise<EmailEnvioResult> {
+  const targetRecipients = (destinatariosParam && destinatariosParam.length > 0)
+    ? destinatariosParam
+    : await obterDestinatariosTemplatePedidos();
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'Plataforma Farma <noreplay@platfarma.sermaildev.cloud>';
   const filename = `Template-Pedidos_${dados.nr_pedido}.xlsx`;
@@ -454,12 +485,12 @@ export async function enviarEmailTemplatePedidoAdmin(dados: EmailPedidoDados): P
   <div style="max-width: 600px; margin: 24px auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);">
     <div style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%); padding: 24px 28px; color: #ffffff;">
       <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9; margin-bottom: 6px;">
-        Plataforma Farma • Administração
+        Plataforma Farma • Processamento de Pedidos
       </div>
       <h2 style="margin: 0; font-size: 20px; font-weight: 700;">Ficheiro de Importação do Pedido ${dados.nr_pedido}</h2>
     </div>
     <div style="padding: 24px 28px; font-size: 14px; line-height: 1.6;">
-      <p style="margin-top: 0;">Segue em anexo o ficheiro Excel gerado a partir do modelo <strong>Template-Pedidos.xlsx</strong> referente ao pedido fechado:</p>
+      <p style="margin-top: 0;">Segue em anexo o ficheiro Excel gerado a partir do modelo <strong>Template-Pedidos.xlsx</strong> referente ao pedido:</p>
       <ul style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px 14px 34px; margin: 16px 0;">
         <li><strong>Nº Pedido (Nr.Documento Ext):</strong> ${dados.nr_pedido}</li>
         <li><strong>Cliente:</strong> ${dados.cliente_nome} (${dados.cliente_sigla})</li>
@@ -500,7 +531,7 @@ export async function enviarEmailTemplatePedidoAdmin(dados: EmailPedidoDados): P
 
   return enviarMensagemResend({
     from: fromEmail,
-    recipients: adminRecipients,
+    recipients: targetRecipients,
     subject,
     html,
     text,

@@ -13,6 +13,7 @@ import {
 import { useLanguage } from '@/lib/i18n/context';
 import {
   atualizarProcessamentoPedidoAction,
+  atualizarDocPrimaveraAction,
   editarPedidoAction,
   apagarPedidoAction,
   EditarPedidoInput,
@@ -51,6 +52,11 @@ export default function ProcPedidosView({
   const [deletingPedido, setDeletingPedido] = useState<PedidoComLinhas | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Estados para modal rápido de preenchimento do Documento Primavera
+  const [docPrimaveraModalPedido, setDocPrimaveraModalPedido] = useState<PedidoComLinhas | null>(null);
+  const [docPrimaveraInput, setDocPrimaveraInput] = useState<string>('');
+  const [isSavingDocPrimavera, setIsSavingDocPrimavera] = useState(false);
 
   // Estados para acrescentar nova linha no modal de edição
   const [newLineArtigoCli, setNewLineArtigoCli] = useState<string>('');
@@ -225,6 +231,19 @@ export default function ProcPedidosView({
     currentValue: boolean
   ) => {
     const newValue = !currentValue;
+
+    // REGRA DE NEGÓCIO: Só depois de preenchido doc_primavera é que se poderá assinalar o campo processar
+    if (field === 'processar' && newValue === true) {
+      const pedidoObj = pedidosList.find((p) => p.id === pedidoId);
+      if (!pedidoObj?.doc_primavera || !pedidoObj.doc_primavera.trim()) {
+        setFeedback({
+          type: 'error',
+          message: 'É obrigatório preencher o Documento Primavera antes de assinalar o pedido como "A Processar". Clique no botão Editar para preencher.',
+        });
+        return;
+      }
+    }
+
     setUpdatingId(pedidoId);
     setFeedback(null);
 
@@ -259,6 +278,54 @@ export default function ProcPedidosView({
     }
   };
 
+  const handleOpenDocPrimaveraModal = (pedido: PedidoComLinhas) => {
+    setFeedback(null);
+    setDocPrimaveraModalPedido(pedido);
+    setDocPrimaveraInput(pedido.doc_primavera || '');
+  };
+
+  const handleSaveDocPrimavera = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!docPrimaveraModalPedido) return;
+
+    const novoDoc = docPrimaveraInput.trim() || null;
+
+    setIsSavingDocPrimavera(true);
+    setFeedback(null);
+
+    const res = await atualizarDocPrimaveraAction(docPrimaveraModalPedido.id, novoDoc);
+    setIsSavingDocPrimavera(false);
+
+    if (!res.success) {
+      setFeedback({
+        type: 'error',
+        message: res.error || 'Erro ao atualizar Documento Primavera.',
+      });
+      return;
+    }
+
+    setPedidosList((prev) =>
+      prev.map((p) =>
+        p.id === docPrimaveraModalPedido.id
+          ? {
+              ...p,
+              doc_primavera: novoDoc,
+              ...(!novoDoc ? { processar: false, datetime_proc: null } : {}),
+            }
+          : p
+      )
+    );
+
+    const pedidoNr = docPrimaveraModalPedido.nr_pedido;
+    setDocPrimaveraModalPedido(null);
+    setFeedback({
+      type: 'success',
+      message: novoDoc
+        ? `Documento Primavera "${novoDoc}" associado ao pedido ${pedidoNr}. Já pode marcar o pedido como "A Processar".`
+        : `Documento Primavera removido do pedido ${pedidoNr}.`,
+    });
+  };
+
   const handleOpenEdit = (pedido: PedidoComLinhas) => {
     setFeedback(null);
     setEditingNrPedido(pedido.nr_pedido);
@@ -279,6 +346,8 @@ export default function ProcPedidosView({
       ref_documento: pedido.ref_documento || '',
       classifica_destino: pedido.classifica_destino || '',
       status: pedido.status || 'pendente',
+      tipo_movimento: pedido.tipo_movimento || 'SS',
+      doc_primavera: pedido.doc_primavera || '',
       observacoes: pedido.observacoes || '',
       processar: Boolean(pedido.processar),
       processado: Boolean(pedido.processado),
@@ -335,6 +404,15 @@ export default function ProcPedidosView({
       });
     }
 
+    // REGRA DE NEGÓCIO: Só depois de preenchido doc_primavera é que se poderá assinalar o campo processar
+    if (editingPedido.processar && (!editingPedido.doc_primavera || !editingPedido.doc_primavera.trim())) {
+      setFeedback({
+        type: 'error',
+        message: 'É obrigatório preencher o Documento Primavera antes de assinalar o pedido como "A Processar".',
+      });
+      return;
+    }
+
     const payloadParaGuardar: EditarPedidoInput = {
       ...editingPedido,
       linhas: linhasFinais,
@@ -369,6 +447,8 @@ export default function ProcPedidosView({
               ref_documento: payloadParaGuardar.ref_documento || null,
               classifica_destino: payloadParaGuardar.classifica_destino || null,
               status: payloadParaGuardar.status,
+              doc_primavera: payloadParaGuardar.doc_primavera || null,
+              tipo_movimento: payloadParaGuardar.tipo_movimento || 'SS',
               observacoes: payloadParaGuardar.observacoes || null,
               processar: payloadParaGuardar.processar,
               processado: payloadParaGuardar.processado,
@@ -585,6 +665,7 @@ export default function ProcPedidosView({
                 <th className="py-3 px-4">Destinatário</th>
                 <th className="py-3 px-4">Localidade</th>
                 <th className="py-3 px-4">Ref. Doc</th>
+                <th className="py-3 px-4">Doc. Primavera</th>
                 <th className="py-3 px-4 text-center">Linhas</th>
                 <th className="py-3 px-4 text-center">Estado</th>
                 <th className="py-3 px-4 text-center">Processar</th>
@@ -596,7 +677,7 @@ export default function ProcPedidosView({
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredPedidos.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={13} className="py-10 text-center text-slate-400 font-medium">
                     Nenhum pedido encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -634,6 +715,30 @@ export default function ProcPedidosView({
                       <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
                         {p.ref_documento || '-'}
                       </td>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {p.doc_primavera ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDocPrimaveraModal(p)}
+                            className="inline-flex items-center gap-1 font-mono font-bold text-sermail-green-dark text-xs px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 hover:bg-emerald-100/90 hover:border-emerald-300 transition-colors cursor-pointer group"
+                            title={`Documento Primavera: ${p.doc_primavera} (Clique para alterar)`}
+                          >
+                            <span className="material-symbols-outlined text-[13px] text-emerald-600">receipt_long</span>
+                            {p.doc_primavera}
+                            <span className="material-symbols-outlined text-[11px] text-emerald-600 opacity-60 group-hover:opacity-100 ml-0.5">edit</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDocPrimaveraModal(p)}
+                            className="inline-flex items-center gap-1 text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded italic font-medium cursor-pointer hover:bg-amber-100/80 hover:border-amber-300 transition-colors"
+                            title="Clique para preencher o Documento Primavera"
+                          >
+                            <span className="material-symbols-outlined text-[12px] text-amber-600">edit_note</span>
+                            Por preencher
+                          </button>
+                        )}
+                      </td>
                       <td className="py-3 px-4 text-center font-semibold text-slate-700">
                         {p.pedido_linhas?.length || 0}
                       </td>
@@ -646,10 +751,14 @@ export default function ProcPedidosView({
                         <input
                           type="checkbox"
                           checked={processarVal}
-                          disabled={isUpdating}
+                          disabled={isUpdating || (!processarVal && (!p.doc_primavera || !p.doc_primavera.trim()))}
                           onChange={() => handleToggleField(p.id, 'processar', processarVal)}
-                          className="h-4 w-4 rounded border-slate-300 text-sermail-green focus:ring-sermail-green cursor-pointer disabled:opacity-50"
-                          title="Marcar para processar"
+                          className="h-4 w-4 rounded border-slate-300 text-sermail-green focus:ring-sermail-green cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
+                          title={
+                            !p.doc_primavera || !p.doc_primavera.trim()
+                              ? 'Preencha o Documento Primavera no pedido antes de assinalar para processar'
+                              : 'Marcar para processar'
+                          }
                         />
                       </td>
                       <td className="py-3 px-4 text-center text-slate-600 whitespace-nowrap font-mono text-[11px]">
@@ -955,6 +1064,50 @@ export default function ProcPedidosView({
                   />
                 </div>
 
+                {/* Campo Doc. Primavera */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs text-emerald-600">receipt_long</span>
+                      Doc. Primavera
+                    </span>
+                    <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                      Obrigatório p/ Processar
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: FAC 2026/1234 ou ECL 102"
+                    value={editingPedido.doc_primavera || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingPedido({
+                        ...editingPedido,
+                        doc_primavera: val,
+                        // Se o documento for apagado e estiver marcado para processar, desmarca automaticamente
+                        processar: (!val.trim() && editingPedido.processar) ? false : editingPedido.processar,
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-mono text-xs text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                {/* Campo Tipo de Movimento */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                    Tipo de Movimento
+                  </label>
+                  <input
+                    type="text"
+                    value={editingPedido.tipo_movimento || 'SS'}
+                    onChange={(e) =>
+                      setEditingPedido({ ...editingPedido, tipo_movimento: e.target.value.toUpperCase() })
+                    }
+                    placeholder="SS"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 uppercase font-mono text-xs focus:outline-none focus:ring-2 focus:ring-sermail-green/20 focus:border-sermail-green"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
                     Data do Pedido *
@@ -1017,18 +1170,33 @@ export default function ProcPedidosView({
                   />
                 </div>
 
-                <div className="flex items-center gap-5 pt-5">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={editingPedido.processar}
-                      onChange={(e) =>
-                        setEditingPedido({ ...editingPedido, processar: e.target.checked })
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-sermail-green focus:ring-sermail-green"
-                    />
-                    <span className="font-bold text-slate-700">Processar</span>
-                  </label>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-5 pt-3">
+                  <div className="flex flex-col gap-1">
+                    <label
+                      className={`inline-flex items-center gap-2 select-none ${
+                        !editingPedido.doc_primavera?.trim()
+                          ? 'opacity-40 cursor-not-allowed'
+                          : 'cursor-pointer'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={editingPedido.processar}
+                        disabled={!editingPedido.doc_primavera?.trim()}
+                        onChange={(e) => {
+                          if (!editingPedido.doc_primavera?.trim()) return;
+                          setEditingPedido({ ...editingPedido, processar: e.target.checked });
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-sermail-green focus:ring-sermail-green disabled:opacity-40"
+                      />
+                      <span className="font-bold text-slate-700">Processar</span>
+                    </label>
+                    {!editingPedido.doc_primavera?.trim() && (
+                      <span className="text-[10px] text-amber-700 font-semibold">
+                        Preencha o Doc. Primavera para assinalar
+                      </span>
+                    )}
+                  </div>
 
                   <label className="inline-flex items-center gap-2 cursor-pointer select-none">
                     <input
@@ -1239,6 +1407,111 @@ export default function ProcPedidosView({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Modal Rápido: Documento Primavera */}
+      {docPrimaveraModalPedido && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sermail-green">receipt_long</span>
+                  Documento Primavera
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Pedido <span className="font-semibold text-slate-700">{docPrimaveraModalPedido.nr_pedido}</span>
+                  {docPrimaveraModalPedido.clientes?.sigla && (
+                    <span className="ml-1.5 px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold">
+                      {docPrimaveraModalPedido.clientes.sigla}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocPrimaveraModalPedido(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition cursor-pointer"
+                title="Fechar"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDocPrimavera} className="p-6 space-y-4">
+              {/* Campo 1: Data de Entrega (Apenas Leitura / Não Editável) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-slate-500">local_shipping</span>
+                    Data de Entrega
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                    Apenas Leitura
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  readOnly
+                  value={
+                    docPrimaveraModalPedido.data_entrega
+                      ? formatDate(docPrimaveraModalPedido.data_entrega)
+                      : 'Sem data de entrega definida'
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100/90 text-slate-600 font-medium text-sm cursor-not-allowed select-none"
+                />
+              </div>
+
+              {/* Campo 2: Doc. Primavera (Editável) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-sermail-green">edit_note</span>
+                  Doc. Primavera <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={docPrimaveraInput}
+                  onChange={(e) => setDocPrimaveraInput(e.target.value)}
+                  placeholder="Ex: ECL 2026/123"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-mono font-semibold text-sm focus:outline-none focus:ring-2 focus:ring-sermail-green focus:border-transparent transition"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Preencha o código do documento Primavera para desbloquear o processamento do pedido.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={isSavingDocPrimavera}
+                  onClick={() => setDocPrimaveraModalPedido(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-semibold hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDocPrimavera}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sermail-green text-white text-xs font-bold hover:bg-sermail-green-dark transition shadow-xs disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingDocPrimavera ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                      A gravar...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">check</span>
+                      Gravar
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
