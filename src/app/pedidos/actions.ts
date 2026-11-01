@@ -174,6 +174,11 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
   const nrPedido = `PED-${year}-${randomSuffix}`;
   const siglaPedido = `${client.sigla.trim().toUpperCase()}-${nrPedido}`;
 
+  // Apenas gestor ou admin pode optar por não contabilizar em stock; utilizadores comuns abatem sempre stock (true)
+  const finalStock = isManagerOrAdmin
+    ? (input.stock !== undefined ? Boolean(input.stock) : true)
+    : true;
+
   // 3. Inserir cabeçalho do pedido
   const { data: pedido, error: pedidoErr } = await supabase
     .from('pedidos')
@@ -194,7 +199,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       status: 'pendente',
       tipo_movimento: 'SS',
       doc_primavera: null,
-      stock: input.stock !== undefined ? Boolean(input.stock) : true,
+      stock: finalStock,
       observacoes: input.observacoes || null,
       created_by: user.id,
     })

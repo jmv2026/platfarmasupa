@@ -1033,22 +1033,24 @@ export default function NovoPedidoForm({
               />
             </div>
 
-            <div className="flex items-center gap-2 pt-1 pb-1">
-              <input
-                type="checkbox"
-                id="contabilizar-stock-chk"
-                checked={contabilizarStock}
-                onChange={(e) => setContabilizarStock(e.target.checked)}
-                className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
-              />
-              <label htmlFor="contabilizar-stock-chk" className="text-xs font-semibold text-on-surface cursor-pointer select-none flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm text-primary">inventory_2</span>
-                Contabilizar em Stock
-              </label>
-              <span className="text-[10px] text-on-surface-variant italic">
-                (Por defeito ativo: o pedido só abate existências se este campo for verdadeiro)
-              </span>
-            </div>
+            {isManagerOrAdmin && (
+              <div className="flex items-center gap-2 pt-1 pb-1">
+                <input
+                  type="checkbox"
+                  id="contabilizar-stock-chk"
+                  checked={contabilizarStock}
+                  onChange={(e) => setContabilizarStock(e.target.checked)}
+                  className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+                />
+                <label htmlFor="contabilizar-stock-chk" className="text-xs font-semibold text-on-surface cursor-pointer select-none flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-primary">inventory_2</span>
+                  Contabilizar em Stock
+                </label>
+                <span className="text-[10px] text-on-surface-variant italic">
+                  (Por defeito ativo: o pedido só abate existências se este campo for verdadeiro)
+                </span>
+              </div>
+            )}
 
             <div className="flex justify-end pt-2">
               <button
