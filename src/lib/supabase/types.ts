@@ -553,6 +553,7 @@ export interface Pedido {
   datetime_proc?: string | null;
   tipo_movimento?: string | null;
   doc_primavera?: string | null;
+  stock?: boolean;
   observacoes: string | null;
   created_by?: string | null;
   created_at?: string;
@@ -612,6 +613,7 @@ export interface NovoPedidoInput {
   pais: string;
   data_pedido: string;
   data_entrega?: string;
+  stock?: boolean;
   observacoes?: string;
   linhas: NovaLinhaPedidoInput[];
 }

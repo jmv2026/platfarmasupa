@@ -67,58 +67,40 @@ export async function atualizarEstadoPedido(
       return { success: false, error: `Erro no banco de dados: ${updateError.message}` };
     }
 
-    // Se o pedido foi marcado como concluído, assegurar sincronização com movimentos e movimentos_linhas
-    if (novoStatus === 'concluido') {
+    // Manter movimentos e movimentos_linhas sincronizados com o estado do pedido
+    if (novoStatus === 'cancelado') {
+      // Se o pedido foi cancelado, remover o registo de saída para repor o stock
+      const { data: pedData } = await supabase
+        .from('pedidos')
+        .select('sigla_pedido, nr_pedido, clientes(sigla)')
+        .eq('id', pedidoId)
+        .single();
+
+      const sigla = (pedData as any)?.clientes?.sigla;
+      const docRefs = [
+        pedData?.sigla_pedido,
+        pedData?.nr_pedido,
+        sigla && pedData?.nr_pedido ? `${sigla}-${pedData.nr_pedido}` : null,
+      ].filter(Boolean) as string[];
+
+      if (docRefs.length > 0) {
+        await supabase.from('movimentos').delete().in('documento_ref', docRefs);
+      }
+    } else {
       const { error: syncError } = await (supabase.rpc as any)(
         'sincronizar_pedido_para_movimentos',
         { p_pedido_id: pedidoId }
       );
       if (syncError) {
-        console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
-      }
-
-      // Enviar ficheiro Excel gerado a partir do template para os destinatários configurados na plataforma
-      try {
-        const { data: pedCompleto } = await supabase
-          .from('pedidos')
-          .select('*, clientes(name, sigla, nif), pedido_linhas(*)')
-          .eq('id', pedidoId)
-          .single();
-
-        if (pedCompleto) {
-          const { enviarEmailTemplatePedidoAdmin } = await import('@/lib/email');
-          const dadosEmail = {
-            nr_pedido: pedCompleto.nr_pedido,
-            ref_documento: pedCompleto.ref_documento,
-            cliente_nome: pedCompleto.clientes?.name || 'Cliente',
-            cliente_sigla: pedCompleto.clientes?.sigla || 'CLI',
-            cliente_nif: pedCompleto.clientes?.nif,
-            nome_destinatario: pedCompleto.nome_destinatario,
-            morada: pedCompleto.morada,
-            codigo_postal: pedCompleto.codigo_postal,
-            localidade: pedCompleto.localidade,
-            pais: pedCompleto.pais || 'Portugal',
-            data_pedido: pedCompleto.data_pedido,
-            observacoes: pedCompleto.observacoes,
-            utilizador_email: user.email || 'admin@sermail.pt',
-            linhas: (pedCompleto.pedido_linhas || []).map((l: any) => ({
-              artigo_id: l.artigo_id,
-              artigo_cli: l.artigo_cli,
-              descricao: l.descricao,
-              lote: l.lote,
-              validade: l.validade,
-              quantidade: l.quantidade,
-            })),
-          };
-          await enviarEmailTemplatePedidoAdmin(dadosEmail);
-        }
-      } catch (emailErr) {
-        console.warn('[historico-pedidos] Falha ao enviar email do template para os destinatários:', emailErr);
+        console.error('Erro ao sincronizar pedido para movimentos:', syncError);
       }
     }
 
     // Revalidar caminhos
     revalidatePath('/historico-pedidos');
+    revalidatePath('/stocks');
+    revalidatePath('/Proc_Pedidos');
+    revalidatePath('/proc-pedidos');
     revalidatePath('/dashboard');
     revalidatePath('/pedidos');
 

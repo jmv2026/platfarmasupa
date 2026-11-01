@@ -38,7 +38,7 @@ async function checkGestorOrAdmin() {
 
 export async function atualizarProcessamentoPedidoAction(
   pedidoId: string,
-  updates: { processar?: boolean; processado?: boolean }
+  updates: { processar?: boolean; processado?: boolean; stock?: boolean }
 ) {
   const { supabase, allowed, error: authErr } = await checkGestorOrAdmin();
   if (!allowed) {
@@ -83,9 +83,15 @@ export async function atualizarProcessamentoPedidoAction(
     return { success: false, error: error.message };
   }
 
+  // Se o campo stock foi alterado, atualizar a sincronização/abate em movimentos
+  if (typeof updates.stock === 'boolean') {
+    await (supabase.rpc as any)('sincronizar_pedido_para_movimentos', { p_pedido_id: pedidoId });
+  }
+
   revalidatePath('/Proc_Pedidos');
   revalidatePath('/proc-pedidos');
   revalidatePath('/historico-pedidos');
+  revalidatePath('/stocks');
 
   return { success: true };
 }
@@ -105,6 +111,7 @@ export interface EditarPedidoInput {
   status: string;
   tipo_movimento?: string | null;
   doc_primavera?: string | null;
+  stock?: boolean;
   observacoes?: string | null;
   processar: boolean;
   processado: boolean;
@@ -158,6 +165,7 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
       status: input.status,
       tipo_movimento: input.tipo_movimento?.trim() || 'SS',
       doc_primavera: input.doc_primavera?.trim() || null,
+      stock: input.stock !== undefined ? Boolean(input.stock) : true,
       observacoes: input.observacoes?.trim() || null,
       processar: Boolean(input.processar),
       processado: Boolean(input.processado),
@@ -262,59 +270,39 @@ export async function editarPedidoAction(input: EditarPedidoInput) {
     .eq('pedido_id', input.id)
     .order('created_at', { ascending: true });
 
-  // Se o pedido estiver ou passar a estar concluído, garantir sincronização com movimentos e movimentos_linhas
-  if (input.status === 'concluido') {
+  // Manter movimentos e movimentos_linhas sincronizados com as alterações do pedido
+  if (input.status === 'cancelado') {
+    // Se o pedido foi cancelado, remover o movimento de saída para repor o stock
+    const { data: pedData } = await supabase
+      .from('pedidos')
+      .select('sigla_pedido, nr_pedido, clientes(sigla)')
+      .eq('id', input.id)
+      .single();
+
+    const sigla = (pedData as any)?.clientes?.sigla;
+    const docRefs = [
+      pedData?.sigla_pedido,
+      pedData?.nr_pedido,
+      sigla && pedData?.nr_pedido ? `${sigla}-${pedData.nr_pedido}` : null,
+    ].filter(Boolean) as string[];
+
+    if (docRefs.length > 0) {
+      await supabase.from('movimentos').delete().in('documento_ref', docRefs);
+    }
+  } else {
     const { error: syncError } = await (supabase.rpc as any)(
       'sincronizar_pedido_para_movimentos',
       { p_pedido_id: input.id }
     );
     if (syncError) {
-      console.error('Erro ao sincronizar pedido concluído para movimentos:', syncError);
-    }
-
-    // Enviar ficheiro Excel gerado a partir do template para os destinatários configurados na plataforma
-    try {
-      const { data: pedCompleto } = await supabase
-        .from('pedidos')
-        .select('*, clientes(name, sigla, nif)')
-        .eq('id', input.id)
-        .single();
-
-      if (pedCompleto) {
-        const { enviarEmailTemplatePedidoAdmin } = await import('@/lib/email');
-        const dadosEmail = {
-          nr_pedido: pedCompleto.nr_pedido,
-          ref_documento: pedCompleto.ref_documento,
-          cliente_nome: pedCompleto.clientes?.name || 'Cliente',
-          cliente_sigla: pedCompleto.clientes?.sigla || 'CLI',
-          cliente_nif: pedCompleto.clientes?.nif,
-          nome_destinatario: pedCompleto.nome_destinatario,
-          morada: pedCompleto.morada,
-          codigo_postal: pedCompleto.codigo_postal,
-          localidade: pedCompleto.localidade,
-          pais: pedCompleto.pais || 'Portugal',
-          data_pedido: pedCompleto.data_pedido,
-          observacoes: pedCompleto.observacoes,
-          utilizador_email: 'admin@sermail.pt',
-          linhas: (linhasAtualizadas || []).map((l: any) => ({
-            artigo_id: l.artigo_id,
-            artigo_cli: l.artigo_cli,
-            descricao: l.descricao,
-            lote: l.lote,
-            validade: l.validade,
-            quantidade: l.quantidade,
-          })),
-        };
-        await enviarEmailTemplatePedidoAdmin(dadosEmail);
-      }
-    } catch (emailErr) {
-      console.warn('[Proc_Pedidos] Falha ao enviar email do template para os destinatários:', emailErr);
+      console.error('Erro ao sincronizar pedido para movimentos:', syncError);
     }
   }
 
   revalidatePath('/Proc_Pedidos');
   revalidatePath('/proc-pedidos');
   revalidatePath('/historico-pedidos');
+  revalidatePath('/stocks');
   revalidatePath('/dashboard');
 
   return { success: true, linhas: linhasAtualizadas || [] };
@@ -326,6 +314,13 @@ export async function apagarPedidoAction(pedidoId: string) {
     return { success: false, error: authErr };
   }
 
+  // 1. Obter referências antes de apagar o pedido para limpar movimentos associados
+  const { data: pedParaApagar } = await supabase
+    .from('pedidos')
+    .select('id, nr_pedido, sigla_pedido, clientes(sigla)')
+    .eq('id', pedidoId)
+    .single();
+
   const { error } = await supabase
     .from('pedidos')
     .delete()
@@ -335,9 +330,24 @@ export async function apagarPedidoAction(pedidoId: string) {
     return { success: false, error: `Erro ao apagar pedido: ${error.message}` };
   }
 
+  // 2. Limpar o movimento associado para repor o stock
+  if (pedParaApagar) {
+    const sigla = (pedParaApagar as any)?.clientes?.sigla;
+    const docRefs = [
+      pedParaApagar.sigla_pedido,
+      pedParaApagar.nr_pedido,
+      sigla && pedParaApagar.nr_pedido ? `${sigla}-${pedParaApagar.nr_pedido}` : null,
+    ].filter(Boolean) as string[];
+
+    if (docRefs.length > 0) {
+      await supabase.from('movimentos').delete().in('documento_ref', docRefs);
+    }
+  }
+
   revalidatePath('/Proc_Pedidos');
   revalidatePath('/proc-pedidos');
   revalidatePath('/historico-pedidos');
+  revalidatePath('/stocks');
   revalidatePath('/dashboard');
 
   return { success: true };
@@ -383,9 +393,13 @@ export async function atualizarDocPrimaveraAction(
     return { success: false, error: error.message };
   }
 
+  // Atualizar movimentos correspondentes com o novo doc_primavera
+  await (supabase.rpc as any)('sincronizar_pedido_para_movimentos', { p_pedido_id: pedidoId });
+
   revalidatePath('/Proc_Pedidos');
   revalidatePath('/proc-pedidos');
   revalidatePath('/historico-pedidos');
+  revalidatePath('/stocks');
   revalidatePath('/dashboard');
 
   return { success: true };

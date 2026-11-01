@@ -130,6 +130,24 @@ export default async function HistoricoPedidosPage() {
     }
   }
 
+  // REGRA DE NEGÓCIO: Os pedidos cujo campo processado esteja selecionado não deverão ser apresentados no histórico de movimentos
+  const processedOrderRefs = new Set<string>();
+  (pedidos || []).forEach((p: any) => {
+    if (p.processado) {
+      if (p.id) processedOrderRefs.add(String(p.id).trim().toLowerCase());
+      if (p.nr_pedido) processedOrderRefs.add(String(p.nr_pedido).trim().toLowerCase());
+      if (p.sigla_pedido) processedOrderRefs.add(String(p.sigla_pedido).trim().toLowerCase());
+      if (p.doc_primavera) processedOrderRefs.add(String(p.doc_primavera).trim().toLowerCase());
+      const sigla = p.clientes?.sigla || clientsMap.get(p.cliente_id)?.sigla;
+      if (sigla && p.nr_pedido) {
+        processedOrderRefs.add(`${sigla}-${p.nr_pedido}`.trim().toLowerCase());
+      }
+    }
+  });
+
+  // Filtrar pedidos da tabela pedidos: excluir os que estão marcados como processados
+  const pedidosNaoProcessados = (pedidos || []).filter((p: any) => !p.processado);
+
   // Agrupar linhas de movimentos em pedidos virtuais em O(N) com Map
   const pseudoPedidosList: any[] = [];
   if (cfMovimentos && cfMovimentos.length > 0) {
@@ -181,12 +199,16 @@ export default async function HistoricoPedidosPage() {
     }
 
     for (const p of grouped.values()) {
-      pseudoPedidosList.push(p);
+      const nrClean = (p.nr_pedido || '').toString().trim().toLowerCase();
+      // Não incluir se o movimento corresponder a um pedido marcado como processado
+      if (!processedOrderRefs.has(nrClean)) {
+        pseudoPedidosList.push(p);
+      }
     }
   }
 
-  // Juntar pedidos reais e pseudoPedidos
-  const allPedidos = [...(pedidos || []), ...pseudoPedidosList];
+  // Juntar pedidos reais (não processados) e pseudoPedidos (não processados)
+  const allPedidos = [...pedidosNaoProcessados, ...pseudoPedidosList];
 
   // Aplicar status torrestir e padronização num único ciclo otimizado
   const finalPedidos = allPedidos.map((p: any) => {

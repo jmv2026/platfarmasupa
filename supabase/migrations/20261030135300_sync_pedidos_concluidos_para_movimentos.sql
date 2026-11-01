@@ -291,7 +291,7 @@ BEGIN
 END;
 $function$;
 
--- 2. Trigger em public.pedidos que dispara quando o status passa a concluído
+-- 2. Trigger em public.pedidos para gerir cancelamento e reversão de movimentos
 CREATE OR REPLACE FUNCTION public.fn_trg_pedidos_concluidos_sync_movimentos()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -301,21 +301,26 @@ AS $function$
 DECLARE
     v_old_status text;
     v_new_status text;
+    v_sigla text;
     v_doc_ref text;
 BEGIN
     v_new_status := LOWER(TRIM(COALESCE(NEW.status, '')));
     v_old_status := CASE WHEN TG_OP = 'UPDATE' THEN LOWER(TRIM(COALESCE(OLD.status, ''))) ELSE '' END;
 
-    -- Se o status for ou passar a ser 'concluido' ou 'concluído'
-    IF v_new_status IN ('concluido', 'concluído') THEN
-        -- Sincronizar para movimentos e movimentos_linhas
-        PERFORM public.sincronizar_pedido_para_movimentos(NEW.id);
-    ELSIF TG_OP = 'UPDATE' AND v_old_status IN ('concluido', 'concluído') AND v_new_status NOT IN ('concluido', 'concluído') THEN
-        -- Se deixou de ser concluído, remover movimento correspondente
-        v_doc_ref := COALESCE(OLD.sigla_pedido, NEW.sigla_pedido);
+    -- Se o status passar a cancelado, remover os movimentos para repor o stock
+    IF v_new_status = 'cancelado' THEN
+        SELECT UPPER(TRIM(sigla)) INTO v_sigla FROM public.clientes WHERE id = NEW.cliente_id;
+        v_doc_ref := COALESCE(
+            NULLIF(TRIM(NEW.sigla_pedido), ''),
+            v_sigla || '-' || TRIM(NEW.nr_pedido),
+            TRIM(NEW.nr_pedido)
+        );
         IF v_doc_ref IS NOT NULL AND v_doc_ref <> '' THEN
             DELETE FROM public.movimentos WHERE documento_ref = v_doc_ref;
         END IF;
+    ELSIF TG_OP = 'UPDATE' AND v_old_status = 'cancelado' AND v_new_status <> 'cancelado' THEN
+        -- Se deixou de ser cancelado (reaberto), re-sincronizar para abater o stock
+        PERFORM public.sincronizar_pedido_para_movimentos(NEW.id);
     END IF;
 
     RETURN NEW;
@@ -328,6 +333,36 @@ CREATE TRIGGER trg_pedidos_concluidos_sync_movimentos
 AFTER INSERT OR UPDATE OF status, sigla_pedido ON public.pedidos
 FOR EACH ROW
 EXECUTE FUNCTION public.fn_trg_pedidos_concluidos_sync_movimentos();
+
+-- Trigger em caso de eliminação do pedido
+CREATE OR REPLACE FUNCTION public.fn_trg_pedidos_delete_sync_movimentos()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+    v_sigla text;
+    v_doc_ref text;
+BEGIN
+    SELECT UPPER(TRIM(sigla)) INTO v_sigla FROM public.clientes WHERE id = OLD.cliente_id;
+    v_doc_ref := COALESCE(
+        NULLIF(TRIM(OLD.sigla_pedido), ''),
+        v_sigla || '-' || TRIM(OLD.nr_pedido),
+        TRIM(OLD.nr_pedido)
+    );
+    IF v_doc_ref IS NOT NULL AND v_doc_ref <> '' THEN
+        DELETE FROM public.movimentos WHERE documento_ref = v_doc_ref;
+    END IF;
+    RETURN OLD;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS trg_pedidos_delete_sync_movimentos ON public.pedidos;
+CREATE TRIGGER trg_pedidos_delete_sync_movimentos
+BEFORE DELETE ON public.pedidos
+FOR EACH ROW
+EXECUTE FUNCTION public.fn_trg_pedidos_delete_sync_movimentos();
 
 GRANT EXECUTE ON FUNCTION public.sincronizar_pedido_para_movimentos(uuid) TO anon, authenticated, service_role;
 

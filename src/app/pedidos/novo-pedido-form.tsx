@@ -83,6 +83,7 @@ export default function NovoPedidoForm({
   const [dataEntrega, setDataEntrega] = useState('');
   const [refDocumento, setRefDocumento] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [contabilizarStock, setContabilizarStock] = useState<boolean>(true);
 
   // Estados do Editor de Linhas
   const [selectedArtigoId, setSelectedArtigoId] = useState<string>('');
@@ -448,6 +449,7 @@ export default function NovoPedidoForm({
         pais,
         data_pedido: dataPedido,
         data_entrega: dataEntrega || undefined,
+        stock: contabilizarStock,
         observacoes: observacoes || undefined,
         linhas,
       });
@@ -467,6 +469,7 @@ export default function NovoPedidoForm({
         setLocalidade('');
         setRefDocumento('');
         setObservacoes('');
+        setContabilizarStock(true);
         setLinhas([]);
         setSelectedArtigoId('');
         setSelectedLote('');
@@ -1028,6 +1031,23 @@ export default function NovoPedidoForm({
                 placeholder={t.pedidos.notesPlaceholder}
                 className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
               />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1 pb-1">
+              <input
+                type="checkbox"
+                id="contabilizar-stock-chk"
+                checked={contabilizarStock}
+                onChange={(e) => setContabilizarStock(e.target.checked)}
+                className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary cursor-pointer"
+              />
+              <label htmlFor="contabilizar-stock-chk" className="text-xs font-semibold text-on-surface cursor-pointer select-none flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm text-primary">inventory_2</span>
+                Contabilizar em Stock
+              </label>
+              <span className="text-[10px] text-on-surface-variant italic">
+                (Por defeito ativo: o pedido só abate existências se este campo for verdadeiro)
+              </span>
             </div>
 
             <div className="flex justify-end pt-2">

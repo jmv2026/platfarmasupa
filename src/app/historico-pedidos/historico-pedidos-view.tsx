@@ -175,6 +175,11 @@ export default function HistoricoPedidosView({
     const todayStr = now.toISOString().split('T')[0];
 
     return pedidosList.filter((ped) => {
+      // REGRA: Pedidos cujo campo processado esteja selecionado não devem ser apresentados no histórico de movimentos
+      if (ped.processado) {
+        return false;
+      }
+
       // Filtro de Cliente
       if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) {
         return false;

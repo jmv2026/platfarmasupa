@@ -194,6 +194,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       status: 'pendente',
       tipo_movimento: 'SS',
       doc_primavera: null,
+      stock: input.stock !== undefined ? Boolean(input.stock) : true,
       observacoes: input.observacoes || null,
       created_by: user.id,
     })
@@ -232,6 +233,18 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
         success: false,
         error: `Erro ao registar linhas do pedido: ${linhasErr.message}`,
       };
+    }
+  }
+
+  // 4. REGRA DE NEGÓCIO: Só os pedidos com o campo stock verdadeiro (stock = true) é que deverão ser contabilizados em stock!
+  // A contabilização não está associada cegamente a premir o botão, mas sim a este campo stock ser verdadeiro
+  if (pedido.stock) {
+    const { error: syncError } = await (supabase.rpc as any)(
+      'sincronizar_pedido_para_movimentos',
+      { p_pedido_id: pedido.id }
+    );
+    if (syncError) {
+      console.error('[criarPedidoAction] Erro ao sincronizar pedido para movimentos (abate de stock):', syncError);
     }
   }
 
@@ -311,14 +324,34 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     }),
   };
 
-  const [emailResult] = await Promise.all([
+  // Ao submeter o pedido: enviar confirmação por email ao utilizador e ficheiro template de pedidos aos destinatários configurados
+  const [confirmacaoResult, templateResult] = await Promise.allSettled([
     enviarEmailConfirmacaoPedido(dadosEmail),
     enviarEmailTemplatePedidoAdmin(dadosEmail),
   ]);
 
+  const emailResult =
+    confirmacaoResult.status === 'fulfilled'
+      ? confirmacaoResult.value
+      : { success: false, error: String(confirmacaoResult.reason), recipients: [] };
+
+  const emailTemplateEnvio =
+    templateResult.status === 'fulfilled'
+      ? templateResult.value
+      : { success: false, error: String(templateResult.reason), recipients: [] };
+
+  if (!emailTemplateEnvio.success) {
+    console.warn('[criarPedidoAction] Aviso ao enviar ficheiro template do pedido:', emailTemplateEnvio.error);
+  } else {
+    console.log('[criarPedidoAction] Ficheiro template enviado com sucesso para:', emailTemplateEnvio.recipients);
+  }
+
   revalidatePath('/pedidos');
   revalidatePath('/dashboard');
   revalidatePath('/historico-pedidos');
+  revalidatePath('/stocks');
+  revalidatePath('/Proc_Pedidos');
+  revalidatePath('/proc-pedidos');
 
   return {
     success: true,
@@ -327,5 +360,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     emailEnviado: emailResult.success,
     emailDestinatarios: emailResult.recipients,
     emailError: emailResult.error,
+    templateEnviado: emailTemplateEnvio.success,
+    templateDestinatarios: emailTemplateEnvio.recipients,
   };
 }

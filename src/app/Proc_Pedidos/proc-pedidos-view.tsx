@@ -227,7 +227,7 @@ export default function ProcPedidosView({
 
   const handleToggleField = async (
     pedidoId: string,
-    field: 'processar' | 'processado',
+    field: 'processar' | 'processado' | 'stock',
     currentValue: boolean
   ) => {
     const newValue = !currentValue;
@@ -274,6 +274,13 @@ export default function ProcPedidosView({
       setFeedback({
         type: 'error',
         message: res.error || 'Erro ao atualizar o pedido.',
+      });
+    } else if (field === 'stock') {
+      setFeedback({
+        type: 'success',
+        message: newValue
+          ? 'Pedido assinalado para contabilizar em stock. Existências atualizadas com sucesso.'
+          : 'Pedido desassinalado. Abate de stock removido e existências repostas.',
       });
     }
   };
@@ -348,6 +355,7 @@ export default function ProcPedidosView({
       status: pedido.status || 'pendente',
       tipo_movimento: pedido.tipo_movimento || 'SS',
       doc_primavera: pedido.doc_primavera || '',
+      stock: pedido.stock !== undefined ? Boolean(pedido.stock) : true,
       observacoes: pedido.observacoes || '',
       processar: Boolean(pedido.processar),
       processado: Boolean(pedido.processado),
@@ -449,6 +457,7 @@ export default function ProcPedidosView({
               status: payloadParaGuardar.status,
               doc_primavera: payloadParaGuardar.doc_primavera || null,
               tipo_movimento: payloadParaGuardar.tipo_movimento || 'SS',
+              stock: payloadParaGuardar.stock !== undefined ? Boolean(payloadParaGuardar.stock) : true,
               observacoes: payloadParaGuardar.observacoes || null,
               processar: payloadParaGuardar.processar,
               processado: payloadParaGuardar.processado,
@@ -671,13 +680,14 @@ export default function ProcPedidosView({
                 <th className="py-3 px-4 text-center">Processar</th>
                 <th className="py-3 px-4 text-center">D/H PROCESSAR</th>
                 <th className="py-3 px-4 text-center">Processado</th>
+                <th className="py-3 px-4 text-center" title="Indica se o pedido abate em stock">Stock</th>
                 <th className="py-3 px-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredPedidos.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={14} className="py-10 text-center text-slate-400 font-medium">
                     Nenhum pedido encontrado com os filtros selecionados.
                   </td>
                 </tr>
@@ -686,6 +696,7 @@ export default function ProcPedidosView({
                   const isUpdating = updatingId === p.id;
                   const processarVal = Boolean(p.processar);
                   const processadoVal = Boolean(p.processado);
+                  const stockVal = p.stock !== undefined ? Boolean(p.stock) : true;
 
                   return (
                     <tr
@@ -774,6 +785,20 @@ export default function ProcPedidosView({
                           title="Marcar como processado"
                         />
                       </td>
+                      <td className="py-3 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={stockVal}
+                          disabled={isUpdating}
+                          onChange={() => handleToggleField(p.id, 'stock', stockVal)}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer disabled:opacity-50"
+                          title={
+                            stockVal
+                              ? 'Contabilizado em stock (Clique para desmarcar e repor existências)'
+                              : 'Não contabilizado em stock (Clique para marcar e abater existências)'
+                          }
+                        />
+                      </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center justify-end gap-1">
                           <button
@@ -855,6 +880,16 @@ export default function ProcPedidosView({
                 <div>
                   <span className="text-slate-400 font-semibold block">Ref. Documento</span>
                   <span className="text-slate-700">{selectedPedido.ref_documento || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block">Contabilização em Stock</span>
+                  <span className={`inline-flex items-center gap-1 font-bold ${
+                    (selectedPedido.stock !== undefined ? Boolean(selectedPedido.stock) : true)
+                      ? 'text-emerald-700'
+                      : 'text-slate-500'
+                  }`}>
+                    {(selectedPedido.stock !== undefined ? Boolean(selectedPedido.stock) : true) ? 'Sim (Abate Stock)' : 'Não (Sem Abate)'}
+                  </span>
                 </div>
               </div>
 
@@ -1208,6 +1243,18 @@ export default function ProcPedidosView({
                       className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-600"
                     />
                     <span className="font-bold text-slate-700">Processado</span>
+                  </label>
+
+                  <label className="inline-flex items-center gap-2 cursor-pointer select-none" title="Indica se o pedido deve ser contabilizado em stock (abater stock)">
+                    <input
+                      type="checkbox"
+                      checked={editingPedido.stock !== undefined ? Boolean(editingPedido.stock) : true}
+                      onChange={(e) =>
+                        setEditingPedido({ ...editingPedido, stock: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
+                    />
+                    <span className="font-bold text-slate-700">Contabilizar em Stock</span>
                   </label>
                 </div>
               </div>
