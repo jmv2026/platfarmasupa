@@ -6,21 +6,22 @@ Esta documentação descreve a arquitetura de armazenamento de saldos de stock n
 
 ## 1. Arquitetura Geral do Stock na Plataforma
 
-As vistas (*Views*) que alimentam as páginas de **Stocks**, **Dashboard (Previsão e Alertas)** e **Novo Pedido** (`public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero`) utilizam uma **regra híbrida de origem de dados**:
+As vistas (*Views*) que alimentam as páginas de **Stocks**, **Dashboard (Previsão e Alertas)** e **Novo Pedido** (`public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero`) utilizam uma **lógica unificada de cálculo de saldo dinâmico para todos os clientes** (tanto clientes reais como o cliente de demonstração `DDD`):
 
 ```mermaid
 flowchart TD
-    A["Consulta de Stock na Plataforma<br/>(vw_stock_atual / vw_stock_pedidos / vw_stock_zero)"] --> B{"Qual é o Cliente?"}
-    B -- "Todos os Clientes Reais<br/>(AOP, MAX, CRD, FMD, etc.)" --> C["Tabela public.stock<br/>(Snapshot de Saldos)"]
-    B -- "Cliente Demonstração (DDD)" --> D["Tabelas public.movimentos e<br/>public.movimentos_linhas"]
+    A["Origens de Stock"]
+    A1["Tabela public.stock<br/>(Snapshot base ERP / MS Access / CSV)"] --> C["Cálculo Unificado de Stock<br/>(vw_stock_atual / vw_stock_pedidos / vw_stock_zero)"]
+    A2["Movimentos de Entrada (ES, ET, E)<br/>(public.movimentos_linhas)"] --> C
+    A3["Movimentos de Saída (SS, ST, S)<br/>(Pedidos submetidos com stock = true / Faturas)"] --> C
     
-    E["Processo 1: Importação Manual<br/>(Configuração > Stocks - CSV/Excel)"] --> C
-    F["Processo 2: Sincronização Direta<br/>(MS Access VBA -> RPC Supabase)"] --> C
-    G["Processo 3: Importação de Movimentos<br/>(Configuração > Movimentos)"] --> D
+    C --> D["Saldo Disponível = Entradas - Saídas<br/>(Abate imediato de pedidos em tempo real)"]
 ```
 
 > [!IMPORTANT]
-> Para todos os clientes reais (exceto o cliente de demonstração `DDD`), a tabela **`public.stock`** funciona como uma **fotografia (*snapshot*) do stock atual**. Sempre que é atualizada, os saldos anteriores são limpos e substituídos pelos novos saldos para evitar a acumulação de lotes já esgotados.
+> O cálculo de stocks funciona agora de forma **dinâmica para todos os clientes**:
+> $$\text{Stock Disponível} = \sum(\text{Entradas ES / Stock Base}) - \sum(\text{Saídas SS / Pedidos})$$
+> Sempre que um pedido é submetido com `stock = true`, gera automaticamente um movimento de saída (`SS`) que abate de imediato as existências disponíveis de qualquer cliente. Se o pedido for cancelado ou o campo `stock` for desmarcado, as existências são repostas instantaneamente.
 
 ---
 
