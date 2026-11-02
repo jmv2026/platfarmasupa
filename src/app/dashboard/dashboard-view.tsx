@@ -2,12 +2,14 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
-import GraficoTopProdutos from './grafico-top-produtos';
-import GraficoFaturacaoMensal from './grafico-faturacao-mensal';
+
+const GraficoTopProdutos = dynamic(() => import('./grafico-top-produtos'));
+const GraficoFaturacaoMensal = dynamic(() => import('./grafico-faturacao-mensal'));
 
 export interface DashboardFaturacaoItem {
   sigla_cliente: string | null;
@@ -30,12 +32,6 @@ export interface DashboardStockItem {
   stock: number;
   cliente_id?: string;
   tipo_artigo?: string | null;
-}
-
-export interface DashboardStockPedidoItem {
-  stock: number;
-  cliente_id?: string;
-
 }
 
 export interface DashboardPedidoLinhaItem {
@@ -147,16 +143,6 @@ export default function DashboardView({
     router.push(`/dashboard/previsao-stock?codigo=${encodeURIComponent(codigo)}${clientQuery}`);
   };
 
-  // Helper para calcular dias até à validade
-  const getDaysUntilExpiry = (dateStr: string | null) => {
-    if (!dateStr) return null;
-    const expiry = new Date(dateStr);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diffTime = expiry.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
   const selectedClientObj = useMemo(() => {
     if (selectedClientId === 'todos') return null;
     return clients.find((c) => c.id === selectedClientId);
@@ -203,19 +189,25 @@ export default function DashboardView({
   const { totalArtigosEmRisco, totalArtigosBloqueados } = useMemo(() => {
     const artigosEmRiscoSet = new Set<string>();
     const artigosBloqueadosSet = new Set<string>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayMs = today.getTime();
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
     filteredStockAtual.forEach((item) => {
-      const days = getDaysUntilExpiry(item.validade);
-      if (days !== null) {
-        if (days > 0 && days <= 60) {
-          artigosBloqueadosSet.add(item.artigo_id);
-        } else if (days > 60 && days < 180) {
-          // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
-          const tipo = item.tipo_artigo ? String(item.tipo_artigo).trim().toUpperCase() : '';
-          const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
-          if (isMH) {
-            artigosEmRiscoSet.add(item.artigo_id);
-          }
+      if (!item.validade) return;
+      const expiryMs = new Date(item.validade).getTime();
+      if (isNaN(expiryMs)) return;
+      const days = Math.ceil((expiryMs - todayMs) / MS_PER_DAY);
+
+      if (days > 0 && days <= 60) {
+        artigosBloqueadosSet.add(item.artigo_id);
+      } else if (days > 60 && days < 180) {
+        // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
+        const tipo = item.tipo_artigo ? String(item.tipo_artigo).trim().toUpperCase() : '';
+        const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
+        if (isMH) {
+          artigosEmRiscoSet.add(item.artigo_id);
         }
       }
     });

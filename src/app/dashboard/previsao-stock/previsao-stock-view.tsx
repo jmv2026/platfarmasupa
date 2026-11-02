@@ -12,14 +12,12 @@ import GraficoPrevisaoStock, {
 } from '../grafico-previsao-stock';
 import {
   DashboardStockItem,
-  DashboardStockPedidoItem,
   DashboardPedidoItem,
 } from '../dashboard-view';
 
 interface PrevisaoStockViewProps {
   clients: Client[];
   stockAtual: DashboardStockItem[];
-  stockPedidos: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
   isManagerOrAdmin: boolean;
 }
@@ -27,7 +25,6 @@ interface PrevisaoStockViewProps {
 export default function PrevisaoStockView({
   clients,
   stockAtual,
-  stockPedidos,
   pedidos,
   isManagerOrAdmin,
 }: PrevisaoStockViewProps) {
@@ -66,13 +63,6 @@ export default function PrevisaoStockView({
     }
     return stockAtual.filter((s) => s.cliente_id === selectedClientId);
   }, [stockAtual, selectedClientId, isManagerOrAdmin]);
-
-  const filteredStockPedidos = useMemo(() => {
-    if (!isManagerOrAdmin || selectedClientId === 'todos') {
-      return stockPedidos;
-    }
-    return stockPedidos.filter((s) => s.cliente_id === selectedClientId);
-  }, [stockPedidos, selectedClientId, isManagerOrAdmin]);
 
   const filteredPedidos = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
@@ -248,7 +238,6 @@ export default function PrevisaoStockView({
       <div className="transition-all">
         <GraficoPrevisaoStock
           stockAtual={filteredStockAtual}
-          stockPedidos={filteredStockPedidos}
           pedidos={filteredPedidos}
           clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
           selectedArticleCode={selectedArticleCode}

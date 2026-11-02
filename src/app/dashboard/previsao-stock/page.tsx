@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { fetchAllRowsFast } from '@/lib/supabase/pagination';
 import AppHeader from '@/components/navigation/app-header';
 import PrevisaoStockView from './previsao-stock-view';
 import { Suspense } from 'react';
@@ -30,42 +31,6 @@ export default async function PrevisaoStockPage() {
   // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockAtualQuery = supabase.from('vw_stock_atual').select('artigo_id, artigo_cli, descricao, validade, stock, cliente_id, tipo_artigo');
-  let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('stock, cliente_id');
-  // Função auxiliar otimizada para paginação paralela rápida
-  async function fetchAllRowsFast<T>(
-    fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
-    pageSize = 1000
-  ): Promise<T[]> {
-    const firstPage = await fetchPage(0, pageSize - 1, 'exact');
-    if (firstPage.error || !firstPage.data) {
-      if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
-      return [];
-    }
-
-    const allRows: T[] = [...firstPage.data];
-    const total = firstPage.count ?? allRows.length;
-
-    if (total <= pageSize || firstPage.data.length < pageSize) {
-      return allRows;
-    }
-
-    const numRemainingPages = Math.ceil((total - pageSize) / pageSize);
-    const remainingPromises = Array.from({ length: numRemainingPages }, (_, i) => {
-      const pageIndex = i + 1;
-      const from = pageIndex * pageSize;
-      const to = from + pageSize - 1;
-      return fetchPage(from, to);
-    });
-
-    const remainingResults = await Promise.all(remainingPromises);
-    for (const res of remainingResults) {
-      if (res.data) {
-        allRows.push(...res.data);
-      }
-    }
-
-    return allRows;
-  }
 
   // Fonte exclusiva para pedidos e consumos no gráfico de previsão: view vw_pedidos
   const fetchPedidos = () =>
@@ -78,24 +43,21 @@ export default async function PrevisaoStockPage() {
         q = q.eq('cliente_id', userClientId);
       }
       return q;
-    });
+    }, 2000);
 
   if (!isManagerOrAdmin && userClientId) {
     clientsQuery = clientsQuery.eq('id', userClientId);
     stockAtualQuery = stockAtualQuery.eq('cliente_id', userClientId);
-    stockPedidosQuery = stockPedidosQuery.eq('cliente_id', userClientId);
   }
 
   // Buscar dados em paralelo
   const [
     { data: clients },
     { data: stockAtual },
-    { data: stockPedidos },
     pedidos,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
-    stockPedidosQuery,
     fetchPedidos(),
   ]);
 
@@ -122,7 +84,6 @@ export default async function PrevisaoStockPage() {
         <PrevisaoStockView
           clients={clients || []}
           stockAtual={stockAtual || []}
-          stockPedidos={stockPedidos || []}
           pedidos={pedidos || []}
           isManagerOrAdmin={isManagerOrAdmin}
         />

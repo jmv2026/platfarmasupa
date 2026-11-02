@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n/context';
 import {
@@ -17,7 +18,7 @@ import {
   ID_TIPO_ARTIGO_MAP,
   TIPO_ARTIGO_ID_MAP,
 } from '@/lib/supabase/types';
-import { MovimentoWithDetails } from './importacao-movimentos-tab';
+import type { MovimentoWithDetails } from './importacao-movimentos-tab';
 import {
   criarUtilizadorAction,
   criarClienteAction,
@@ -28,12 +29,13 @@ import {
   guardarConfiguracaoAction,
   enviarEmailTesteTemplateAction,
 } from './actions';
-import ImportacaoMovimentosTab from './importacao-movimentos-tab';
-import ImportacaoErpTab from './importacao-erp-tab';
-import ImportacaoArtigosCard from './importacao-artigos-card';
-import ImportacaoTransporteTab from './importacao-transporte-tab';
-import ImportacaoComprovativosTab from './importacao-comprovativos-tab';
-import ImportacaoStockTab from './importacao-stock-tab';
+
+const ImportacaoMovimentosTab = dynamic(() => import('./importacao-movimentos-tab'));
+const ImportacaoErpTab = dynamic(() => import('./importacao-erp-tab'));
+const ImportacaoArtigosCard = dynamic(() => import('./importacao-artigos-card'));
+const ImportacaoTransporteTab = dynamic(() => import('./importacao-transporte-tab'));
+const ImportacaoComprovativosTab = dynamic(() => import('./importacao-comprovativos-tab'));
+const ImportacaoStockTab = dynamic(() => import('./importacao-stock-tab'));
 
 export interface ServerEmailConfig {
   fromEmail: string;

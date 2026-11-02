@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { fetchAllRowsFast } from '@/lib/supabase/pagination';
 import AppHeader from '@/components/navigation/app-header';
 import HistoricoPedidosView from './historico-pedidos-view';
 import { Client, PedidoComLinhas, UserProfile } from '@/lib/supabase/types';
@@ -29,51 +30,6 @@ export default async function HistoricoPedidosPage() {
     user.email === 'admin@sermail.pt' ||
     user.user_metadata?.role === 'admin';
   const userClientId = profile?.cliente_id;
-
-  // Função auxiliar para paginação rápida paralela de dados (ultrapassa limite de 1000 registos do PostgREST sem COUNT(*) desnecessário)
-  async function fetchAllRowsFast<T>(
-    fetchPage: (from: number, to: number, countMode?: 'exact') => PromiseLike<{ data: T[] | null; count?: number | null; error: any }>,
-    pageSize = 2000
-  ): Promise<T[]> {
-    // 1ª página rápida sem contagem exata para evitar SELECT COUNT(*) pesado na vista
-    const firstPage = await fetchPage(0, pageSize - 1);
-    if (firstPage.error || !firstPage.data) {
-      if (firstPage.error) console.error('Erro ao buscar dados paginados:', firstPage.error);
-      return [];
-    }
-
-    const allRows: T[] = [...firstPage.data];
-
-    // Se a 1ª página já trouxe todos os dados (< pageSize), termina de imediato sem COUNT(*)
-    if (firstPage.data.length < pageSize) {
-      return allRows;
-    }
-
-    // Apenas se ultrapassar a 1ª página obtemos a contagem exata para paralelizar o restante
-    const countRes = await fetchPage(0, 0, 'exact');
-    const total = countRes.count ?? allRows.length;
-
-    if (total <= pageSize) {
-      return allRows;
-    }
-
-    const numRemainingPages = Math.ceil((total - pageSize) / pageSize);
-    const remainingPromises = Array.from({ length: numRemainingPages }, (_, i) => {
-      const pageIndex = i + 1;
-      const from = pageIndex * pageSize;
-      const to = from + pageSize - 1;
-      return fetchPage(from, to);
-    });
-
-    const remainingResults = await Promise.all(remainingPromises);
-    for (const res of remainingResults) {
-      if (res.data) {
-        allRows.push(...res.data);
-      }
-    }
-
-    return allRows;
-  }
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let pedidosQuery = supabase
@@ -242,15 +198,12 @@ export default async function HistoricoPedidosPage() {
       url_comprovativo,
       clients: clientObj,
       clientes: clientObj,
+      _sortTs: Date.parse(p.created_at || p.data_pedido) || 0,
     };
   });
 
-  // Ordenar por data decrescente
-  finalPedidos.sort((a: any, b: any) => {
-    const dateA = new Date(a.created_at || a.data_pedido).getTime();
-    const dateB = new Date(b.created_at || b.data_pedido).getTime();
-    return dateB - dateA;
-  });
+  // Ordenar por data decrescente usando o timestamp pré-calculado em O(1)
+  finalPedidos.sort((a: any, b: any) => b._sortTs - a._sortTs);
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">

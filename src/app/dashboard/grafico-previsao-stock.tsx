@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
-import { DashboardStockItem, DashboardStockPedidoItem, DashboardPedidoItem } from './dashboard-view';
+import { useState, useMemo } from 'react';
+import type { DashboardStockItem, DashboardPedidoItem } from './dashboard-view';
 import { useLanguage } from '@/lib/i18n/context';
 
 export type PeriodoRunRate = '3m' | '6m' | '12m';
@@ -10,7 +10,6 @@ export type TipoVisualizacao = 'combinado' | 'barras' | 'tendencia';
 
 export interface GraficoPrevisaoStockProps {
   stockAtual: DashboardStockItem[];
-  stockPedidos?: DashboardStockPedidoItem[];
   pedidos: DashboardPedidoItem[];
   clientName?: string | null;
   selectedArticleCode?: string | null;
@@ -77,7 +76,6 @@ function extrairData(dateStr: string | null | undefined): Date | null {
 
 export default function GraficoPrevisaoStock({
   stockAtual,
-  stockPedidos,
   pedidos,
   clientName,
   selectedArticleCode,
@@ -99,7 +97,6 @@ export default function GraficoPrevisaoStock({
   const [internalTipoGrafico, setInternalTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [mesesReposicao, setMesesReposicao] = useState<number>(3);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const runRatePeriodo = propRunRatePeriodo ?? internalRunRate;
   const setRunRatePeriodo = (p: PeriodoRunRate) => {
@@ -129,89 +126,87 @@ export default function GraficoPrevisaoStock({
     onSelectArticleCode?.(cod);
   };
 
-  // Cálculo das Projeções e Métricas de Stock Futuro focadas no PRODUTO SELECIONADO OU LÍDER
-  const {
-    dadosPrevisao,
-    estatisticas,
-    artigosTopComparativo,
-    produtoAlvo,
-  } = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    // 1. Período de Run-Rate
-    let mesesRecuo = 6;
-    if (runRatePeriodo === '3m') mesesRecuo = 3;
-    else if (runRatePeriodo === '6m') mesesRecuo = 6;
-    else if (runRatePeriodo === '12m') mesesRecuo = 12;
-
-    const dataInicioRunRate = new Date(currentYear, currentMonth - (mesesRecuo - 1), 1);
-    const nrMesesBase = mesesRecuo;
-
-    // 2. Mapeamento de stock por artigo (priorizando artigo_id sobre artigo_cli)
-    const stockPorArtigo: Record<
+  // 1. Mapeamento memoizado de stock por artigo (recalcula apenas quando stockAtual muda)
+  const { stockPorArtigo, cliToIdMap } = useMemo(() => {
+    const map: Record<
       string,
       { stock: number; validadeMaisProxima: string | null; descricao?: string; itens: DashboardStockItem[] }
     > = {};
-
-    const cliToIdMap = new Map<string, string>();
+    const cMap = new Map<string, string>();
 
     stockAtual.forEach((item) => {
-      // Priorizar artigo_id sobre artigo_cli
       const artId = (item.artigo_id || item.artigo_cli || 'N/A').trim();
       const desc = item.descricao?.trim();
 
       if (item.artigo_id && item.artigo_cli) {
-        cliToIdMap.set(item.artigo_cli.trim().toLowerCase(), item.artigo_id.trim());
+        cMap.set(item.artigo_cli.trim().toLowerCase(), item.artigo_id.trim());
       }
 
-      if (!stockPorArtigo[artId]) {
-        stockPorArtigo[artId] = {
+      if (!map[artId]) {
+        map[artId] = {
           stock: 0,
           validadeMaisProxima: item.validade || null,
           descricao: desc || undefined,
           itens: [],
         };
-      } else if (desc && (!stockPorArtigo[artId].descricao || desc.length > (stockPorArtigo[artId].descricao?.length || 0))) {
-        stockPorArtigo[artId].descricao = desc;
+      } else if (desc && (!map[artId].descricao || desc.length > (map[artId].descricao?.length || 0))) {
+        map[artId].descricao = desc;
       }
 
-      // Se item.artigo_cli for diferente de artId, mapear também como alias de pesquisa
       if (item.artigo_cli && item.artigo_cli.trim() !== artId) {
         const idCli = item.artigo_cli.trim();
-        if (!stockPorArtigo[idCli]) {
-          stockPorArtigo[idCli] = stockPorArtigo[artId];
+        if (!map[idCli]) {
+          map[idCli] = map[artId];
         }
       }
 
-      stockPorArtigo[artId].stock += Number(item.stock || 0);
-      stockPorArtigo[artId].itens.push(item);
+      map[artId].stock += Number(item.stock || 0);
+      map[artId].itens.push(item);
       if (item.validade) {
         if (
-          !stockPorArtigo[artId].validadeMaisProxima ||
-          new Date(item.validade) < new Date(stockPorArtigo[artId].validadeMaisProxima!)
+          !map[artId].validadeMaisProxima ||
+          new Date(item.validade) < new Date(map[artId].validadeMaisProxima!)
         ) {
-          stockPorArtigo[artId].validadeMaisProxima = item.validade;
+          map[artId].validadeMaisProxima = item.validade;
         }
       }
     });
 
-    // 3. Agrupamento de pedidos por artigo (resolvendo artigo_cli para artigo_id)
-    const pedidosPorArtigo: Record<
+    return { stockPorArtigo: map, cliToIdMap: cMap };
+  }, [stockAtual]);
+
+  // 2. Agrupamento memoizado de pedidos por artigo (recalcula apenas quando pedidos, stock ou runRatePeriodo mudam)
+  const {
+    pedidosPorArtigo,
+    ordenadosPorPedidos,
+    totalGeralPedidosUnidades,
+    nrMesesBase,
+  } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    let mesesRecuo = 6;
+    if (runRatePeriodo === '3m') mesesRecuo = 3;
+    else if (runRatePeriodo === '6m') mesesRecuo = 6;
+    else if (runRatePeriodo === '12m') mesesRecuo = 12;
+
+    const dataInicioRunRateMs = new Date(currentYear, currentMonth - (mesesRecuo - 1), 1).getTime();
+
+    const pedMap: Record<
       string,
       { codigo: string; descricao: string; totalQtd: number; totalQtdRunRate: number; pedidosSet: Set<string> }
     > = {};
 
-    let totalGeralPedidosUnidades = 0;
+    let totalUnidades = 0;
 
     pedidos.forEach((p) => {
       const dataPed = extrairData(p.data_pedido || p.created_at);
-      const isInRunRate = dataPed && dataPed >= dataInicioRunRate;
+      const isInRunRate = dataPed !== null && dataPed.getTime() >= dataInicioRunRateMs;
 
       if (p.pedido_linhas && p.pedido_linhas.length > 0) {
         p.pedido_linhas.forEach((linha) => {
-          let rawCod = (linha.artigo_id || linha.artigo_codigo || 'N/A').trim();
+          const rawCod = (linha.artigo_id || linha.artigo_codigo || 'N/A').trim();
           let cod = cliToIdMap.get(rawCod.toLowerCase()) || rawCod;
           if (cod.includes('-')) {
             const parts = cod.split('-');
@@ -223,46 +218,57 @@ export default function GraficoPrevisaoStock({
 
           const qtd = Number(linha.quantidade) || 0;
           const desc = linha.descricao?.trim();
-          totalGeralPedidosUnidades += qtd;
+          totalUnidades += qtd;
 
-          if (!pedidosPorArtigo[cod]) {
-            pedidosPorArtigo[cod] = {
+          if (!pedMap[cod]) {
+            const stkDesc = stockPorArtigo[cod]?.descricao;
+            const bestDesc =
+              desc && stkDesc
+                ? desc.length >= stkDesc.length
+                  ? desc
+                  : stkDesc
+                : desc || stkDesc || cod;
+            pedMap[cod] = {
               codigo: cod,
-              descricao: desc || cod,
+              descricao: bestDesc,
               totalQtd: 0,
               totalQtdRunRate: 0,
               pedidosSet: new Set(),
             };
-          } else if (desc && (pedidosPorArtigo[cod].descricao === cod || desc.length > pedidosPorArtigo[cod].descricao.length)) {
-            pedidosPorArtigo[cod].descricao = desc;
+          } else if (desc && (pedMap[cod].descricao === cod || desc.length > pedMap[cod].descricao.length)) {
+            pedMap[cod].descricao = desc;
           }
-          pedidosPorArtigo[cod].totalQtd += qtd;
+          pedMap[cod].totalQtd += qtd;
           if (isInRunRate) {
-            pedidosPorArtigo[cod].totalQtdRunRate += qtd;
+            pedMap[cod].totalQtdRunRate += qtd;
           }
-          pedidosPorArtigo[cod].pedidosSet.add(p.id);
+          pedMap[cod].pedidosSet.add(p.id);
         });
       }
     });
 
-    // Sincronizar descrições completas entre pedidos e stock
-    Object.keys(pedidosPorArtigo).forEach((cod) => {
-      const ped = pedidosPorArtigo[cod];
-      const stk = stockPorArtigo[cod];
-      if (stk?.descricao && (!ped.descricao || ped.descricao === cod || stk.descricao.length > ped.descricao.length)) {
-        ped.descricao = stk.descricao;
-      }
-    });
-    Object.keys(stockPorArtigo).forEach((cod) => {
-      const stk = stockPorArtigo[cod];
-      const ped = pedidosPorArtigo[cod];
-      if (ped?.descricao && ped.descricao !== cod && (!stk.descricao || ped.descricao.length > stk.descricao.length)) {
-        stk.descricao = ped.descricao;
-      }
-    });
+    const ordenados = Object.values(pedMap).sort((a, b) => b.totalQtd - a.totalQtd);
+
+    return {
+      pedidosPorArtigo: pedMap,
+      ordenadosPorPedidos: ordenados,
+      totalGeralPedidosUnidades: totalUnidades,
+      nrMesesBase: mesesRecuo,
+    };
+  }, [pedidos, runRatePeriodo, stockPorArtigo, cliToIdMap]);
+
+  // 3. Cálculo das Projeções e Métricas de Stock Futuro focadas no PRODUTO SELECIONADO OU LÍDER
+  const {
+    dadosPrevisao,
+    estatisticas,
+    artigosTopComparativo,
+    produtoAlvo,
+  } = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
     // 4. Determinar o PRODUTO A ANALISAR (selecionado ou líder #1)
-    const ordenadosPorPedidos = Object.values(pedidosPorArtigo).sort((a, b) => b.totalQtd - a.totalQtd);
     const liderCodigo = ordenadosPorPedidos.length > 0 ? ordenadosPorPedidos[0].codigo : null;
 
     let codigoAlvo = activeCodigoAlvo || liderCodigo;
@@ -505,7 +511,21 @@ export default function GraficoPrevisaoStock({
       artigosTopComparativo,
       produtoAlvo: produtoAlvoObj,
     };
-  }, [stockAtual, stockPedidos, pedidos, horizonte, runRatePeriodo, activeCodigoAlvo, t.dashboard.months, t.dashboard.monthsShort, t.dashboard.forecastMonthCurrent, language, mesesReposicao]);
+  }, [
+    stockPorArtigo,
+    cliToIdMap,
+    pedidosPorArtigo,
+    ordenadosPorPedidos,
+    totalGeralPedidosUnidades,
+    nrMesesBase,
+    horizonte,
+    activeCodigoAlvo,
+    t.dashboard.months,
+    t.dashboard.monthsShort,
+    t.dashboard.forecastMonthCurrent,
+    language,
+    mesesReposicao,
+  ]);
 
   // Base SVG width e dimensões padrão
   const baseSvgWidth = useMemo(() => {
@@ -1113,7 +1133,6 @@ export default function GraficoPrevisaoStock({
 
         {/* Área do Gráfico SVG de Previsão de Stock com Suporte a Hover & Tooltip */}
         <div
-          ref={containerRef}
           className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
         >
         {/* Legenda Dinâmica no Topo Direito */}

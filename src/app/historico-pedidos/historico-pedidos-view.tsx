@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   PedidoComLinhas,
   Client,
@@ -28,15 +28,15 @@ export default function HistoricoPedidosView({
 }: HistoricoPedidosViewProps) {
   const supabase = createClient();
   const { t, language } = useLanguage();
-  const [pedidosList, setPedidosList] = useState<PedidoComLinhas[]>(pedidos);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
 
-  // Estado para o visualizador do comprovativo
+  // Estado e cache para o visualizador do comprovativo
   const [comprovativoImage, setComprovativoImage] = useState<string | null>(null);
   const [comprovativoName, setComprovativoName] = useState<string>('comprovativo.png');
   const [isLoadingComprovativo, setIsLoadingComprovativo] = useState<boolean>(false);
+  const comprovativoCacheRef = useRef<Map<string, string>>(new Map());
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
@@ -51,10 +51,6 @@ export default function HistoricoPedidosView({
     currentUserProfile?.role === 'admin' ||
     currentUserProfile?.role === 'gestor' ||
     currentUserProfile?.email === 'admin@sermail.pt';
-
-  useEffect(() => {
-    setPedidosList(pedidos);
-  }, [pedidos]);
 
 
   const getStatusLabel = (status: StatusPedido | string) => {
@@ -95,10 +91,16 @@ export default function HistoricoPedidosView({
   const handleViewComprovativo = async (url_comprovativo: string, ref_ser: string) => {
     try {
       setFeedback(null);
-      setIsLoadingComprovativo(true);
-
       const safeName = (ref_ser || 'comprovativo').replace(/[^a-z0-9]/gi, '_');
       setComprovativoName(`${safeName}.png`);
+
+      const cachedDataUrl = comprovativoCacheRef.current.get(url_comprovativo);
+      if (cachedDataUrl) {
+        setComprovativoImage(cachedDataUrl);
+        return;
+      }
+
+      setIsLoadingComprovativo(true);
 
       const { data: signedUrlData, error: signedError } = await supabase.storage
         .from('comprovativos_ttir')
@@ -130,7 +132,9 @@ export default function HistoricoPedidosView({
         const imageData = ctx.createImageData(canvas.width, canvas.height);
         imageData.data.set(rgba);
         ctx.putImageData(imageData, 0, 0);
-        setComprovativoImage(canvas.toDataURL('image/png'));
+        const dataUrl = canvas.toDataURL('image/png');
+        comprovativoCacheRef.current.set(url_comprovativo, dataUrl);
+        setComprovativoImage(dataUrl);
       }
 
       setIsLoadingComprovativo(false);
@@ -144,18 +148,18 @@ export default function HistoricoPedidosView({
   // Estados disponíveis para filtro (únicos e em ordem alfabética)
   const availableStatuses = useMemo(() => {
     const statuses = new Set<string>();
-    pedidosList.forEach((ped) => {
+    pedidos.forEach((ped) => {
       if (ped.status) {
         statuses.add(ped.status);
       }
     });
     return Array.from(statuses).sort();
-  }, [pedidosList]);
+  }, [pedidos]);
 
   // Artigos disponíveis para filtro nos pedidos / movimentos
   const availableArtigos = useMemo(() => {
     const map = new Map<string, string>();
-    pedidosList.forEach((ped) => {
+    pedidos.forEach((ped) => {
       if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) return;
       ped.pedido_linhas?.forEach((l) => {
         const artCod = l.artigo_cli || l.artigo_codigo;
@@ -167,14 +171,20 @@ export default function HistoricoPedidosView({
     return Array.from(map.entries())
       .map(([codigo, descricao]) => ({ codigo, descricao }))
       .sort((a, b) => a.codigo.localeCompare(b.codigo));
-  }, [pedidosList, selectedClientId]);
+  }, [pedidos, selectedClientId]);
 
   // Filtragem
   const filteredPedidos = useMemo(() => {
     const now = new Date();
+    const nowMs = now.getTime();
+    const nowMonth = now.getMonth();
+    const nowYear = now.getFullYear();
     const todayStr = now.toISOString().split('T')[0];
+    const sevenDaysAgoMs = nowMs - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgoMs = nowMs - 30 * 24 * 60 * 60 * 1000;
+    const query = searchTerm.trim().toLowerCase();
 
-    return pedidosList.filter((ped) => {
+    return pedidos.filter((ped) => {
       // REGRA: Pedidos cujo campo processado esteja selecionado não devem ser apresentados no histórico de movimentos
       if (ped.processado) {
         return false;
@@ -203,28 +213,25 @@ export default function HistoricoPedidosView({
 
       // Filtro de Data
       if (selectedDateFilter !== 'todos') {
-        const pedDate = new Date(ped.data_pedido);
         if (selectedDateFilter === 'hoje') {
           if (ped.data_pedido !== todayStr) return false;
-        } else if (selectedDateFilter === '7dias') {
-          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          if (pedDate < sevenDaysAgo) return false;
-        } else if (selectedDateFilter === '30dias') {
-          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          if (pedDate < thirtyDaysAgo) return false;
-        } else if (selectedDateFilter === 'este_mes') {
-          if (
-            pedDate.getMonth() !== now.getMonth() ||
-            pedDate.getFullYear() !== now.getFullYear()
-          ) {
-            return false;
+        } else {
+          const pedDate = new Date(ped.data_pedido);
+          const pedTime = pedDate.getTime();
+          if (selectedDateFilter === '7dias') {
+            if (pedTime < sevenDaysAgoMs) return false;
+          } else if (selectedDateFilter === '30dias') {
+            if (pedTime < thirtyDaysAgoMs) return false;
+          } else if (selectedDateFilter === 'este_mes') {
+            if (pedDate.getMonth() !== nowMonth || pedDate.getFullYear() !== nowYear) {
+              return false;
+            }
           }
         }
       }
 
       // Filtro de Pesquisa Textual
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
+      if (query) {
         const matchNr = ped.nr_pedido?.toLowerCase().includes(query);
         const matchDest = (ped.nome_destinatario || ped.destinos?.nome || '')?.toLowerCase().includes(query);
         const matchMorada = ped.morada?.toLowerCase().includes(query);
@@ -261,7 +268,7 @@ export default function HistoricoPedidosView({
 
       return true;
     });
-  }, [pedidosList, selectedClientId, selectedStatus, selectedTipoMov, selectedArtigo, selectedDateFilter, searchTerm]);
+  }, [pedidos, selectedClientId, selectedStatus, selectedTipoMov, selectedArtigo, selectedDateFilter, searchTerm]);
 
   // Total de unidades filtradas
   const totalUnidadesFiltradas = useMemo(() => {

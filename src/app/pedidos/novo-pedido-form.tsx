@@ -79,7 +79,7 @@ export default function NovoPedidoForm({
   const [codigoPostal, setCodigoPostal] = useState('');
   const [localidade, setLocalidade] = useState('');
   const [pais, setPais] = useState('Portugal');
-  const dataPedido = new Date().toISOString().split('T')[0];
+  const dataPedido = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [dataEntrega, setDataEntrega] = useState('');
   const [refDocumento, setRefDocumento] = useState('');
   const [observacoes, setObservacoes] = useState('');
@@ -146,17 +146,32 @@ export default function NovoPedidoForm({
     );
   }, [clientStock]);
 
-  // Lotes disponíveis para o artigo selecionado, ordenados por FEFO (Validade Ascendente)
-  const availableLotes = useMemo(() => {
-    if (!selectedArtigoId) return [];
-    return clientStock
-      .filter((s) => s.artigo_id === selectedArtigoId)
-      .sort((a, b) => {
+  // Mapa de lotes agrupados por artigo_id e pré-ordenados por FEFO (Validade Ascendente) em O(N)
+  const lotesPorArtigoMap = useMemo(() => {
+    const grouped = new Map<string, StockPedido[]>();
+    clientStock.forEach((s) => {
+      const list = grouped.get(s.artigo_id);
+      if (list) {
+        list.push(s);
+      } else {
+        grouped.set(s.artigo_id, [s]);
+      }
+    });
+    grouped.forEach((list) => {
+      list.sort((a, b) => {
         if (!a.validade) return 1;
         if (!b.validade) return -1;
-        return new Date(a.validade).getTime() - new Date(b.validade).getTime();
+        return Date.parse(a.validade) - Date.parse(b.validade);
       });
-  }, [clientStock, selectedArtigoId]);
+    });
+    return grouped;
+  }, [clientStock]);
+
+  // Lotes disponíveis para o artigo selecionado (lookup O(1) no mapa FEFO)
+  const availableLotes = useMemo(() => {
+    if (!selectedArtigoId) return [];
+    return lotesPorArtigoMap.get(selectedArtigoId) || [];
+  }, [lotesPorArtigoMap, selectedArtigoId]);
 
   // Lote atualmente selecionado (objeto)
   const currentLoteObj = useMemo(() => {
@@ -314,16 +329,10 @@ export default function NovoPedidoForm({
     }
   };
 
-  // Atualizar seleção de artigo e sugerir FEFO automaticamente
+  // Atualizar seleção de artigo e sugerir FEFO automaticamente (lookup O(1))
   const handleSelectArtigo = (artigoId: string) => {
     setSelectedArtigoId(artigoId);
-    const lotesForArtigo = clientStock
-      .filter((s) => s.artigo_id === artigoId)
-      .sort((a, b) => {
-        if (!a.validade) return 1;
-        if (!b.validade) return -1;
-        return new Date(a.validade).getTime() - new Date(b.validade).getTime();
-      });
+    const lotesForArtigo = lotesPorArtigoMap.get(artigoId) || [];
 
     if (lotesForArtigo.length > 0) {
       setSelectedLote(lotesForArtigo[0].lote || '');
