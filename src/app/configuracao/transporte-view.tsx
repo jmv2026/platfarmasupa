@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface TrackingData {
   id: string;
@@ -18,44 +18,49 @@ interface TrackingData {
   created_at: string;
 }
 
+function formatFastDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-';
+  if (dateStr.length >= 10 && dateStr[4] === '-' && dateStr[7] === '-') {
+    return `${dateStr.slice(8, 10)}/${dateStr.slice(5, 7)}/${dateStr.slice(0, 4)}`;
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime())
+    ? dateStr
+    : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+
 export default function TransporteView({ data }: { data: TrackingData[] }) {
   const [search, setSearch] = useState('');
 
   // Como os dados vêm ordenados de forma descendente, o primeiro registo de cada ref_ser é o mais recente
-  const uniqueData: TrackingData[] = [];
-  const seenRefs = new Set<string>();
+  const uniqueData = useMemo(() => {
+    const result: TrackingData[] = [];
+    const seenRefs = new Set<string>();
 
-  for (const item of data) {
-    if (item.ref_ser && !seenRefs.has(item.ref_ser)) {
-      uniqueData.push(item);
-      seenRefs.add(item.ref_ser);
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (item.ref_ser && !seenRefs.has(item.ref_ser)) {
+        result.push(item);
+        seenRefs.add(item.ref_ser);
+      }
     }
-  }
+    return result;
+  }, [data]);
 
-  const filteredData = uniqueData.filter((item) => {
-    if (!search) return true;
+  const filteredData = useMemo(() => {
     const lower = search.toLowerCase().trim();
-    return (
-      (item.ref_ser && String(item.ref_ser).toLowerCase().includes(lower)) ||
-      (item.desc_estado_expedicao && String(item.desc_estado_expedicao).toLowerCase().includes(lower))
-    );
-  });
-
-  // Função helper para mostrar data em formato limpo
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('pt-PT');
-    } catch {
-      return dateStr;
-    }
-  };
+    if (!lower) return uniqueData;
+    return uniqueData.filter((item) => {
+      return (
+        (item.ref_ser && String(item.ref_ser).toLowerCase().includes(lower)) ||
+        (item.desc_estado_expedicao && String(item.desc_estado_expedicao).toLowerCase().includes(lower))
+      );
+    });
+  }, [uniqueData, search]);
 
   // Função helper para extrair apenas a hora
   const formatTime = (timeStr: string | null) => {
     if (!timeStr) return '-';
-    // O timeStr virá como "17:14:00", vamos mostrar "17:14"
     return timeStr.substring(0, 5);
   };
 
@@ -146,7 +151,7 @@ export default function TransporteView({ data }: { data: TrackingData[] }) {
                       </span>
                     </td>
                     <td className="py-2.5 px-3 text-center text-on-surface-variant">
-                      {formatDate(item.data_estado)}
+                      {formatFastDate(item.data_estado)}
                     </td>
                     <td className="py-2.5 px-3 text-center font-mono text-on-surface-variant">
                       {formatTime(item.hora_estado)}
@@ -155,7 +160,7 @@ export default function TransporteView({ data }: { data: TrackingData[] }) {
                       {item.obs_expedicao || '-'}
                     </td>
                     <td className="py-2.5 px-3 text-right font-mono text-on-surface-variant opacity-75">
-                      {new Date(item.created_at).toLocaleDateString('pt-PT')}
+                      {formatFastDate(item.created_at)}
                     </td>
                   </tr>
                 ))

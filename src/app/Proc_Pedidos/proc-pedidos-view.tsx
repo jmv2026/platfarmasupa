@@ -26,6 +26,8 @@ interface ProcPedidosViewProps {
   artigos?: Artigo[];
 }
 
+const numericCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 const STATUS_DB_OPTIONS: { value: string; label: string }[] = [
   { value: 'pendente', label: 'Pendente' },
   { value: 'processado', label: 'Processado' },
@@ -138,7 +140,7 @@ export default function ProcPedidosView({
     });
 
     return Array.from(map.values()).sort((a, b) =>
-      a.artigo_id.localeCompare(b.artigo_id, undefined, { numeric: true, sensitivity: 'base' })
+      numericCollator.compare(a.artigo_id, b.artigo_id)
     );
   }, [editingPedido?.cliente_id, editingClientStock, artigos, clients]);
 
@@ -556,9 +558,18 @@ export default function ProcPedidosView({
 
   const stats = useMemo(() => {
     const total = pedidosList.length;
-    const paraProcessar = pedidosList.filter((p) => Boolean(p.processar) && !p.processado).length;
-    const processados = pedidosList.filter((p) => Boolean(p.processado)).length;
-    const naoProcessados = pedidosList.filter((p) => !p.processado).length;
+    let paraProcessar = 0;
+    let processados = 0;
+    let naoProcessados = 0;
+    for (let i = 0; i < total; i++) {
+      const p = pedidosList[i];
+      if (p.processado) {
+        processados++;
+      } else {
+        naoProcessados++;
+        if (p.processar) paraProcessar++;
+      }
+    }
     return { total, paraProcessar, processados, naoProcessados };
   }, [pedidosList]);
 

@@ -37,6 +37,9 @@ interface TabSortState {
   order: StockSortOrder;
 }
 
+// Instância partilhada de Intl.Collator (~15-20x mais rápida do que recriar localeCompare com opções em cada comparação de .sort)
+const numericCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 // Formatador de datas ultra-rápido sem overhead do Intl.DateTimeFormat em grandes tabelas
 function formatDisplayDate(val: string | null | undefined): string {
   if (!val) return '-';
@@ -223,14 +226,19 @@ export default function StocksView({
     }
   };
 
-  // Helper para calcular dias até à validade
-  const getDaysUntilExpiry = (dateStr: string | null) => {
-    if (!dateStr) return null;
-    const expiry = new Date(dateStr);
+  // Timestamp meia-noite de hoje pré-calculado 1x por render
+  const todayStartMs = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const diffTime = expiry.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return today.getTime();
+  }, []);
+
+  // Helper rápido para calcular dias até à validade
+  const getDaysUntilExpiry = (dateStr: string | null) => {
+    if (!dateStr) return null;
+    const expiryMs = Date.parse(dateStr);
+    if (isNaN(expiryMs)) return null;
+    return Math.ceil((expiryMs - todayStartMs) / 86_400_000);
   };
 
   // Helper para ordenação dinâmica (Artigo ou Descrição, crescente ou decrescente)
@@ -244,27 +252,27 @@ export default function StocksView({
     if (sortConfig.field === 'descricao') {
       const descA = (a.descricao || '').trim();
       const descB = (b.descricao || '').trim();
-      const comp = descA.localeCompare(descB, undefined, { numeric: true, sensitivity: 'base' });
+      const comp = numericCollator.compare(descA, descB);
       if (comp !== 0) return comp * orderMultiplier;
       // Desempate pelo artigo
       const artA = (a.artigo_id || a.artigo_cli || '').trim();
       const artB = (b.artigo_id || b.artigo_cli || '').trim();
-      return artA.localeCompare(artB, undefined, { numeric: true, sensitivity: 'base' }) * orderMultiplier;
+      return numericCollator.compare(artA, artB) * orderMultiplier;
     }
 
     // sortConfig.field === 'artigo' ou 'default'
     const artA = (a.artigo_id || a.artigo_cli || '').trim();
     const artB = (b.artigo_id || b.artigo_cli || '').trim();
-    const comp = artA.localeCompare(artB, undefined, { numeric: true, sensitivity: 'base' });
+    const comp = numericCollator.compare(artA, artB);
     if (comp !== 0) return comp * orderMultiplier;
 
     // Desempate por validade ou lote se aplicável
     if (a.validade && b.validade) {
-      const timeA = new Date(a.validade).getTime();
-      const timeB = new Date(b.validade).getTime();
-      if (timeA !== timeB) return timeA - timeB;
+      if (a.validade !== b.validade) {
+        return a.validade < b.validade ? -1 : 1;
+      }
     }
-    return (a.lote || '').localeCompare(b.lote || '', undefined, { numeric: true, sensitivity: 'base' });
+    return numericCollator.compare(a.lote || '', b.lote || '');
   };
 
   // Botão interativo para o cabeçalho das tabelas (alterna asc/desc) com fundo verde lima suave
@@ -301,70 +309,55 @@ export default function StocksView({
     );
   };
 
-  // KPIs
+  // KPIs calculados numa única passagem O(N) em vez de 4 iterações separadas
+  const {
+    totalStockOutros,
+    artigosAlertaValidadeMH,
+    artigosAlertaValidadeDM,
+    artigosAlertaValidadeDCSA,
+  } = useMemo(() => {
+    let stockOutros = 0;
+    const mhSet = new Set<string>();
+    const dmSet = new Set<string>();
+    const dcsaSet = new Set<string>();
 
-  const totalStockOutros = useMemo(() => {
-    return stockAtualList
-      .filter((s) => s.tipo_armazem !== '01')
-      .reduce((acc, curr) => acc + Number(curr.stock || 0), 0);
-  }, [stockAtualList]);
+    for (let i = 0; i < stockAtualList.length; i++) {
+      const s = stockAtualList[i];
+      if (s.tipo_armazem !== '01') {
+        stockOutros += Number(s.stock || 0);
+      }
 
+      if (!s.validade) continue;
+      const days = getDaysUntilExpiry(s.validade);
+      if (days === null) continue;
 
-  const artigosAlertaValidadeMH = useMemo(() => {
-    const artigosSet = new Set<string>();
-    stockAtualList.forEach((s) => {
-      // A validade de 180 dias apenas se aplica a medicamentos de uso humano (MH)
       const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
-      const isMH = tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO');
-      if (isMH) {
-        const days = getDaysUntilExpiry(s.validade);
-        if (days !== null && days < 180) {
-          artigosSet.add(s.artigo_id);
+      if (days < 180 && (tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO'))) {
+        mhSet.add(s.artigo_id);
+      } else if (days <= 0) {
+        if (tipo === 'DM' || tipo.startsWith('DM') || tipo.includes('DISPOSITIVO')) {
+          dmSet.add(s.artigo_id);
+        } else if (
+          tipo === 'DC' ||
+          tipo === 'SA' ||
+          tipo.startsWith('DC') ||
+          tipo.startsWith('SA') ||
+          tipo.includes('DERMO') ||
+          tipo.includes('COSM') ||
+          tipo.includes('SUPL')
+        ) {
+          dcsaSet.add(s.artigo_id);
         }
       }
-    });
-    return artigosSet.size;
-  }, [stockAtualList]);
+    }
 
-  const artigosAlertaValidadeDM = useMemo(() => {
-    const artigosSet = new Set<string>();
-    stockAtualList.forEach((s) => {
-      // Contabilizar todos os artigos do tipo DM cuja validade esteja expirada (<= 0 dias)
-      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
-      const isDM = tipo === 'DM' || tipo.startsWith('DM') || tipo.includes('DISPOSITIVO');
-      if (isDM) {
-        const days = getDaysUntilExpiry(s.validade);
-        if (days !== null && days <= 0) {
-          artigosSet.add(s.artigo_id);
-        }
-      }
-    });
-    return artigosSet.size;
-  }, [stockAtualList]);
-
-  const artigosAlertaValidadeDCSA = useMemo(() => {
-    const artigosSet = new Set<string>();
-    stockAtualList.forEach((s) => {
-      // Contabilizar todos os artigos do tipo DC e SA cuja validade esteja expirada (<= 0 dias)
-      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
-      const isDCSA =
-        tipo === 'DC' ||
-        tipo === 'SA' ||
-        tipo.startsWith('DC') ||
-        tipo.startsWith('SA') ||
-        tipo.includes('DERMO') ||
-        tipo.includes('COSM') ||
-        tipo.includes('SUPL');
-
-      if (isDCSA) {
-        const days = getDaysUntilExpiry(s.validade);
-        if (days !== null && days <= 0) {
-          artigosSet.add(s.artigo_id);
-        }
-      }
-    });
-    return artigosSet.size;
-  }, [stockAtualList]);
+    return {
+      totalStockOutros: stockOutros,
+      artigosAlertaValidadeMH: mhSet.size,
+      artigosAlertaValidadeDM: dmSet.size,
+      artigosAlertaValidadeDCSA: dcsaSet.size,
+    };
+  }, [stockAtualList, todayStartMs]);
 
   // Filtragem para Stock de Venda (vw_stock_pedidos) - Ordenação dinâmica
   const filteredStockPedidos = useMemo(() => {

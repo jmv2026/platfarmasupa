@@ -4,6 +4,8 @@ import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/context";
 import NavProgressBar from "@/components/navigation/nav-progress-bar";
+import { PersistentAppShell } from "@/components/navigation/app-header";
+import { getAuthContext } from "@/lib/supabase/session";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,11 +24,13 @@ export const metadata: Metadata = {
   description: "Plataforma Farma - Sermail, Logística Integrada Lda.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { user, profile } = await getAuthContext();
+
   return (
     <html lang="pt" className={`${inter.variable} ${manrope.variable}`}>
       <head>
@@ -41,7 +45,11 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <NavProgressBar />
         </Suspense>
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          <PersistentAppShell initialProfile={profile} initialEmail={user?.email}>
+            {children}
+          </PersistentAppShell>
+        </LanguageProvider>
       </body>
     </html>
   );

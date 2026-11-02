@@ -141,8 +141,9 @@ export default function NovoPedidoForm({
         existing.descricao = s.descricao;
       }
     });
+    const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
     return Array.from(map.values()).sort((a, b) =>
-      (a.codigo || a.id).localeCompare(b.codigo || b.id, undefined, { numeric: true, sensitivity: 'base' })
+      collator.compare(a.codigo || a.id, b.codigo || b.id)
     );
   }, [clientStock]);
 
@@ -999,9 +1000,9 @@ export default function NovoPedidoForm({
                         <td className="py-2.5 px-3 font-mono text-on-surface-variant">
                           {formatDate(linha.validade)}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-secondary">
+                        <td className="py-2.5 px-3 text-right font-mono text-sm font-bold text-secondary">
                           {linha.quantidade.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')}{' '}
-                          <span className="text-[10px] font-normal text-on-surface-variant">un</span>
+                          <span className="text-xs font-normal text-on-surface-variant">un</span>
                         </td>
                         <td className="py-2.5 px-3 text-center">
                           <button

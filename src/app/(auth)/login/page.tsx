@@ -59,7 +59,7 @@ export default function LoginPage() {
         // Verificar se o utilizador está ativo e obter o idioma configurado na tabela public.users
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .select('ativo, role, full_name, idioma')
+          .select('id, email, ativo, role, full_name, empresa, idioma, cliente_id')
           .eq('id', data.user.id)
           .single();
 
@@ -81,31 +81,33 @@ export default function LoginPage() {
         }
         try {
           sessionStorage.setItem(SESSION_USER_LANG_INIT_KEY, data.user.id);
+          if (profile) {
+            sessionStorage.setItem(
+              'platfarma_header_profile_cache_v1',
+              JSON.stringify({ profile, email: data.user.email })
+            );
+          }
         } catch {
           // Ignorar se sessionStorage indisponível
         }
 
-        // Registar movimento de LOGIN na tabela public.log
-        try {
-          const { error: logRpcErr } = await supabase.rpc('registar_log_acesso', {
+        // Registar movimento de LOGIN na tabela public.log de forma não bloqueante
+        void supabase
+          .rpc('registar_log_acesso', {
             p_tipo_movimento: 'LOGIN',
             p_user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
             p_observacoes: null,
             p_user_id: data.user.id,
+          })
+          .then(({ error: logRpcErr }) => {
+            if (logRpcErr) {
+              console.warn('Erro RPC registar_log_acesso (login):', logRpcErr);
+            }
           });
-          if (logRpcErr) {
-            console.warn('Erro RPC registar_log_acesso (login):', logRpcErr);
-          }
-        } catch (logErr) {
-          console.warn('Não foi possível registar log de login:', logErr);
-        }
 
         const effectiveTrans = userLang ? translations[userLang] : t;
         setSuccessMessage(effectiveTrans.login.loginSuccess);
-        setTimeout(() => {
-          router.push('/dashboard');
-          router.refresh();
-        }, 500);
+        router.push('/dashboard');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : t.common.error;

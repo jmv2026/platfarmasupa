@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { invalidateUserProfileCache } from '@/lib/supabase/session';
 import { UserRole, TipoArmazenamento, TipoCliente } from '@/lib/supabase/types';
 import { ArtigoImportInput, parseArtigoBoolean } from '@/lib/parse-artigos-file';
 import { PlatMovimentoRow, preparePlatMovimentoForDb } from '@/lib/parse-erp-file';
@@ -137,6 +138,7 @@ export async function criarUtilizadorAction(input: {
         .eq('id', createdUserId);
     }
 
+    invalidateUserProfileCache(createdUserId);
     revalidatePath('/configuracao');
     revalidatePath('/dashboard');
 

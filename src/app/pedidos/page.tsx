@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/session';
 import AppHeader from '@/components/navigation/app-header';
 import NovoPedidoForm from './novo-pedido-form';
 import { Client, StockPedido, UserProfile, Destino } from '@/lib/supabase/types';
@@ -8,27 +8,11 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export default async function PedidosPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile, isManagerOrAdmin, userClientId } = await getAuthContext();
 
   if (!user) {
     redirect('/login');
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  const isManagerOrAdmin =
-    profile?.role === 'admin' ||
-    profile?.role === 'gestor' ||
-    user.email === 'admin@sermail.pt' ||
-    user.user_metadata?.role === 'admin';
-  const userClientId = profile?.cliente_id;
 
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');
   let stockPedidosQuery = supabase.from('vw_stock_pedidos').select('*').gt('stock', 0).order('artigo_id', { ascending: true });

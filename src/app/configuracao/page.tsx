@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/session';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
 import { UserProfile, Client, Artigo, Armazem, Tempo } from '@/lib/supabase/types';
@@ -8,21 +8,11 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 30;
 
 export default async function ConfiguracaoPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile } = await getAuthContext();
 
   if (!user) {
     redirect('/login');
   }
-
-  // Obter perfil do utilizador para controlo de acesso
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
 
   // CONTROLO DE ACESSO RBAC: Apenas perfil 'admin' ou conta admin@sermail.pt pode aceder à página de configuração
   if (profile?.role !== 'admin' && user.email !== 'admin@sermail.pt') {

@@ -1,32 +1,16 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/session';
 import { fetchAllRowsFast } from '@/lib/supabase/pagination';
 import AppHeader from '@/components/navigation/app-header';
 import PrevisaoStockView from './previsao-stock-view';
 import { Suspense } from 'react';
 
 export default async function PrevisaoStockPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile, isManagerOrAdmin, userClientId } = await getAuthContext();
 
   if (!user) {
     redirect('/login');
   }
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  const isManagerOrAdmin =
-    profile?.role === 'admin' ||
-    profile?.role === 'gestor' ||
-    user.email === 'admin@sermail.pt' ||
-    user.user_metadata?.role === 'admin';
-  const userClientId = profile?.cliente_id;
 
   // Construir queries com isolamento por cliente caso o utilizador não seja admin ou gestor
   let clientsQuery = supabase.from('clientes').select('*').eq('ativo', true).order('name');

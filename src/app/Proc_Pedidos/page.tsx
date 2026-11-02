@@ -1,39 +1,22 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthContext } from '@/lib/supabase/session';
 import AppHeader from '@/components/navigation/app-header';
 import ProcPedidosView from './proc-pedidos-view';
 import { Artigo, Client, PedidoComLinhas, StockPedido, UserProfile } from '@/lib/supabase/types';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 30;
 
 export const metadata = {
   title: 'Processar Pedidos | PlatFarma',
 };
 
 export default async function ProcPedidosPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, profile, isManagerOrAdmin: isGestorOrAdmin } = await getAuthContext();
 
   if (!user) {
     redirect('/login');
   }
-
-  // Obter perfil do utilizador para controlo de acesso RBAC
-  const { data: profile } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  // CONTROLO DE ACESSO RBAC: Apenas perfil 'gestor' ou 'admin' pode aceder à página Proc_Pedidos
-  const isGestorOrAdmin =
-    profile?.role === 'gestor' ||
-    profile?.role === 'admin' ||
-    user.email === 'admin@sermail.pt' ||
-    user.user_metadata?.role === 'admin';
 
   if (!isGestorOrAdmin) {
     redirect('/dashboard?error=unauthorized');
@@ -50,8 +33,16 @@ export default async function ProcPedidosPage() {
       .from('pedidos')
       .select('*, clientes(id, name, sigla), destinos(id, codigo, nome), pedido_linhas(*)')
       .order('created_at', { ascending: false }),
-    supabase.from('vw_stock_pedidos').select('*').order('artigo_id', { ascending: true }),
-    supabase.from('artigos').select('*').eq('ativo', true).order('artigo_id', { ascending: true }),
+    supabase
+      .from('vw_stock_pedidos')
+      .select('cliente_id, artigo_id, artigo_cli, descricao, lote, validade, stock')
+      .gt('stock', 0)
+      .order('artigo_id', { ascending: true }),
+    supabase
+      .from('artigos')
+      .select('artigo_id, artigo_cli, descricao')
+      .eq('ativo', true)
+      .order('artigo_id', { ascending: true }),
   ]);
 
   return (

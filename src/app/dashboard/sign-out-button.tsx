@@ -31,6 +31,7 @@ export default function SignOutButton() {
     }
     try {
       sessionStorage.removeItem(SESSION_USER_LANG_INIT_KEY);
+      sessionStorage.removeItem('platfarma_header_profile_cache_v1');
     } catch {
       // Ignorar se sessionStorage indisponível
     }
