@@ -18,10 +18,20 @@ Este documento cataloga as funções PostgreSQL (RPCs e funções de trigger) e 
   - Se o pedido tiver `stock = false` ou `status = 'cancelado'`, remove eventual movimento associado para repor o stock.
   - Se o pedido tiver `stock = true` e estiver concluído (`status = 'concluido'` ou `processado = true`), cria ou atualiza o cabeçalho em `public.movimentos` e as linhas de saída (`tipo_movimento = 'ss'`) em `public.movimentos_linhas`.
 
-### 1.3 `public.sync_stock_from_access(p_rows jsonb)`
-- **Retorno:** `jsonb`
+### 1.3 `public.sync_stock_from_access(p_rows jsonb, p_limpar_tudo boolean, p_limpar_clientes boolean)`
+- **Retorno:** `jsonb` (`success`, `deleted`, `inserted`, `clientes`)
 - **Definida em:** `20261029203000_create_sync_stock_from_access_rpc.sql`
 - **Descrição:** Sincroniza o snapshot de stock proveniente do sistema Access/ERP para a tabela `public.stock`, resolvendo siglas de clientes e códigos de artigos.
+
+### 1.3.1 `public.sync_movimentos_from_access(p_rows jsonb, p_limpar_tudo boolean, p_limpar_clientes boolean, p_atualizar_existentes boolean)`
+- **Retorno:** `jsonb` (`success`, `deleted_headers`, `deleted_lines`, `upserted_headers`, `upserted_lines`, `clientes`)
+- **Definida em:** `20261103142000_create_sync_movimentos_from_access_rpc.sql`
+- **Descrição:** Sincroniza em lotes registos de movimentos provenientes do MS Access para `public.movimentos` (cabeçalhos) e `public.movimentos_linhas` (linhas), resolvendo `cliente_id`, `sigla` e `cli_primavera` e atualizando automaticamente a validade dos lotes em `public.stock`.
+
+### 1.3.2 `public.sync_faturas_from_access(p_rows jsonb, p_limpar_tudo boolean, p_limpar_clientes boolean, p_atualizar_existentes boolean)`
+- **Retorno:** `jsonb` (`success`, `deleted`, `upserted`, `clientes`)
+- **Definida em:** `20261103161500_create_sync_faturas_from_access_rpc.sql`
+- **Descrição:** Sincroniza em lotes registos de faturas provenientes do MS Access para a tabela `public.faturas`, normalizando datas, valores monetários (`total_iva`, `total_merc`, `total_outros`, `total_desc`), tipo de documento (`FA`, `NC`, `NCE`, `ND`) e resolvendo `sigla`, `cli_primavera` e `cliente_ser` em cruzamento com `public.clientes`.
 
 ### 1.4 `public.get_todos_movimentos_detalhe()`
 - **Retorno:** ` SETOF record`
