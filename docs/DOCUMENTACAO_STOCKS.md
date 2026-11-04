@@ -12,26 +12,7 @@ O módulo de **Stocks** (`/stocks`) centraliza o controlo físico, comercial e r
 ### Arquitetura e Fluxo de Dados
 
 ```mermaid
-%%{init: {
-  'theme': 'base',
-  'themeVariables': {
-    'background': '#d1d5db',
-    'mainBkg': '#e2e8f0',
-    'primaryColor': '#f8fafc',
-    'primaryTextColor': '#0f172a',
-    'primaryBorderColor': '#334155',
-    'lineColor': '#1e293b',
-    'secondaryColor': '#e2e8f0',
-    'tertiaryColor': '#cbd5e1',
-    'clusterBkg': '#e2e8f0',
-    'clusterBorder': '#475569',
-    'titleColor': '#0f172a',
-    'edgeLabelBackground': '#cbd5e1',
-    'nodeTextColor': '#0f172a',
-    'textColor': '#0f172a'
-  },
-  'themeCSS': 'svg { background-color: #d1d5db !important; border-radius: 10px; padding: 12px; } .labelBkg, .edgeLabel, .edgeLabel rect, .edgeLabel span, .edgeLabel p { background-color: #cbd5e1 !important; fill: #cbd5e1 !important; color: #0f172a !important; } .nodeLabel, .cluster-label span, .cluster-label p, text, tspan { color: #0f172a !important; fill: #0f172a !important; }'
-}}%%
+%%{init: {"theme": "base", "themeVariables": {"background": "#e5e7eb", "primaryColor": "#e5e7eb", "primaryTextColor": "#000000", "primaryBorderColor": "#374151", "lineColor": "#000000", "secondaryColor": "#e5e7eb", "tertiaryColor": "#d1d5db", "mainBkg": "#e5e7eb", "nodeBkg": "#e5e7eb", "clusterBkg": "#d1d5db", "clusterBorder": "#374151", "titleColor": "#000000", "edgeLabelBackground": "#e5e7eb", "textColor": "#000000", "nodeTextColor": "#000000"}}}%%
 flowchart TD
     subgraph Canvas ["Mapa de Arquitetura e Fluxo de Dados — Página Stocks (/stocks)"]
         subgraph Origem ["Tabelas Base (PostgreSQL)"]
@@ -67,37 +48,37 @@ flowchart TD
         P_STK --> KPI
         KPI --> TAB1 & TAB2 & TAB3 & TAB4 & TAB5
         TAB1 & TAB2 & TAB3 & TAB4 & TAB5 --> EXP
-        TAB2 -- "Edição / Remoção (Admin)" --> A_STK
+        TAB2 --> A_STK
         A_STK --> T_STK
     end
 
-    style Canvas fill:#cbd5e1,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style Origem fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
-    style Views fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
-    style Server fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
-    style Client fill:#e2e8f0,stroke:#475569,stroke-width:2px,color:#0f172a
+    style Canvas fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style Origem fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Views fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Server fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Client fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
 
-    style T_MOV fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
-    style T_STK fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
-    style T_PED fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
-    style T_ART fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
+    style T_MOV fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style T_STK fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style T_PED fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style T_ART fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style V_PED fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
-    style V_ATU fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
-    style V_ZER fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
+    style V_PED fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style V_ATU fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style V_ZER fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style P_STK fill:#f8fafc,stroke:#0369a1,stroke-width:2px,color:#0c4a6e
-    style A_STK fill:#f8fafc,stroke:#0369a1,stroke-width:2px,color:#0c4a6e
+    style P_STK fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style A_STK fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style KPI fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style TAB1 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style TAB2 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style TAB3 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style TAB4 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style TAB5 fill:#f8fafc,stroke:#be123c,stroke-width:2px,color:#881337
-    style EXP fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
+    style KPI fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style TAB1 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style TAB2 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style TAB3 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style TAB4 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style TAB5 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style EXP fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    linkStyle default stroke:#1e293b,stroke-width:2px,color:#0f172a
+    linkStyle default stroke:#000000,stroke-width:2.5px,color:#000000
 ```
 
 ### Arquitetura de Ficheiros

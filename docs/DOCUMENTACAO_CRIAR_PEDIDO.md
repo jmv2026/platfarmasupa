@@ -12,26 +12,7 @@ O módulo **Criar Pedido** (`/pedidos`) é o ponto central de emissão de ordens
 ### Arquitetura e Fluxo de Dados
 
 ```mermaid
-%%{init: {
-  'theme': 'base',
-  'themeVariables': {
-    'background': '#d1d5db',
-    'mainBkg': '#e2e8f0',
-    'primaryColor': '#f8fafc',
-    'primaryTextColor': '#0f172a',
-    'primaryBorderColor': '#334155',
-    'lineColor': '#1e293b',
-    'secondaryColor': '#e2e8f0',
-    'tertiaryColor': '#cbd5e1',
-    'clusterBkg': '#e2e8f0',
-    'clusterBorder': '#475569',
-    'titleColor': '#0f172a',
-    'edgeLabelBackground': '#cbd5e1',
-    'nodeTextColor': '#0f172a',
-    'textColor': '#0f172a'
-  },
-  'themeCSS': 'svg { background-color: #d1d5db !important; border-radius: 10px; padding: 12px; } .labelBkg, .edgeLabel, .edgeLabel rect, .edgeLabel span, .edgeLabel p { background-color: #cbd5e1 !important; fill: #cbd5e1 !important; color: #0f172a !important; } .nodeLabel, .cluster-label span, .cluster-label p, text, tspan { color: #0f172a !important; fill: #0f172a !important; }'
-}}%%
+%%{init: {"theme": "base", "themeVariables": {"background": "#e5e7eb", "primaryColor": "#e5e7eb", "primaryTextColor": "#000000", "primaryBorderColor": "#374151", "lineColor": "#000000", "secondaryColor": "#e5e7eb", "tertiaryColor": "#d1d5db", "mainBkg": "#e5e7eb", "nodeBkg": "#e5e7eb", "clusterBkg": "#d1d5db", "clusterBorder": "#374151", "titleColor": "#000000", "edgeLabelBackground": "#e5e7eb", "textColor": "#000000", "nodeTextColor": "#000000"}}}%%
 flowchart TD
     subgraph Canvas ["Mapa de Arquitetura e Fluxo de Dados — Página Criar Pedido (/pedidos)"]
         subgraph Origem ["Fontes de Dados (Supabase PostgreSQL)"]
@@ -62,40 +43,40 @@ flowchart TD
 
         T_CLI & V_STK & T_DST --> P_PED
         P_PED --> SEC1 & SEC2 & SEC3
-        SEC2 -- "Modal Novo Destino" --> A_DST
+        SEC2 --> A_DST
         A_DST --> T_DST
         SEC3 --> SEC4 --> SEC5
-        SEC5 -- "Submeter Pedido" --> A_PED
+        SEC5 --> A_PED
         A_PED --> DB_PED
         A_PED --> RPC_MOV
         A_PED --> RESEND
     end
 
-    style Canvas fill:#cbd5e1,stroke:#64748b,stroke-width:2px,color:#0f172a
-    style Origem fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#78350f
-    style Server fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#0c4a6e
-    style Client fill:#e2e8f0,stroke:#475569,stroke-width:2px,color:#0f172a
-    style Persistencia fill:#d1fae5,stroke:#059669,stroke-width:2px,color:#064e3b
+    style Canvas fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style Origem fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Server fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Client fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
+    style Persistencia fill:#d1d5db,stroke:#374151,stroke-width:2px,color:#000000
 
-    style T_CLI fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
-    style V_STK fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
-    style T_DST fill:#f8fafc,stroke:#b45309,stroke-width:2px,color:#78350f
+    style T_CLI fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style V_STK fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style T_DST fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style P_PED fill:#f8fafc,stroke:#0369a1,stroke-width:2px,color:#0c4a6e
-    style A_DST fill:#f8fafc,stroke:#0369a1,stroke-width:2px,color:#0c4a6e
-    style A_PED fill:#f8fafc,stroke:#0369a1,stroke-width:2px,color:#0c4a6e
+    style P_PED fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style A_DST fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style A_PED fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style SEC1 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style SEC2 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style SEC3 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style SEC4 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
-    style SEC5 fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#0f172a
+    style SEC1 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style SEC2 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style SEC3 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style SEC4 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style SEC5 fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    style DB_PED fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
-    style RPC_MOV fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
-    style RESEND fill:#f8fafc,stroke:#047857,stroke-width:2px,color:#064e3b
+    style DB_PED fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style RPC_MOV fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
+    style RESEND fill:#e5e7eb,stroke:#374151,stroke-width:2px,color:#000000
 
-    linkStyle default stroke:#1e293b,stroke-width:2px,color:#0f172a
+    linkStyle default stroke:#000000,stroke-width:2.5px,color:#000000
 ```
 
 ### Arquitetura de Ficheiros
