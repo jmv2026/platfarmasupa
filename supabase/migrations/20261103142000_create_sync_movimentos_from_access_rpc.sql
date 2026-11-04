@@ -286,15 +286,25 @@ BEGIN
             SELECT c1.id, c1.sigla, c1.cli_primavera
             FROM public.clientes c1
             WHERE (ri.raw_cli_primavera IS NOT NULL AND TRIM(c1.cli_primavera) = ri.raw_cli_primavera)
-               OR (ri.raw_sigla IS NOT NULL AND (UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla) OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sigla)))
-               OR (ri.raw_sub_familia IS NOT NULL AND (UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia) OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sub_familia)))
-               OR (ri.raw_sigla IS NULL AND ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(ri.raw_armazem, 3)))
+               OR (ri.raw_sigla IS NOT NULL AND (
+                   UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla)
+                   OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sigla)
+                   OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%'
+               ))
+               OR (ri.raw_sub_familia IS NOT NULL AND (
+                   UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia)
+                   OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sub_familia)
+                   OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sub_familia) || '%'
+               ))
+               OR (ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(TRIM(ri.raw_armazem), 3)))
             ORDER BY
                 CASE
                     WHEN ri.raw_cli_primavera IS NOT NULL AND TRIM(c1.cli_primavera) = ri.raw_cli_primavera THEN 1
                     WHEN ri.raw_sigla IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla) THEN 2
-                    WHEN ri.raw_sub_familia IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia) THEN 3
-                    ELSE 4
+                    WHEN ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(TRIM(ri.raw_armazem), 3)) THEN 3
+                    WHEN ri.raw_sigla IS NOT NULL AND UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%' THEN 4
+                    WHEN ri.raw_sub_familia IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia) THEN 5
+                    ELSE 6
                 END
             LIMIT 1
         ) c ON true
