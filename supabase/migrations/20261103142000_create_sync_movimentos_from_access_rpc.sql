@@ -274,10 +274,10 @@ BEGIN
             COALESCE(c.id, v_default_cliente_id) AS resolved_cliente_id,
             UPPER(COALESCE(
                 c.sigla,
-                ri.raw_sigla,
-                ri.raw_sub_familia,
                 NULLIF(regexp_replace(COALESCE(ri.raw_chave2, ''), '[0-9]', '', 'g'), ''),
                 NULLIF(regexp_replace(COALESCE(ri.raw_armazem, ''), '[0-9]', '', 'g'), ''),
+                ri.raw_sigla,
+                ri.raw_sub_familia,
                 'UNK'
             )) AS resolved_sigla,
             COALESCE(c.cli_primavera, ri.raw_cli_primavera) AS resolved_cli_primavera
@@ -286,25 +286,21 @@ BEGIN
             SELECT c1.id, c1.sigla, c1.cli_primavera
             FROM public.clientes c1
             WHERE (ri.raw_cli_primavera IS NOT NULL AND TRIM(c1.cli_primavera) = ri.raw_cli_primavera)
-               OR (ri.raw_sigla IS NOT NULL AND (
-                   UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla)
-                   OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sigla)
-                   OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%'
-               ))
-               OR (ri.raw_sub_familia IS NOT NULL AND (
-                   UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia)
-                   OR UPPER(TRIM(c1.name)) = UPPER(ri.raw_sub_familia)
-                   OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sub_familia) || '%'
-               ))
-               OR (ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(TRIM(ri.raw_armazem), 3)))
+               OR (ri.raw_sigla IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla))
+               OR (ri.raw_sub_familia IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia))
+               OR (ri.raw_chave2 IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(NULLIF(regexp_replace(ri.raw_chave2, '[0-9]', '', 'g'), '')))
+               OR (ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(ri.raw_armazem, 3)))
+               OR (ri.raw_sigla IS NOT NULL AND (UPPER(TRIM(c1.name)) = UPPER(ri.raw_sigla) OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%'))
+               OR (ri.raw_sub_familia IS NOT NULL AND (UPPER(TRIM(c1.name)) = UPPER(ri.raw_sub_familia) OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sub_familia) || '%'))
             ORDER BY
                 CASE
                     WHEN ri.raw_cli_primavera IS NOT NULL AND TRIM(c1.cli_primavera) = ri.raw_cli_primavera THEN 1
                     WHEN ri.raw_sigla IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sigla) THEN 2
-                    WHEN ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(TRIM(ri.raw_armazem), 3)) THEN 3
-                    WHEN ri.raw_sigla IS NOT NULL AND UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%' THEN 4
-                    WHEN ri.raw_sub_familia IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia) THEN 5
-                    ELSE 6
+                    WHEN ri.raw_sub_familia IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(ri.raw_sub_familia) THEN 3
+                    WHEN ri.raw_chave2 IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(NULLIF(regexp_replace(ri.raw_chave2, '[0-9]', '', 'g'), '')) THEN 4
+                    WHEN ri.raw_armazem IS NOT NULL AND UPPER(TRIM(c1.sigla)) = UPPER(LEFT(ri.raw_armazem, 3)) THEN 5
+                    WHEN ri.raw_sigla IS NOT NULL AND (UPPER(TRIM(c1.name)) = UPPER(ri.raw_sigla) OR UPPER(TRIM(c1.name)) LIKE UPPER(ri.raw_sigla) || '%') THEN 6
+                    ELSE 7
                 END
             LIMIT 1
         ) c ON true
