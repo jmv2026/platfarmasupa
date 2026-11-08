@@ -768,7 +768,8 @@
       <code>public.movimentos_linhas</code> cujo <code>updated_at</code> seja posterior a <code>data_stock</code> do
       respetivo cliente e armazém, e deduzindo no Armazém <code>01</code> todos os pedidos ativos em
       <code>public.pedidos</code> exceto aqueles cujo <code>doc_primavera</code> coincida com algum
-      <code>documento_ref</code> em <code>public.movimentos</code>.</li>
+      <code>documento_ref</code> em <code>public.movimentos</code>.
+    </li>
     <li><strong>Filtro Multidimensional:</strong> Filtragem por cliente, armazém (01 Venda a 10 MIA), lote,
       código/descrição de artigo e estado de validade.</li>
     <li><strong>Regras Regulamentares de Validade (Tabela <code>tempos</code>):</strong> Classificação visual de cada
@@ -840,7 +841,8 @@
             class="type-badge">data_stock</span>, <span class="type-badge">ultimo_movimento</span></td>
         <td>Fonte primária de dados para o inventário consolidado: combina <code>public.stock</code> + movimentos com
           <code>updated_at &gt; data_stock</code> + pedidos sem <code>doc_primavera</code> em
-          <code>public.movimentos</code>.</td>
+          <code>public.movimentos</code>.
+        </td>
       </tr>
       <tr>
         <td><strong>vw_stock_pedidos</strong> (View)</td>
@@ -849,7 +851,8 @@
             class="type-badge">validade</span>, <span class="type-badge">stock</span>, <span
             class="type-badge">data_stock</span>, <span class="type-badge">ultimo_movimento</span></td>
         <td>Stock disponível para venda no Armazém <code>01</code> (filtrado de <code>vw_stock_atual</code> com
-          <code>stock &gt; 0</code>).</td>
+          <code>stock &gt; 0</code>).
+        </td>
       </tr>
       <tr>
         <td><strong>vw_stock_zero</strong> (View)</td>
@@ -1306,7 +1309,8 @@
   <div class="page-break"></div>
   <h2>Tabela: <code>movimentos</code> (Cabeçalhos de Documento)</h2>
   <p>Tabela de cabeçalho dos documentos de movimento (faturas, guias, entradas). Relação 1:N com
-    <code>movimentos_linhas</code>.</p>
+    <code>movimentos_linhas</code>.
+  </p>
   <table>
     <thead>
       <tr>
@@ -1531,15 +1535,19 @@
     <strong>Lógica de Contabilização:</strong>
     <ul>
       <li><strong>Base Primária (<code>public.stock</code>):</strong> Saldo de referência com data e hora exatas em
-        <code>data_stock</code> (<code>timestamp with time zone</code>, sem default <code>now()</code>).</li>
-      <li><strong>Movimentos Posteriores (<code>public.movimentos_linhas</code> + <code>public.movimentos</code>):</strong>
+        <code>data_stock</code> (<code>timestamp with time zone</code>, sem default <code>now()</code>).
+      </li>
+      <li><strong>Movimentos Posteriores (<code>public.movimentos_linhas</code> +
+          <code>public.movimentos</code>):</strong>
         Apenas movimentos com <code>COALESCE(ml.updated_at, m.updated_at) &gt; data_stock</code> do respetivo cliente e
         armazém (Entradas <code>ES</code>/<code>ET</code>/<code>E</code> somam <code>+quantidade</code>; Saídas
-        <code>SS</code>/<code>ST</code>/<code>S</code> abatem <code>-quantidade</code>).</li>
+        <code>SS</code>/<code>ST</code>/<code>S</code> abatem <code>-quantidade</code>).
+      </li>
       <li><strong>Pedidos Efetuados (<code>public.pedidos</code> + <code>public.pedido_linhas</code>):</strong> Abate
         (<code>-quantidade</code> no Armazém <code>01</code>) todos os pedidos com <code>stock = true</code> e
         <code>status &lt;&gt; 'cancelado'</code>, <strong>exceto</strong> aqueles cujo <code>doc_primavera</code>
-        coincida com algum <code>documento_ref</code> em <code>public.movimentos</code>.</li>
+        coincida com algum <code>documento_ref</code> em <code>public.movimentos</code>.
+      </li>
     </ul>
   </div>
 
@@ -1548,7 +1556,8 @@
     <code>HAVING SUM(stock) &gt; 0</code> (existências disponíveis para venda). <code>vw_stock_zero</code> aplica a
     mesma regra consolidada (<code>stock</code> + movimentos posteriores a <code>data_stock</code> + pedidos sem
     <code>doc_primavera</code> em <code>movimentos</code>) ao nível do artigo para listar as referências com saldo total
-    igual ou inferior a zero.</p>
+    igual ou inferior a zero.
+  </p>
 
   <h3>3. <code>vw_pedidos</code></h3>
   <p>Agrupa movimentos do tipo 'ss' (saída de stock) por cliente e documento de referência, calculando a data de
