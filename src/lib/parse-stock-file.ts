@@ -12,7 +12,7 @@ export interface StockImportRow {
   localizacao?: string | null;
   lote?: string | null;
   stock: number;
-  data_stock?: string | null; // YYYY-MM-DD (Data do registo / saldo de stock)
+  data_stock?: string | null; // ISO Timestamp ou YYYY-MM-DD HH:mm:ss (Data/Hora do registo de stock)
   validade?: string | null; // YYYY-MM-DD (Data de validade do lote)
   data_fabrico?: string | null; // YYYY-MM-DD (Data de fabrico do lote)
 }
@@ -109,6 +109,58 @@ function parseDateOnly(v: any): string | null {
   return null;
 }
 
+/**
+ * Converte data/hora para string ISO / YYYY-MM-DDTHH:mm:ss (preserva hora se existir)
+ */
+function parseDateTime(v: any): string | null {
+  if (!v) return null;
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return null;
+    return v.toISOString();
+  }
+  if (typeof v === 'number' && v > 20000 && v < 60000) {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  }
+  const str = String(v).trim();
+  if (!str || str.toLowerCase() === 'null') return null;
+
+  const normalized = str.replace('T', ' ').trim();
+  const [datePart, timePartRaw] = normalized.split(/\s+/);
+  const parts = datePart.split(/[\/\-]/);
+  let isoDate: string | null = null;
+
+  if (parts.length === 3) {
+    if (parts[0].length === 4) {
+      const year = parts[0];
+      const month = parts[1].padStart(2, '0');
+      const day = parts[2].padStart(2, '0');
+      isoDate = `${year}-${month}-${day}`;
+    } else {
+      const day = parts[0].padStart(2, '0');
+      const month = parts[1].padStart(2, '0');
+      const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      isoDate = `${year}-${month}-${day}`;
+    }
+  } else if (/^\d{4}-\d{2}-\d{2}/.test(datePart)) {
+    isoDate = datePart.substring(0, 10);
+  }
+
+  if (!isoDate) return null;
+
+  if (timePartRaw && /^\d{1,2}:\d{2}(:\d{2})?/.test(timePartRaw)) {
+    const tParts = timePartRaw.split(':');
+    const hh = tParts[0].padStart(2, '0');
+    const mm = (tParts[1] || '00').padStart(2, '0');
+    const ss = (tParts[2] || '00').substring(0, 2).padStart(2, '0');
+    return `${isoDate}T${hh}:${mm}:${ss}`;
+  }
+
+  return `${isoDate}T00:00:00`;
+}
+
 function cleanCell(val: any): string {
   if (val === undefined || val === null) return '';
   let s = String(val).trim();
@@ -189,6 +241,8 @@ function normalizeHeader(key: string): string {
   if (
     clean === 'datastock' ||
     clean === 'data_stock' ||
+    clean === 'datahora' ||
+    clean === 'data_hora' ||
     clean === 'data' ||
     clean === 'datasaldo' ||
     clean === 'datacontagem' ||
@@ -291,7 +345,7 @@ export function parseStockTextFile(text: string, defaultCliente?: string): Stock
       localizacao: r['localizacao'] ? r['localizacao'].trim() : null,
       lote: r['lote'] ? r['lote'].trim() : null,
       stock: parseNum(r['stock'], 0),
-      data_stock: parseDateOnly(r['data_stock']),
+      data_stock: parseDateTime(r['data_stock']),
       validade: parseDateOnly(r['validade']),
       data_fabrico: parseDateOnly(r['data_fabrico']),
     });
@@ -368,7 +422,7 @@ export async function parseStockExcelFile(
         localizacao: r['localizacao'] ? String(r['localizacao']).trim() : null,
         lote: r['lote'] ? String(r['lote']).trim() : null,
         stock: parseNum(r['stock'], 0),
-        data_stock: parseDateOnly(r['data_stock']),
+        data_stock: parseDateTime(r['data_stock']),
         validade: parseDateOnly(r['validade']),
         data_fabrico: parseDateOnly(r['data_fabrico']),
       });

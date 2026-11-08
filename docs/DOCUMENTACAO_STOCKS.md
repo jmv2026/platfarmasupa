@@ -16,9 +16,9 @@ O módulo de **Stocks** (`/stocks`) centraliza o controlo físico, comercial e r
 flowchart TD
     subgraph Canvas ["Mapa de Arquitetura e Fluxo de Dados — Página Stocks (/stocks)"]
         subgraph Origem ["Tabelas Base (PostgreSQL)"]
-            T_MOV["movimentos + movimentos_linhas"]
-            T_STK["stock (Snapshot / Inicial)"]
-            T_PED["pedidos + pedido_linhas"]
+            T_STK["stock (Base Primária + data_stock timestamptz)"]
+            T_MOV["movimentos + movimentos_linhas (Apenas updated_at > data_stock)"]
+            T_PED["pedidos + pedido_linhas (Exceto doc_primavera = documento_ref)"]
             T_ART["artigos + armazens + tempos + clientes"]
         end
 
@@ -43,7 +43,7 @@ flowchart TD
             EXP["Exportação CSV e Excel (.xlsx)"]
         end
 
-        T_MOV & T_STK & T_PED & T_ART --> V_PED & V_ATU & V_ZER
+        T_STK & T_MOV & T_PED & T_ART --> V_PED & V_ATU & V_ZER
         V_PED & V_ATU & V_ZER & T_ART --> P_STK
         P_STK --> KPI
         KPI --> TAB1 & TAB2 & TAB3 & TAB4 & TAB5
@@ -87,24 +87,44 @@ flowchart TD
 | `src/app/stocks/page.tsx` | *Server Component* da rota `/stocks`; autentica o utilizador via `getAuthContext()`, aplica o isolamento por cliente (`userClientId`) e carrega em paralelo (`Promise.all`) as *views* `vw_stock_atual`, `vw_stock_pedidos`, `vw_stock_zero`, `clientes` e `tempos`. |
 | `src/app/stocks/stocks-view.tsx` | *Client Component* principal de visualização, filtragem multi-critério, ordenação dinâmica por colunas (`Intl.Collator`), cálculo dos 4 KPIs de topo, comutação instantânea entre as 5 abas e exportação para CSV / Excel (`.xlsx`). |
 | `src/app/stocks/actions.ts` | *Server Actions* restritas ao perfil `admin` (`editarLinhaStockAction` e `apagarLinhaStockAction`) para manutenção direta de registos na tabela `public.stock`, com invalidação automática de cache (`revalidatePath`). |
-| `supabase/migrations/20261102102500_pedidos_stock_handoff_to_movimentos_on_processar.sql` | Definição SQL das *views* de cálculo de stock (`vw_stock_atual`, `vw_stock_pedidos` e `vw_stock_zero`) e da regra de transição (*handoff*) entre `pedidos` e `movimentos`. |
+| `supabase/migrations/20261108140500_stock_views_only_from_stock_table.sql` | Definição SQL das *views* de cálculo de stock (`vw_stock_atual`, `vw_stock_pedidos` e `vw_stock_zero`) e da função `sincronizar_pedido_para_movimentos`. |
 
 ---
 
 ## 2. Motor de Contabilização de Stock (Regras de Negócio SQL)
 
-As *views* `public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero` calculam o saldo de cada artigo e lote combinando três fontes de dados em tempo real:
+As *views* `public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero` calculam o saldo de cada cliente, armazém (`tipo_armazem`), artigo e lote combinando três fontes de dados segundo uma linha temporal rigorosa:
 
-$$\text{Stock Lote} = \sum \text{Entradas}_{\text{movimentos}} - \sum \text{Saídas}_{\text{movimentos}} + \text{Stock Inicial}_{\text{snapshot}} - \sum \text{Reservas Ativas}_{\text{pedidos}}$$
+$$\text{Stock Lote} = \text{Stock Base}_{\text{stock}} + \sum_{\text{updated\_at} > \text{data\_stock}} \left(\text{Entradas}_{\text{movimentos}} - \text{Saídas}_{\text{movimentos}}\right) - \sum_{\text{doc\_primavera} \notin \text{movimentos}} \text{Pedidos Ativos}_{\text{pedidos}}$$
 
-1. **Movimentos de Armazém (`public.movimentos` + `public.movimentos_linhas`)**:
-   - **Entradas (`ES`, `ET`, `E`)**: Somam positivamente (`+quantidade`) ao lote e armazém respetivo.
-   - **Saídas (`SS`, `ST`, `S`)**: Abatem (`-quantidade`) ao lote e armazém respetivo.
-2. **Snapshot de Stock (`public.stock`)**:
-   - Utilizado como base de saldo para clientes que ainda não possuem movimentos de entrada (`ES`/`ET`) registados em `movimentos_linhas`.
-3. **Dedução de Pedidos Ativos e Regra de Transição (*Handoff*) (`public.pedidos` + `public.pedido_linhas`)**:
-   - Todo o pedido com `stock = true` e `status <> 'cancelado'` abate imediatamente (`-quantidade`) ao stock do **Armazém 01 (Venda)** através da tabela `pedidos`.
-   - **Regra de Handoff Primavera (`processar = true`)**: Assim que o pedido tem o campo `processar = true` assinalado **e** existe na tabela `public.movimentos` um movimento cujo `documento_ref` coincide com o `doc_primavera` do pedido, o pedido **deixa de ser deduzido pela tabela `pedidos`** e passa a ser contabilizado **exclusivamente pela tabela `movimentos`**, evitando qualquer dupla dedução de stock.
+1. **Base de Stock (`public.stock` — CTE `stock_resolvido`)**:
+   - Constitui a referência base de saldo por cliente, armazém (`tipo_armazem`), artigo e lote.
+   - O campo `data_stock` é do tipo `timestamp with time zone` (data e hora exatas da foto de stock importada do ERP/Access, sem valor por defeito `now()`).
+   - A associação ao cliente resolve-se por prioridade: `sigla`/`cliente_ser`, `entidade` (`cli_primavera`) ou prefixo de 3 caracteres do código de `armazem`.
+
+2. **Movimentos Posteriores ao Stock (`public.movimentos` + `public.movimentos_linhas` — CTE `movimentos_posteriores`)**:
+   - São contabilizados **apenas** os movimentos cujo carimbo de atualização seja estritamente posterior à data/hora do registo de stock do respetivo cliente e armazém:
+     ```sql
+     COALESCE(ml.updated_at, m.updated_at) > COALESCE(rdl.max_data_stock_lote, rda.max_data_stock_armazem, rdc.max_data_stock_cliente)
+     ```
+   - **Entradas (`ES`, `ET`, `E`)**: Somam positivamente (`+quantidade`) ao stock do cliente e armazém correspondente.
+   - **Saídas (`SS`, `ST`, `S`)**: Abatem (`-quantidade`) ao stock do cliente e armazém correspondente.
+   - **Proteção de `updated_at` na Importação**: Nas RPCs `sync_movimentos_from_access` e `transferir_plat_movimentos_para_movimentos`, a cláusula `ON CONFLICT DO UPDATE` inclui `WHERE ... IS DISTINCT FROM ...`, garantindo que `updated_at` só é atualizado quando existem alterações reais nos valores face aos dados já importados.
+
+3. **Pedidos Efetuados Pendentes de ERP (`public.pedidos` + `public.pedido_linhas` — CTE `pedidos_pendentes_erp`)**:
+   - Contabiliza todos os pedidos efetuados na plataforma (`COALESCE(p.stock, true) = true` e `status <> 'cancelado'`), abatendo `-quantidade` ao **Armazém `01` (Venda)** do respetivo cliente, artigo e lote.
+   - **Exclusão Automática por `doc_primavera` (`documento_ref`)**: São excluídos do abate via `pedidos` todos os pedidos cujo campo `doc_primavera` coincida com algum `documento_ref` na tabela `public.movimentos`:
+     ```sql
+     AND NOT (
+         NULLIF(TRIM(BOTH FROM p.doc_primavera), ''::text) IS NOT NULL
+         AND EXISTS (
+             SELECT 1
+             FROM public.movimentos m
+             WHERE lower(TRIM(BOTH FROM m.documento_ref)) = lower(TRIM(BOTH FROM p.doc_primavera))
+         )
+     )
+     ```
+   - Esta regra assegura que, assim que o documento correspondente entra no ERP (`public.movimentos`), o seu efeito no stock passa a ser governado exclusivamente pelo ERP (seja no saldo de `public.stock` ou em `movimentos_posteriores`), evitando qualquer duplicação de abate.
 
 ---
 
@@ -143,11 +163,11 @@ O painel de filtragem atua transversalmente sobre as abas de stock:
 A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) para comutação instantânea e permite ordenação crescente/decrescente clicando nos cabeçalhos **Artigo** e **Descrição do Artigo**:
 
 ### 5.1 Aba 1 — Stock de Venda (`vw_stock_pedidos`)
-- Apresenta exclusivamente os lotes alojados no **Armazém `01` (Venda Livre)** com saldo positivo (`stock > 0`), disponíveis para alocação imediata na criação de pedidos.
+- Apresenta exclusivamente os lotes alojados no **Armazém `01` (Venda Livre)** com saldo positivo (`stock > 0`), já líquidos de movimentos posteriores a `data_stock` e de pedidos pendentes de faturação no ERP, disponíveis para alocação imediata na criação de pedidos.
 - **Destaque de Limiar Parametrizado (`tempos`)**: Cruza cada linha com os limiares definidos para o cliente na tabela `public.tempos` (`VAL_MH`, `VAL_MV`, `VAL_DM`, `VAL_DC`, `VAL_SA`). Se os dias restantes até à validade forem iguais ou inferiores ao limiar do cliente ($\text{dias} \le \text{VAL\_TIPO}$), a linha é destacada a âmbar.
 
 ### 5.2 Aba 2 — Stock Consolidado (`vw_stock_atual`)
-- Mostra todos os lotes com saldo positivo distribuídos por **todos os armazéns** (`01` a `10`), identificando `armazem_loc`, `tipo_armazem` e a descrição do armazém.
+- Mostra todos os lotes com saldo positivo distribuídos por **todos os armazéns** (`01` a `10`), identificando `armazem_loc`, `tipo_armazem`, a descrição do armazém, `data_stock` e `ultimo_movimento`.
 - **Modo Administrador (`isAdmin`)**: Nos perfis de administração, cada linha disponibiliza botões para **Editar** (`editarLinhaStockAction`) ou **Apagar** (`apagarLinhaStockAction`) o registo de stock correspondente.
 
 ### 5.3 Aba 3 — Resumo por Artigo (`resumoArtigos`)
@@ -162,8 +182,8 @@ A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) p
 - Calcula os **Dias Restantes** ($\lceil(\text{Validade} - \text{Hoje}) / 86\,400\,000\rceil$) e classifica o estado de cada lote consoante os tempos parametrizados por cliente e tipologia de artigo (**Expirado**, **Bloqueado / Alerta** ou **Conforme**).
 
 ### 5.5 Aba 5 — Artigos com Stock 0 (`vw_stock_zero`)
-- Identifica todas as referências do catálogo do cliente (`public.artigos`) ou com histórico de movimentos cujo saldo total atual em armazém é **zero** ($\sum \text{stock} \le 0$).
-- **Regra de Exclusão ao Nível do Artigo**: O lote é ignorado — se um artigo tiver stock positivo em qualquer lote ou armazém (`artigosComStockPositivo`), nunca é listado como Stock 0. Mostra também a data do **Último Movimento** e o **Total de Movimentos** históricos.
+- Identifica todas as referências do catálogo do cliente (`public.artigos`) ou com histórico de stock/movimentos/pedidos cujo saldo total atual em armazém é **zero** ($\sum \text{stock} \le 0$).
+- **Regra de Exclusão ao Nível do Artigo**: O lote é ignorado — se um artigo tiver stock positivo em qualquer lote ou armazém (`positive_articles`), nunca é listado como Stock 0. Mostra também a data do **Último Movimento** (`ultimo_movimento`) e o **Total de Registos** (`total_movimentos`).
 
 ---
 
@@ -172,4 +192,3 @@ A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) p
 Os botões de exportação no topo da página exportam exatamente a vista e os filtros ativos na aba selecionada:
 - **Exportação CSV**: Gera um ficheiro `.csv` codificado em `UTF-8 com BOM (\uFEFF)` para abertura direta no Microsoft Excel com acentuação portuguesa preservada.
 - **Exportação Excel (`.xlsx`)**: Carrega dinamicamente a biblioteca `ExcelJS` (`await import('exceljs')`) e gera uma folha de cálculo nativa formatada com cabeçalho institucional verde-floresta Sermail (`#1B4332`), larguras de coluna ajustadas e formatação numérica/datas localizada (`pt-PT`).
-

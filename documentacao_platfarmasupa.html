@@ -762,13 +762,20 @@
   <p>Visão integral do inventário físico e logístico em armazém. Permite acompanhamento rigoroso de lotes farmacêuticos,
     posições de arrumação e cumprimento dos prazos regulamentares de validade (Good Distribution Practices - GDP).</p>
   <ul>
+    <li><strong>Motor de Contabilização Consolidada de Stock:</strong> O saldo de cada lote é apurado a partir da tabela
+      base <code>public.stock</code> (com data e hora exatas em <code>data_stock</code> do tipo
+      <code>timestamptz</code>, sem default <code>now()</code>), somando/abatendo apenas os movimentos de
+      <code>public.movimentos_linhas</code> cujo <code>updated_at</code> seja posterior a <code>data_stock</code> do
+      respetivo cliente e armazém, e deduzindo no Armazém <code>01</code> todos os pedidos ativos em
+      <code>public.pedidos</code> exceto aqueles cujo <code>doc_primavera</code> coincida com algum
+      <code>documento_ref</code> em <code>public.movimentos</code>.</li>
     <li><strong>Filtro Multidimensional:</strong> Filtragem por cliente, armazém (01 Venda a 10 MIA), lote,
       código/descrição de artigo e estado de validade.</li>
     <li><strong>Regras Regulamentares de Validade (Tabela <code>tempos</code>):</strong> Classificação visual de cada
       lote com base na sua categoria regulamentar (MH, MV, DM, DC, SA) e parametrizações de Validade (VAL) e Expirado
       (EXP).</li>
-    <li><strong>Exportação Excel Avançada:</strong> Download instantâneo da listagem completa com estilização e
-      metadados via <code>exceljs</code>.</li>
+    <li><strong>Exportação CSV e Excel Avançada:</strong> Download instantâneo da listagem filtrada em CSV (UTF-8 BOM)
+      ou Excel (<code>.xlsx</code>) com estilização institucional via <code>exceljs</code>.</li>
   </ul>
 
   <h2>Componentes e Funções Principais</h2>
@@ -785,13 +792,14 @@
         <td><span class="code-fn">StocksPage()</span></td>
         <td><code>stocks/page.tsx</code></td>
         <td>Server component: carrega em simultâneo <code>vw_stock_atual</code>, <code>vw_stock_pedidos</code>,
-          <code>clientes</code> e <code>tempos</code> com segurança RBAC.
+          <code>vw_stock_zero</code>, <code>clientes</code> e <code>tempos</code> com segurança RBAC.
         </td>
       </tr>
       <tr>
         <td><span class="code-fn">StocksView</span></td>
         <td><code>stocks-view.tsx</code></td>
-        <td>Client component: renderiza a tabela de inventário, pesquisa reativa, paginação e modal de detalhe de lotes.
+        <td>Client component: renderiza os 4 KPIs de topo, as 5 abas de inventário (Stock de Venda, Stock Consolidado,
+          Resumo por Artigo, Controlo de Validades e Artigos com Stock 0), pesquisa reativa e ordenação.
         </td>
       </tr>
       <tr>
@@ -824,20 +832,40 @@
       <tr>
         <td><strong>vw_stock_atual</strong> (View)</td>
         <td><span class="type-badge">cliente_id</span>, <span class="type-badge">cliente_sigla</span>, <span
-            class="type-badge">artigo_codigo</span>, <span class="type-badge">artigo_descricao</span>, <span
-            class="type-badge">tipo_armazem</span>, <span class="type-badge">armazem_descricao</span>, <span
-            class="type-badge">armazem_loc</span>, <span class="type-badge">lote</span>, <span
-            class="type-badge">validade</span>, <span class="type-badge">data_fabrico</span>, <span
-            class="type-badge">stock</span>, <span class="type-badge">tipo_artigo</span>, <span
-            class="type-badge">tipo_armazenamento</span></td>
-        <td>Fonte primária de dados para toda a grelha de inventário. Agrupa entradas e saídas de stock físicas.</td>
+            class="type-badge">artigo_id</span>, <span class="type-badge">artigo_cli</span>, <span
+            class="type-badge">descricao</span>, <span class="type-badge">tipo_armazem</span>, <span
+            class="type-badge">armazem_descricao</span>, <span class="type-badge">armazem_loc</span>, <span
+            class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span
+            class="type-badge">data_fabrico</span>, <span class="type-badge">stock</span>, <span
+            class="type-badge">data_stock</span>, <span class="type-badge">ultimo_movimento</span></td>
+        <td>Fonte primária de dados para o inventário consolidado: combina <code>public.stock</code> + movimentos com
+          <code>updated_at &gt; data_stock</code> + pedidos sem <code>doc_primavera</code> em
+          <code>public.movimentos</code>.</td>
+      </tr>
+      <tr>
+        <td><strong>vw_stock_pedidos</strong> (View)</td>
+        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">artigo_id</span>, <span
+            class="type-badge">artigo_cli</span>, <span class="type-badge">lote</span>, <span
+            class="type-badge">validade</span>, <span class="type-badge">stock</span>, <span
+            class="type-badge">data_stock</span>, <span class="type-badge">ultimo_movimento</span></td>
+        <td>Stock disponível para venda no Armazém <code>01</code> (filtrado de <code>vw_stock_atual</code> com
+          <code>stock &gt; 0</code>).</td>
+      </tr>
+      <tr>
+        <td><strong>vw_stock_zero</strong> (View)</td>
+        <td><span class="type-badge">cliente_id</span>, <span class="type-badge">artigo_id</span>, <span
+            class="type-badge">artigo_cli</span>, <span class="type-badge">descricao</span>, <span
+            class="type-badge">stock</span>, <span class="type-badge">ultimo_movimento</span>, <span
+            class="type-badge">total_movimentos</span></td>
+        <td>Lista de artigos do cliente cujo saldo total consolidado em todos os lotes e armazéns é igual ou inferior a
+          zero.</td>
       </tr>
       <tr>
         <td><strong>armazens</strong> (Tabela)</td>
         <td><span class="type-badge">tipo_armazem</span> <span class="key-badge pk-badge">PK</span>, <span
             class="type-badge">descricao</span></td>
         <td>Identificação dos armazéns: 01 (Venda), 02 (Expirados), 03 (Danificados), 04 (Devoluções), 05 (Quarentena),
-          07 (Farmacoteca), 09 (Validade), 10 (MIA).</td>
+          06 (Destruição), 07 (Farmacoteca), 09 (Validade), 10 (MIA).</td>
       </tr>
       <tr>
         <td><strong>tempos</strong> (Tabela)</td>
@@ -1277,7 +1305,8 @@
   <!-- CONTINUAÇÃO DICIONÁRIO -->
   <div class="page-break"></div>
   <h2>Tabela: <code>movimentos</code> (Cabeçalhos de Documento)</h2>
-  <p>Tabela de cabeçalho dos documentos de movimento (faturas, guias, entradas). Relação 1:N com <code>movimentos_linhas</code>.</p>
+  <p>Tabela de cabeçalho dos documentos de movimento (faturas, guias, entradas). Relação 1:N com
+    <code>movimentos_linhas</code>.</p>
   <table>
     <thead>
       <tr>
@@ -1340,7 +1369,8 @@
   </table>
 
   <h2>Tabela: <code>movimentos_linhas</code> (Linhas de Artigo)</h2>
-  <p>Tabela de detalhe de cada artigo movimentado. Cada linha possui chave primária <code>doc_linha</code>, permitindo ler todas as linhas individualmente sem colisões.</p>
+  <p>Tabela de detalhe de cada artigo movimentado. Cada linha possui chave primária <code>doc_linha</code>, permitindo
+    ler todas as linhas individualmente sem colisões.</p>
   <table>
     <thead>
       <tr>
@@ -1355,7 +1385,8 @@
         <td><code>doc_linha</code></td>
         <td><span class="type-badge">text</span></td>
         <td><span class="key-badge pk-badge">PK</span> NOT NULL</td>
-        <td>Chave primária única da linha de movimento (ex: 'MAX-FA 26MAX/143-6'). Garante a integridade e leitura de todas as linhas.</td>
+        <td>Chave primária única da linha de movimento (ex: 'MAX-FA 26MAX/143-6'). Garante a integridade e leitura de
+          todas as linhas.</td>
       </tr>
       <tr>
         <td><code>documento_ref</code></td>
@@ -1379,7 +1410,8 @@
         <td><code>tipo_movimento</code></td>
         <td><span class="type-badge">text</span></td>
         <td>CHECK ('es', 'ss', 'et', 'st')</td>
-        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada Transferência, <strong>st:</strong> Saída Transferência.</td>
+        <td><strong>es:</strong> Entrada Stock, <strong>ss:</strong> Saída Stock, <strong>et:</strong> Entrada
+          Transferência, <strong>st:</strong> Saída Transferência.</td>
       </tr>
       <tr>
         <td><code>quantidade</code></td>
@@ -1493,18 +1525,30 @@
   <h2>Views SQL Analíticas e Operacionais</h2>
 
   <h3>1. <code>vw_stock_atual</code></h3>
-  <p>Calcula o stock real consolidado agrupando todas as entradas e saídas físicas de cada cliente, artigo, armazém e
-    lote:</p>
+  <p>Calcula o stock real consolidado de cada cliente, armazém (<code>tipo_armazem</code>), artigo e lote consolidando 3
+    fontes temporais:</p>
   <div class="info-card">
-    <strong>Lógica de Agrupamento:</strong>
-    <code>SUM(CASE WHEN tipo_movimento IN ('es', 'et') THEN quantidade WHEN tipo_movimento IN ('ss', 'st') THEN -quantidade ELSE 0 END)</code>
-    filtrando <code>HAVING stock &gt; 0</code>.
+    <strong>Lógica de Contabilização:</strong>
+    <ul>
+      <li><strong>Base Primária (<code>public.stock</code>):</strong> Saldo de referência com data e hora exatas em
+        <code>data_stock</code> (<code>timestamp with time zone</code>, sem default <code>now()</code>).</li>
+      <li><strong>Movimentos Posteriores (<code>public.movimentos_linhas</code> + <code>public.movimentos</code>):</strong>
+        Apenas movimentos com <code>COALESCE(ml.updated_at, m.updated_at) &gt; data_stock</code> do respetivo cliente e
+        armazém (Entradas <code>ES</code>/<code>ET</code>/<code>E</code> somam <code>+quantidade</code>; Saídas
+        <code>SS</code>/<code>ST</code>/<code>S</code> abatem <code>-quantidade</code>).</li>
+      <li><strong>Pedidos Efetuados (<code>public.pedidos</code> + <code>public.pedido_linhas</code>):</strong> Abate
+        (<code>-quantidade</code> no Armazém <code>01</code>) todos os pedidos com <code>stock = true</code> e
+        <code>status &lt;&gt; 'cancelado'</code>, <strong>exceto</strong> aqueles cujo <code>doc_primavera</code>
+        coincida com algum <code>documento_ref</code> em <code>public.movimentos</code>.</li>
+    </ul>
   </div>
 
-  <h3>2. <code>vw_stock_pedidos</code></h3>
-  <p>Semelhante à <code>vw_stock_atual</code>, mas com o filtro restrito <code>WHERE tipo_armazem = '01'</code> (Armazém
-    de Venda). É utilizada exclusivamente pelo módulo de Registo de Pedidos para prevenir a seleção de lotes que estejam
-    em quarentena ou expirados.</p>
+  <h3>2. <code>vw_stock_pedidos</code> e <code>vw_stock_zero</code></h3>
+  <p><code>vw_stock_pedidos</code> filtra <code>vw_stock_atual</code> para <code>WHERE tipo_armazem = '01'</code> e
+    <code>HAVING SUM(stock) &gt; 0</code> (existências disponíveis para venda). <code>vw_stock_zero</code> aplica a
+    mesma regra consolidada (<code>stock</code> + movimentos posteriores a <code>data_stock</code> + pedidos sem
+    <code>doc_primavera</code> em <code>movimentos</code>) ao nível do artigo para listar as referências com saldo total
+    igual ou inferior a zero.</p>
 
   <h3>3. <code>vw_pedidos</code></h3>
   <p>Agrupa movimentos do tipo 'ss' (saída de stock) por cliente e documento de referência, calculando a data de

@@ -117,10 +117,12 @@ BEGIN
                 )), ',', '.'), '')::numeric,
                 0
             ) AS raw_stock,
-            public.fn_parse_access_date(COALESCE(
+            public.fn_parse_access_timestamp(COALESCE(
                 r->>'data_stock', r->>'Data_Stock', r->>'DATA_STOCK',
-                r->>'DataStock', r->>'datastock'
-            ), false) AS raw_data_stock,
+                r->>'DataStock', r->>'datastock',
+                r->>'data_hora', r->>'Data_Hora', r->>'DATA_HORA',
+                r->>'DataHora', r->>'datahora'
+            )) AS raw_data_stock,
             public.fn_parse_access_date(COALESCE(
                 r->>'data_fabrico', r->>'Data_Fabrico', r->>'DATA_FABRICO',
                 r->>'DataFabrico', r->>'datafabrico'
@@ -140,7 +142,7 @@ BEGIN
         ri.raw_localizacao AS localizacao,
         ri.raw_lote AS lote,
         ri.raw_stock AS stock,
-        COALESCE(ri.raw_data_stock, CURRENT_DATE) AS data_stock,
+        ri.raw_data_stock AS data_stock,
         ri.raw_data_fabrico AS data_fabrico,
         ri.raw_validade AS validade
     FROM raw_items ri

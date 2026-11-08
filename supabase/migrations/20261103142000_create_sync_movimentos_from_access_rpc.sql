@@ -634,7 +634,36 @@ BEGIN
             codpostalentrega = COALESCE(EXCLUDED.codpostalentrega, public.movimentos.codpostalentrega),
             "CodPostalEntrega" = COALESCE(EXCLUDED."CodPostalEntrega", public.movimentos."CodPostalEntrega"),
             observacoes = COALESCE(EXCLUDED.observacoes, public.movimentos.observacoes),
-            updated_at = now();
+            updated_at = now()
+        WHERE
+            public.movimentos.cliente_id IS DISTINCT FROM EXCLUDED.cliente_id
+            OR public.movimentos.sigla IS DISTINCT FROM COALESCE(EXCLUDED.sigla, public.movimentos.sigla)
+            OR public.movimentos.cli_primavera IS DISTINCT FROM COALESCE(EXCLUDED.cli_primavera, public.movimentos.cli_primavera)
+            OR public.movimentos.documento IS DISTINCT FROM COALESCE(EXCLUDED.documento, public.movimentos.documento)
+            OR public.movimentos.tipo_doc IS DISTINCT FROM COALESCE(EXCLUDED.tipo_doc, public.movimentos.tipo_doc)
+            OR public.movimentos.num_doc IS DISTINCT FROM COALESCE(EXCLUDED.num_doc, public.movimentos.num_doc)
+            OR public.movimentos.data IS DISTINCT FROM COALESCE(EXCLUDED.data, public.movimentos.data)
+            OR public.movimentos.tipo_movimento IS DISTINCT FROM COALESCE(EXCLUDED.tipo_movimento, public.movimentos.tipo_movimento)
+            OR public.movimentos.chave1 IS DISTINCT FROM COALESCE(EXCLUDED.chave1, public.movimentos.chave1)
+            OR public.movimentos.chave2 IS DISTINCT FROM COALESCE(EXCLUDED.chave2, public.movimentos.chave2)
+            OR public.movimentos.entidade IS DISTINCT FROM COALESCE(EXCLUDED.entidade, public.movimentos.entidade)
+            OR public.movimentos.total_iva IS DISTINCT FROM EXCLUDED.total_iva
+            OR public.movimentos.total_merc IS DISTINCT FROM EXCLUDED.total_merc
+            OR public.movimentos.total_outros IS DISTINCT FROM EXCLUDED.total_outros
+            OR public.movimentos.total_desc IS DISTINCT FROM EXCLUDED.total_desc
+            OR public.movimentos.requisicao IS DISTINCT FROM COALESCE(EXCLUDED.requisicao, public.movimentos.requisicao)
+            OR public.movimentos.num_contribuinte IS DISTINCT FROM COALESCE(EXCLUDED.num_contribuinte, public.movimentos.num_contribuinte)
+            OR public.movimentos.nome IS DISTINCT FROM COALESCE(EXCLUDED.nome, public.movimentos.nome)
+            OR public.movimentos.morada IS DISTINCT FROM COALESCE(EXCLUDED.morada, public.movimentos.morada)
+            OR public.movimentos.localidade IS DISTINCT FROM COALESCE(EXCLUDED.localidade, public.movimentos.localidade)
+            OR public.movimentos.cod_postal IS DISTINCT FROM COALESCE(EXCLUDED.cod_postal, public.movimentos.cod_postal)
+            OR public.movimentos.pais IS DISTINCT FROM COALESCE(EXCLUDED.pais, public.movimentos.pais)
+            OR public.movimentos.nome_entrega IS DISTINCT FROM COALESCE(EXCLUDED.nome_entrega, public.movimentos.nome_entrega)
+            OR public.movimentos.entidade_entrega IS DISTINCT FROM COALESCE(EXCLUDED.entidade_entrega, public.movimentos.entidade_entrega)
+            OR public.movimentos.morada_entrega IS DISTINCT FROM COALESCE(EXCLUDED.morada_entrega, public.movimentos.morada_entrega)
+            OR public.movimentos.localidade_entrega IS DISTINCT FROM COALESCE(EXCLUDED.localidade_entrega, public.movimentos.localidade_entrega)
+            OR public.movimentos.cod_postal_entrega IS DISTINCT FROM COALESCE(EXCLUDED.cod_postal_entrega, public.movimentos.cod_postal_entrega)
+            OR public.movimentos.observacoes IS DISTINCT FROM COALESCE(EXCLUDED.observacoes, public.movimentos.observacoes);
 
         GET DIAGNOSTICS v_upserted_headers = ROW_COUNT;
     ELSE
@@ -942,7 +971,57 @@ BEGIN
             cod_postal_entrega = COALESCE(EXCLUDED.cod_postal_entrega, public.movimentos_linhas.cod_postal_entrega),
             observacoes = COALESCE(EXCLUDED.observacoes, public.movimentos_linhas.observacoes),
             observacoes_linha = COALESCE(EXCLUDED.observacoes_linha, public.movimentos_linhas.observacoes_linha),
-            updated_at = now();
+            updated_at = now()
+        WHERE
+            public.movimentos_linhas.documento_ref IS DISTINCT FROM EXCLUDED.documento_ref
+            OR public.movimentos_linhas.num_linha IS DISTINCT FROM EXCLUDED.num_linha
+            OR public.movimentos_linhas.data IS DISTINCT FROM EXCLUDED.data
+            OR public.movimentos_linhas.cliente_ser IS DISTINCT FROM EXCLUDED.cliente_ser
+            OR public.movimentos_linhas.cli_primavera IS DISTINCT FROM COALESCE(EXCLUDED.cli_primavera, public.movimentos_linhas.cli_primavera)
+            OR public.movimentos_linhas.sigla IS DISTINCT FROM EXCLUDED.sigla
+            OR public.movimentos_linhas.documento IS DISTINCT FROM EXCLUDED.documento
+            OR public.movimentos_linhas.tipo_doc IS DISTINCT FROM EXCLUDED.tipo_doc
+            OR public.movimentos_linhas.num_doc IS DISTINCT FROM EXCLUDED.num_doc
+            OR public.movimentos_linhas.chave1 IS DISTINCT FROM EXCLUDED.chave1
+            OR public.movimentos_linhas.chave2 IS DISTINCT FROM EXCLUDED.chave2
+            OR public.movimentos_linhas.valor_unitario IS DISTINCT FROM EXCLUDED.valor_unitario
+            OR public.movimentos_linhas.valor_adicional IS DISTINCT FROM EXCLUDED.valor_adicional
+            OR public.movimentos_linhas.valor_abater IS DISTINCT FROM EXCLUDED.valor_abater
+            OR public.movimentos_linhas.artigo_id IS DISTINCT FROM EXCLUDED.artigo_id
+            OR public.movimentos_linhas.artigo_cli IS DISTINCT FROM EXCLUDED.artigo_cli
+            OR public.movimentos_linhas.descricao IS DISTINCT FROM COALESCE(EXCLUDED.descricao, public.movimentos_linhas.descricao)
+            OR public.movimentos_linhas.tipo_artigo IS DISTINCT FROM COALESCE(EXCLUDED.tipo_artigo, public.movimentos_linhas.tipo_artigo)
+            OR public.movimentos_linhas.armazem IS DISTINCT FROM EXCLUDED.armazem
+            OR public.movimentos_linhas.localizacao IS DISTINCT FROM EXCLUDED.localizacao
+            OR public.movimentos_linhas.lote IS DISTINCT FROM EXCLUDED.lote
+            OR public.movimentos_linhas.nr_serie IS DISTINCT FROM EXCLUDED.nr_serie
+            OR public.movimentos_linhas.quantidade IS DISTINCT FROM EXCLUDED.quantidade
+            OR public.movimentos_linhas.familia IS DISTINCT FROM COALESCE(EXCLUDED.familia, public.movimentos_linhas.familia)
+            OR public.movimentos_linhas.sub_familia IS DISTINCT FROM COALESCE(EXCLUDED.sub_familia, public.movimentos_linhas.sub_familia)
+            OR public.movimentos_linhas.data_fabrico IS DISTINCT FROM EXCLUDED.data_fabrico
+            OR public.movimentos_linhas.validade IS DISTINCT FROM EXCLUDED.validade
+            OR public.movimentos_linhas.tipo_movimento IS DISTINCT FROM EXCLUDED.tipo_movimento
+            OR public.movimentos_linhas.tipo_armazem IS DISTINCT FROM EXCLUDED.tipo_armazem
+            OR public.movimentos_linhas.armazem_loc IS DISTINCT FROM EXCLUDED.armazem_loc
+            OR public.movimentos_linhas.entidade IS DISTINCT FROM COALESCE(EXCLUDED.entidade, public.movimentos_linhas.entidade)
+            OR public.movimentos_linhas.total_iva IS DISTINCT FROM EXCLUDED.total_iva
+            OR public.movimentos_linhas.total_merc IS DISTINCT FROM EXCLUDED.total_merc
+            OR public.movimentos_linhas.total_outros IS DISTINCT FROM EXCLUDED.total_outros
+            OR public.movimentos_linhas.total_desc IS DISTINCT FROM EXCLUDED.total_desc
+            OR public.movimentos_linhas.requisicao IS DISTINCT FROM COALESCE(EXCLUDED.requisicao, public.movimentos_linhas.requisicao)
+            OR public.movimentos_linhas.ref_ser IS DISTINCT FROM COALESCE(EXCLUDED.ref_ser, public.movimentos_linhas.ref_ser)
+            OR public.movimentos_linhas.num_contribuinte IS DISTINCT FROM COALESCE(EXCLUDED.num_contribuinte, public.movimentos_linhas.num_contribuinte)
+            OR public.movimentos_linhas.nome IS DISTINCT FROM COALESCE(EXCLUDED.nome, public.movimentos_linhas.nome)
+            OR public.movimentos_linhas.morada IS DISTINCT FROM COALESCE(EXCLUDED.morada, public.movimentos_linhas.morada)
+            OR public.movimentos_linhas.localidade IS DISTINCT FROM COALESCE(EXCLUDED.localidade, public.movimentos_linhas.localidade)
+            OR public.movimentos_linhas.cod_postal IS DISTINCT FROM COALESCE(EXCLUDED.cod_postal, public.movimentos_linhas.cod_postal)
+            OR public.movimentos_linhas.pais IS DISTINCT FROM COALESCE(EXCLUDED.pais, public.movimentos_linhas.pais)
+            OR public.movimentos_linhas.nome_entrega IS DISTINCT FROM COALESCE(EXCLUDED.nome_entrega, public.movimentos_linhas.nome_entrega)
+            OR public.movimentos_linhas.entidade_entrega IS DISTINCT FROM COALESCE(EXCLUDED.entidade_entrega, public.movimentos_linhas.entidade_entrega)
+            OR public.movimentos_linhas.morada_entrega IS DISTINCT FROM COALESCE(EXCLUDED.morada_entrega, public.movimentos_linhas.morada_entrega)
+            OR public.movimentos_linhas.localidade_entrega IS DISTINCT FROM COALESCE(EXCLUDED.localidade_entrega, public.movimentos_linhas.localidade_entrega)
+            OR public.movimentos_linhas.cod_postal_entrega IS DISTINCT FROM COALESCE(EXCLUDED.cod_postal_entrega, public.movimentos_linhas.cod_postal_entrega)
+            OR public.movimentos_linhas.observacoes IS DISTINCT FROM COALESCE(EXCLUDED.observacoes, public.movimentos_linhas.observacoes);
 
         GET DIAGNOSTICS v_upserted_lines = ROW_COUNT;
     ELSE
