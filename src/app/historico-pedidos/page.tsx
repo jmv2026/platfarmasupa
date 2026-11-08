@@ -26,15 +26,22 @@ export default async function HistoricoPedidosPage() {
     pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
   }
 
-  // Buscar clientes, pedidos, status de expedição e movimentos tudo em paralelo simultâneo
+  // Buscar clientes, pedidos, artigos, status de expedição e movimentos tudo em paralelo simultâneo
   const [
     { data: clients },
     { data: pedidos },
+    artigosList,
     torrestirStatus,
     cfMovimentos,
   ] = await Promise.all([
     clientsQuery,
     pedidosQuery,
+    fetchAllRowsFast<any>((from, to, countMode) => {
+      return supabase
+        .from('artigos')
+        .select('artigo_id, artigo_cli, descricao', countMode ? { count: countMode } : undefined)
+        .range(from, to);
+    }, 2000),
     fetchAllRowsFast<any>((from, to, countMode) => {
       return supabase
         .from('VW_torrestir_last')
@@ -45,7 +52,7 @@ export default async function HistoricoPedidosPage() {
       let q = supabase
         .from('movimentos_linhas')
         .select(
-          'documento_ref, ref_ser, data_movimento, created_at, artigo_cli, quantidade, tipo_movimento, armazem_loc, lote, validade, movimentos!inner(cliente_id, nome, morada, cod_postal, cod_postal_localidade, requisicao)',
+          'documento_ref, ref_ser, data_movimento, created_at, artigo_id, artigo, artigo_cli, descricao, quantidade, tipo_movimento, armazem_loc, lote, validade, movimentos!inner(cliente_id, nome, morada, cod_postal, cod_postal_localidade, requisicao)',
           countMode ? { count: countMode } : undefined
         );
       if (!isManagerOrAdmin && userClientId) {
@@ -56,6 +63,57 @@ export default async function HistoricoPedidosPage() {
   ]);
 
   const clientsMap = new Map<string, any>((clients || []).map((c: any) => [c.id, c]));
+
+  // Indexar descrição e artigo_id por artigo_id e artigo_cli
+  const artigoDescByIdMap = new Map<string, string>();
+  const artigoDescByCliMap = new Map<string, string>();
+  const artigoIdByCliMap = new Map<string, string>();
+  if (artigosList) {
+    for (const art of artigosList) {
+      const desc = (art.descricao || '').toString().trim();
+      const artIdStr = art.artigo_id !== null && art.artigo_id !== undefined ? String(art.artigo_id).trim() : '';
+      const artCliKey = art.artigo_cli ? String(art.artigo_cli).trim().toLowerCase() : '';
+      if (artIdStr && desc) {
+        artigoDescByIdMap.set(artIdStr, desc);
+      }
+      if (artCliKey && desc) {
+        artigoDescByCliMap.set(artCliKey, desc);
+      }
+      if (artCliKey && artIdStr) {
+        artigoIdByCliMap.set(artCliKey, artIdStr);
+      }
+    }
+  }
+
+  const resolveArtigoId = (item: { artigo_id?: any; artigo?: any; artigo_cli?: any; artigo_codigo?: any }) => {
+    const idKey = item.artigo_id !== null && item.artigo_id !== undefined
+      ? String(item.artigo_id).trim()
+      : (item.artigo !== null && item.artigo !== undefined ? String(item.artigo).trim() : '');
+    if (idKey) return idKey;
+    const cliKey = String(item.artigo_cli || item.artigo_codigo || '').trim().toLowerCase();
+    if (cliKey && artigoIdByCliMap.has(cliKey)) {
+      return artigoIdByCliMap.get(cliKey)!;
+    }
+    return item.artigo_cli || item.artigo_codigo || '';
+  };
+
+  const resolveArtigoDescricao = (item: { artigo_id?: any; artigo?: any; artigo_cli?: any; artigo_codigo?: any; descricao?: any }) => {
+    const idKey = item.artigo_id !== null && item.artigo_id !== undefined
+      ? String(item.artigo_id).trim()
+      : (item.artigo !== null && item.artigo !== undefined ? String(item.artigo).trim() : '');
+    if (idKey && artigoDescByIdMap.has(idKey)) {
+      return artigoDescByIdMap.get(idKey)!;
+    }
+    const cliKey = String(item.artigo_cli || item.artigo_codigo || '').trim().toLowerCase();
+    if (cliKey && artigoDescByCliMap.has(cliKey)) {
+      return artigoDescByCliMap.get(cliKey)!;
+    }
+    const ownDesc = (item.descricao || '').toString().trim();
+    if (ownDesc && ownDesc.toLowerCase() !== cliKey) {
+      return ownDesc;
+    }
+    return ownDesc || item.artigo_cli || item.artigo_codigo || '';
+  };
 
   // Indexar status da Torrestir por ref normalizada para lookup O(1)
   const statusMap = new Map<string, any>();
@@ -86,7 +144,16 @@ export default async function HistoricoPedidosPage() {
   });
 
   // Filtrar pedidos da tabela pedidos: excluir os que estão marcados como processados
-  const pedidosNaoProcessados = (pedidos || []).filter((p: any) => !p.processado);
+  const pedidosNaoProcessados = (pedidos || [])
+    .filter((p: any) => !p.processado)
+    .map((p: any) => ({
+      ...p,
+      pedido_linhas: (p.pedido_linhas || []).map((linha: any) => ({
+        ...linha,
+        artigo_id: resolveArtigoId(linha),
+        descricao: resolveArtigoDescricao(linha),
+      })),
+    }));
 
   // Agrupar linhas de movimentos em pedidos virtuais em O(N) com Map
   const pseudoPedidosList: any[] = [];
@@ -129,9 +196,10 @@ export default async function HistoricoPedidosPage() {
 
       p.pedido_linhas.push({
         id: `${key}_${mov.artigo_cli}_${p.pedido_linhas.length}`,
+        artigo_id: resolveArtigoId(mov),
         artigo_cli: mov.artigo_cli,
         artigo_codigo: mov.artigo_cli,
-        descricao: mov.artigo_cli,
+        descricao: resolveArtigoDescricao(mov),
         quantidade: mov.quantidade || 0,
         lote: mov.lote || '',
         validade: mov.validade || null

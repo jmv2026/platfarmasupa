@@ -246,6 +246,7 @@ export default function HistoricoPedidosView({
         // Pesquisa também nas linhas de artigos
         const matchLinha = ped.pedido_linhas?.some(
           (l) =>
+            String(l.artigo_id || '')?.toLowerCase().includes(query) ||
             (l.artigo_cli || l.artigo_codigo)?.toLowerCase().includes(query) ||
             l.descricao?.toLowerCase().includes(query) ||
             l.lote?.toLowerCase().includes(query)
@@ -740,7 +741,7 @@ export default function HistoricoPedidosView({
                             {ped.pedido_linhas.map((linha, lIdx) => (
                               <tr key={lIdx} className="hover:bg-emerald-100/70 transition-colors">
                                 <td className="py-2 px-3 font-mono font-medium">
-                                  {linha.artigo_cli || linha.artigo_codigo}
+                                  {linha.artigo_id || linha.artigo_cli || linha.artigo_codigo}
                                 </td>
                                 <td className="py-2 px-3 font-medium">{linha.descricao}</td>
                                 <td className="py-2 px-3 font-mono font-semibold text-secondary">
@@ -987,7 +988,7 @@ export default function HistoricoPedidosView({
                       <tbody className="divide-y divide-outline-variant/10 text-on-surface">
                         {ped.pedido_linhas.map((linha, lIdx) => (
                           <tr key={lIdx} className="hover:bg-emerald-100/70 transition-colors">
-                            <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_cli || linha.artigo_codigo}</td>
+                            <td className="py-2.5 px-3 font-mono font-medium">{linha.artigo_id || linha.artigo_cli || linha.artigo_codigo}</td>
                             <td className="py-2.5 px-3 font-medium">{linha.descricao}</td>
                             <td className="py-2.5 px-3 font-mono font-semibold text-secondary">{linha.lote}</td>
                             <td className="py-2.5 px-3 font-mono text-on-surface-variant">{formatDate(linha.validade)}</td>
