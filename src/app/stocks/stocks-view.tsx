@@ -380,6 +380,12 @@ export default function StocksView({
         ) {
           return false;
         }
+        if (
+          selectedTipoArmazem !== 'todos' &&
+          selectedTipoArmazem !== '01'
+        ) {
+          return false;
+        }
         if (searchTerm.trim()) {
           const query = searchTerm.toLowerCase();
           const matchCod =
@@ -395,7 +401,7 @@ export default function StocksView({
         return true;
       })
       .sort((a, b) => compareStockItems(a, b, tabSorts.pedidos));
-  }, [stockPedidos, selectedClientId, selectedArmazenamento, selectedTipoArtigo, searchTerm, tabSorts.pedidos]);
+  }, [stockPedidos, selectedClientId, selectedArmazenamento, selectedTipoArtigo, selectedTipoArmazem, searchTerm, tabSorts.pedidos]);
 
   // Filtragem para Stock Consolidado (vw_stock_atual) - Ordenação dinâmica
   const filteredStockAtual = useMemo(() => {
@@ -419,7 +425,7 @@ export default function StocksView({
         }
         if (
           selectedTipoArmazem !== 'todos' &&
-          item.tipo_armazem !== selectedTipoArmazem
+          String(item.tipo_armazem || '').trim().padStart(2, '0') !== selectedTipoArmazem
         ) {
           return false;
         }
@@ -1125,7 +1131,13 @@ export default function StocksView({
               </label>
               <select
                 value={selectedTipoArmazem}
-                onChange={(e) => setSelectedTipoArmazem(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedTipoArmazem(val);
+                  if (val !== 'todos' && val !== '01' && (activeTab === 'pedidos' || activeTab === 'stock_zero')) {
+                    handleSelectTab('consolidado');
+                  }
+                }}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
               >
                 <option value="todos">{t.stocks.allWarehouses}</option>
