@@ -172,16 +172,15 @@ export default function GraficoTopProdutos({
     };
   }, [saidas, periodo, topLimit]);
 
-  // Dimensões do SVG do gráfico otimizadas: largura dinâmica se houver muitos produtos no modo 'top25'
+  // Dimensões do SVG do gráfico otimizadas para exibir até 25 artigos proporcionalmente sem achatar a altura
+  const isManyItems = topProdutos.length > 10;
   const svgWidth = useMemo(() => {
-    const count = topProdutos.length;
-    if (count <= 10) return 850;
-    // No modo 'top25', atribui ~70px por artigo para permitir scroll horizontal limpo
-    return Math.max(850, count * 70);
-  }, [topProdutos.length]);
+    if (!isManyItems) return 850;
+    return 1250;
+  }, [isManyItems]);
 
-  const svgHeight = 280;
-  const padding = { top: 25, right: 30, bottom: 42, left: 70 };
+  const svgHeight = isManyItems ? 390 : 280;
+  const padding = { top: 25, right: 30, bottom: isManyItems ? 78 : 42, left: 70 };
 
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
@@ -691,6 +690,11 @@ export default function GraficoTopProdutos({
               {/* Rótulos do Eixo X (Ranking + Código do Produto) */}
               {points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
+                const codeLabel =
+                  p.data.codigo.length > 11
+                    ? `${p.data.codigo.slice(0, 9)}...`
+                    : p.data.codigo;
+                const codeY = padding.top + chartHeight + (isManyItems ? 28 : 30);
                 return (
                   <g
                     key={`xlabel-top-${i}`}
@@ -699,12 +703,12 @@ export default function GraficoTopProdutos({
                     onMouseLeave={() => setHoveredIndex(null)}
                     onClick={() => onSelectProdutoPrevisao?.(p.data.codigo)}
                   >
-                    {/* Badge de Posição #1-#10 */}
+                    {/* Badge de Posição #1-#25 */}
                     <text
                       x={p.x}
-                      y={padding.top + chartHeight + 16}
+                      y={padding.top + chartHeight + 15}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize={isManyItems ? '9' : '10'}
                       fontWeight="800"
                       fill={isHovered ? '#15803d' : i === 0 ? '#65a30d' : '#0f766e'}
                     >
@@ -713,15 +717,14 @@ export default function GraficoTopProdutos({
                     {/* Código do Artigo */}
                     <text
                       x={p.x}
-                      y={padding.top + chartHeight + 30}
-                      textAnchor="middle"
-                      fontSize="10"
+                      y={codeY}
+                      textAnchor={isManyItems ? 'end' : 'middle'}
+                      transform={isManyItems ? `rotate(-38 ${p.x} ${codeY})` : undefined}
+                      fontSize={isManyItems ? '9.5' : '10'}
                       fontWeight={isHovered ? '800' : '600'}
                       fill={isHovered ? '#14532d' : '#334155'}
                     >
-                      {p.data.codigo.length > 11
-                        ? `${p.data.codigo.slice(0, 9)}...`
-                        : p.data.codigo}
+                      {codeLabel}
                     </text>
                   </g>
                 );
