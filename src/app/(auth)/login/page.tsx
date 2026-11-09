@@ -11,7 +11,6 @@ export default function LoginPage() {
   const { t, language, setLanguage } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -271,36 +270,6 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-4 py-3.5 bg-surface-variant/50 border-none rounded-lg focus:ring-2 focus:ring-secondary/40 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-on-surface-variant/40 text-sm"
                 />
               </div>
-            </div>
-
-            {/* Form Options */}
-            <div className="flex items-center justify-between py-1">
-              <div className="flex items-center">
-                <input
-                  id="remember"
-                  name="remember"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-secondary border-outline-variant rounded focus:ring-secondary cursor-pointer"
-                />
-                <label
-                  htmlFor="remember"
-                  className="ml-2 text-sm text-on-surface-variant cursor-pointer select-none"
-                >
-                  {t.login.rememberMe}
-                </label>
-              </div>
-              <a
-                href="#recuperar-password"
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert(t.login.forgotPasswordAlert);
-                }}
-                className="text-sm font-semibold text-secondary hover:text-on-secondary-container transition-colors"
-              >
-                {t.login.forgotPassword}
-              </a>
             </div>
 
             {/* Primary Action */}
