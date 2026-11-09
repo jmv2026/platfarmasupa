@@ -19,17 +19,24 @@ export default async function StocksPage() {
     .from('vw_stock_atual')
     .select('*')
     .order('artigo_id', { ascending: true })
+    .order('cliente_id', { ascending: true })
+    .order('tipo_armazem', { ascending: true })
+    .order('lote', { ascending: true })
     .range(0, 999);
   let stockAtualPage2Query = supabase
     .from('vw_stock_atual')
     .select('*')
     .order('artigo_id', { ascending: true })
-    .range(1000, 2999);
+    .order('cliente_id', { ascending: true })
+    .order('tipo_armazem', { ascending: true })
+    .order('lote', { ascending: true })
+    .range(1000, 1999);
   let stockZeroQuery = supabase
     .from('vw_stock_zero')
     .select('*')
     .order('artigo_id', { ascending: true })
-    .range(0, 1999);
+    .order('cliente_id', { ascending: true })
+    .range(0, 999);
   let temposQuery = supabase.from('tempos').select('*');
 
   if (!isManagerOrAdmin && userClientId) {

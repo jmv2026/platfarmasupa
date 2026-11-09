@@ -331,7 +331,8 @@ export default function StocksView({
       const days = getDaysUntilExpiry(s.validade);
       if (days === null) continue;
 
-      const tipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
+      const rawTipo = s.tipo_artigo ? String(s.tipo_artigo).trim().toUpperCase() : '';
+      const tipo = ID_TIPO_ARTIGO_MAP[rawTipo] || rawTipo;
       if (days < 180 && (tipo === 'MH' || tipo.startsWith('MH') || tipo.includes('HUMANO'))) {
         mhSet.add(s.artigo_id);
       } else if (days <= 0) {
@@ -374,7 +375,8 @@ export default function StocksView({
         }
         if (
           selectedTipoArtigo !== 'todos' &&
-          item.tipo_artigo !== selectedTipoArtigo
+          item.tipo_artigo !== selectedTipoArtigo &&
+          ID_TIPO_ARTIGO_MAP[item.tipo_artigo || ''] !== selectedTipoArtigo
         ) {
           return false;
         }
@@ -410,7 +412,8 @@ export default function StocksView({
         }
         if (
           selectedTipoArtigo !== 'todos' &&
-          item.tipo_artigo !== selectedTipoArtigo
+          item.tipo_artigo !== selectedTipoArtigo &&
+          ID_TIPO_ARTIGO_MAP[item.tipo_artigo || ''] !== selectedTipoArtigo
         ) {
           return false;
         }
@@ -684,7 +687,9 @@ export default function StocksView({
           artigo_id: r.artigo_id,
           artigo_cli: r.artigo_cli,
           descricao: r.descricao || '-',
-          tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
+          tipo_artigo: r.tipo_artigo
+            ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[r.tipo_artigo] || (r.tipo_artigo as TipoArtigo)] || r.tipo_artigo
+            : '-',
           tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
           lote: r.lote || '-',
           validade: r.validade ? new Date(r.validade).toLocaleDateString('pt-PT') : '-',
@@ -739,7 +744,9 @@ export default function StocksView({
           artigo_id: r.artigo_id,
           artigo_cli: r.artigo_cli,
           descricao: r.descricao || '-',
-          tipo_artigo: TIPO_ARTIGO_LABELS[r.tipo_artigo as TipoArtigo] || r.tipo_artigo,
+          tipo_artigo: r.tipo_artigo
+            ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[r.tipo_artigo] || (r.tipo_artigo as TipoArtigo)] || r.tipo_artigo
+            : '-',
           tipo_armazenamento: TIPO_ARMAZENAMENTO_LABELS[r.tipo_armazenamento as TipoArmazenamento] || r.tipo_armazenamento,
           stockVenda: r.stockVenda,
           stockOutros: r.stockOutros,
@@ -1262,7 +1269,7 @@ export default function StocksView({
                         let threshold = null;
                         const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
-                          switch (item.tipo_artigo) {
+                          switch (ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
                             case 'MV': threshold = clientTempo.VAL_MV; break;
                             case 'DM': threshold = clientTempo.VAL_DM; break;
@@ -1285,9 +1292,9 @@ export default function StocksView({
                             </td>
                             <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
                             <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
-                            <td className="py-1 px-3">
-                              <span className="text-[11px] text-on-surface-variant">
-                                {TIPO_ARTIGO_LABELS[item.tipo_artigo as TipoArtigo] || item.tipo_artigo}
+                            <td className="py-1 px-3 whitespace-nowrap">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                {item.tipo_artigo ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || (item.tipo_artigo as TipoArtigo)] || item.tipo_artigo : '-'}
                               </span>
                             </td>
                             <td className="py-1 px-3">
@@ -1417,7 +1424,7 @@ export default function StocksView({
                         let threshold = null;
                         const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
-                          switch (item.tipo_artigo) {
+                          switch (ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
                             case 'MV': threshold = clientTempo.VAL_MV; break;
                             case 'DM': threshold = clientTempo.VAL_DM; break;
@@ -1548,7 +1555,7 @@ export default function StocksView({
                         let threshold = null;
                         const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
-                          switch (item.tipo_artigo) {
+                          switch (ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
                             case 'MV': threshold = clientTempo.VAL_MV; break;
                             case 'DM': threshold = clientTempo.VAL_DM; break;
@@ -1571,9 +1578,9 @@ export default function StocksView({
                           </td>
                           <td className="py-1 px-3 font-mono font-medium">{item.artigo_id}</td>
                           <td className="py-1 px-3 font-medium">{item.descricao || '-'}</td>
-                          <td className="py-1 px-3">
-                            <span className="text-[11px] text-on-surface-variant">
-                              {TIPO_ARTIGO_LABELS[item.tipo_artigo] || item.tipo_artigo}
+                          <td className="py-1 px-3 whitespace-nowrap">
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                              {item.tipo_artigo ? TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || (item.tipo_artigo as TipoArtigo)] || item.tipo_artigo : '-'}
                             </span>
                           </td>
                           <td className="py-1 px-3">
@@ -1664,7 +1671,7 @@ export default function StocksView({
                         let threshold = null;
                         const clientTempo = item.cliente_id ? temposMap.get(item.cliente_id) : undefined;
                         if (clientTempo && item.tipo_artigo) {
-                          switch (item.tipo_artigo) {
+                          switch (ID_TIPO_ARTIGO_MAP[item.tipo_artigo] || item.tipo_artigo) {
                             case 'MH': threshold = clientTempo.VAL_MH; break;
                             case 'MV': threshold = clientTempo.VAL_MV; break;
                             case 'DM': threshold = clientTempo.VAL_DM; break;
