@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { importarTransporteAction } from './actions';
 import TransporteView from './transporte-view';
+import ImportacaoComprovativosTab from './importacao-comprovativos-tab';
 import { createClient } from '@/lib/supabase/client';
 
 export default function ImportacaoTransporteTab({ trackingData = [] }: { trackingData?: any[] }) {
@@ -126,56 +127,61 @@ export default function ImportacaoTransporteTab({ trackingData = [] }: { trackin
   };
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
-      <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
-        <span className="material-symbols-outlined text-secondary">local_shipping</span>
-        Transporte - Importa os ficheiros status da Torrestir diretamente
-      </h3>
-      <p className="text-xs text-on-surface-variant mb-6">
-        Configurações e importação de ficheiros de transporte (ex: Torrestir). 
-        Faça upload de ficheiros CSV/TSV sem cabeçalho gerados pelo parceiro. Pode selecionar múltiplos ficheiros.
-      </p>
-      
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <input
-          type="file"
-          accept=".csv, .tsv, .txt"
-          multiple
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
-          ref={fileInputRef}
-          className="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary-container hover:file:bg-primary-container/80 cursor-pointer"
-        />
-        <div className="flex gap-2">
-          <button
-            onClick={handleProcessFile}
-            disabled={files.length === 0 || loading}
-            className="bg-secondary text-on-secondary px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors whitespace-nowrap"
-          >
-            {loading ? 'A importar...' : `Importar ${files.length > 0 ? files.length + ' Ficheiro(s)' : ''}`}
-          </button>
-          
-          <button
-            onClick={handleVerifyRefComprovativo}
-            disabled={loading || verifying}
-            className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors whitespace-nowrap flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm">{verifying ? 'sync' : 'fact_check'}</span>
-            Verificar refs
-          </button>
+    <div className="space-y-6">
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
+          <span className="material-symbols-outlined text-secondary">local_shipping</span>
+          Transporte - Importa os ficheiros status da Torrestir diretamente
+        </h3>
+        <p className="text-xs text-on-surface-variant mb-6">
+          Configurações e importação de ficheiros de transporte (ex: Torrestir). 
+          Faça upload de ficheiros CSV/TSV sem cabeçalho gerados pelo parceiro. Pode selecionar múltiplos ficheiros.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <input
+            type="file"
+            accept=".csv, .tsv, .txt"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+            ref={fileInputRef}
+            className="block w-full text-xs text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary-container hover:file:bg-primary-container/80 cursor-pointer"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleProcessFile}
+              disabled={files.length === 0 || loading}
+              className="bg-secondary text-on-secondary px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors whitespace-nowrap"
+            >
+              {loading ? 'A importar...' : `Importar ${files.length > 0 ? files.length + ' Ficheiro(s)' : ''}`}
+            </button>
+            
+            <button
+              onClick={handleVerifyRefComprovativo}
+              disabled={loading || verifying}
+              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 px-4 py-2 rounded-lg text-xs font-bold disabled:opacity-50 transition-colors whitespace-nowrap flex items-center gap-1"
+            >
+              <span className="material-symbols-outlined text-sm">{verifying ? 'sync' : 'fact_check'}</span>
+              Verificar refs
+            </button>
+          </div>
         </div>
+
+        {feedback && (
+          <div className={`mt-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2 transition-all ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+            <span className="material-symbols-outlined text-base">
+              {feedback.type === 'success' ? 'check_circle' : 'error'}
+            </span>
+            {feedback.message}
+          </div>
+        )}
       </div>
 
-      {feedback && (
-        <div className={`mt-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2 transition-all ${feedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
-          <span className="material-symbols-outlined text-base">
-            {feedback.type === 'success' ? 'check_circle' : 'error'}
-          </span>
-          {feedback.message}
-        </div>
-      )}
+      {/* Janela de Importação de Comprovativos */}
+      <ImportacaoComprovativosTab />
 
       {/* Renderizar Tabela de Tracking */}
-      <div className="mt-8">
+      <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 sm:p-8 shadow-sm">
         <TransporteView data={trackingData} />
       </div>
     </div>

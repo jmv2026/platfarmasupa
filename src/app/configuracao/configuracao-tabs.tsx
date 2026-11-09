@@ -34,7 +34,6 @@ const ImportacaoMovimentosTab = dynamic(() => import('./importacao-movimentos-ta
 const ImportacaoErpTab = dynamic(() => import('./importacao-erp-tab'));
 const ImportacaoArtigosCard = dynamic(() => import('./importacao-artigos-card'));
 const ImportacaoTransporteTab = dynamic(() => import('./importacao-transporte-tab'));
-const ImportacaoComprovativosTab = dynamic(() => import('./importacao-comprovativos-tab'));
 const ImportacaoStockTab = dynamic(() => import('./importacao-stock-tab'));
 
 export interface ServerEmailConfig {
@@ -55,8 +54,7 @@ export type ConfigTab =
   | 'erp'
   | 'stocks'
   | 'email'
-  | 'transporte'
-  | 'comprovativos';
+  | 'transporte';
 
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
@@ -725,21 +723,6 @@ export default function ConfiguracaoTabs({
             <span className="material-symbols-outlined text-base">mail</span>
             {t.configuracao.tabEmail}
           </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              handleSelectTab('comprovativos');
-              setFeedback(null);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'comprovativos'
-                ? 'bg-secondary text-on-secondary shadow-md'
-                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-              }`}
-          >
-            <span className="material-symbols-outlined text-base">folder_open</span>
-            Comprovativos
-          </button>
         </div>
 
         {/* Feedback Toast */}
@@ -974,15 +957,6 @@ export default function ConfiguracaoTabs({
         {visitedTabs.has('transporte') && (
           <div className={activeTab === 'transporte' ? 'block' : 'hidden'}>
             <ImportacaoTransporteTab trackingData={trackingData} />
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* ABA COMPROVATIVOS */}
-        {/* ========================================================================= */}
-        {visitedTabs.has('comprovativos') && (
-          <div className={activeTab === 'comprovativos' ? 'block' : 'hidden'}>
-            <ImportacaoComprovativosTab />
           </div>
         )}
 

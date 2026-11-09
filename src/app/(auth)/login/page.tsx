@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
-import { Language, translations } from '@/lib/i18n/translations';
+import { translations } from '@/lib/i18n/translations';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -115,12 +115,6 @@ export default function LoginPage() {
     }
   };
 
-  const languagesList: { code: Language; label: string; full: string }[] = [
-    { code: 'pt', label: 'PT', full: t.nav.ptFull },
-    { code: 'es', label: 'ES', full: t.nav.esFull },
-    { code: 'en', label: 'EN', full: t.nav.enFull },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden bg-surface text-on-surface">
       {/* Background Layer with Image and Overlay */}
@@ -140,31 +134,6 @@ export default function LoginPage() {
             backgroundSize: '24px 24px',
           }}
         ></div>
-      </div>
-
-      {/* Language Switcher on Top Right of the Screen */}
-      <div className="fixed top-4 right-4 z-20 flex items-center gap-1 bg-black/40 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/20 shadow-lg">
-        <span className="text-[11px] font-semibold text-white/80 mr-1 hidden sm:inline">
-          {t.nav.languageLabel}
-        </span>
-        {languagesList.map((item) => {
-          const isActive = language === item.code;
-          return (
-            <button
-              key={item.code}
-              type="button"
-              onClick={() => setLanguage(item.code)}
-              title={item.full}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer select-none ${
-                isActive
-                  ? 'bg-secondary text-on-secondary shadow-md scale-105'
-                  : 'text-white/80 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Main Content Canvas */}
