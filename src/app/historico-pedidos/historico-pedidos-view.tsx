@@ -1107,7 +1107,6 @@ export default function HistoricoPedidosView({
                       <th className="py-2.5 px-3">Localidade</th>
                       <th className="py-2.5 px-3">Requisição</th>
                       <th className="py-2.5 px-2.5 text-center">Estado</th>
-                      <th className="py-2.5 px-2.5 text-center">Comprovativo</th>
                       <th className="py-2.5 px-3 text-right rounded-r-lg">Quantidade</th>
                     </tr>
                   </thead>
@@ -1182,26 +1181,6 @@ export default function HistoricoPedidosView({
                             {getStatusLabel(row.status)}
                           </span>
                         </td>
-                        <td className="py-2.5 px-2.5 text-center">
-                          {(String(getStatusLabel(row.status)).toLowerCase() === 'entregue' ||
-                            String(getStatusLabel(row.status)).toLowerCase() === 'entregue pda') &&
-                            row.url_comprovativo && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleViewComprovativo(
-                                    row.url_comprovativo!,
-                                    row.ref_ser || row.nr_pedido
-                                  )
-                                }
-                                className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1 mx-auto"
-                                title="Ver Comprovativo"
-                              >
-                                <span className="material-symbols-outlined text-[14px]">visibility</span>
-                                Ver
-                              </button>
-                            )}
-                        </td>
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-secondary whitespace-nowrap">
                           {row.quantidade.toLocaleString(language === 'en' ? 'en-GB' : 'pt-PT')} un
                         </td>
@@ -1211,7 +1190,7 @@ export default function HistoricoPedidosView({
                   <tfoot className="bg-emerald-50/90 border-t-2 border-emerald-200 text-slate-900 font-bold text-xs">
                     <tr>
                       <td
-                        colSpan={isManagerOrAdmin ? 13 : 12}
+                        colSpan={isManagerOrAdmin ? 12 : 11}
                         className="py-3 px-3 text-right uppercase tracking-wider text-[11px] text-emerald-950"
                       >
                         Total do Artigo no Período Selecionado ({artigoMovimentosList.length} movimentos):

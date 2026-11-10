@@ -662,3 +662,126 @@ export interface Configuracao {
   updated_at?: string;
   updated_by?: string | null;
 }
+
+export type StatusPedidoRecolha =
+  | 'pendente'
+  | 'agendada'
+  | 'em_recolha'
+  | 'recolhido'
+  | 'rececionado'
+  | 'cancelado';
+
+export const STATUS_RECOLHA_LABELS: Record<StatusPedidoRecolha, string> = {
+  pendente: 'Pendente',
+  agendada: 'Recolha Agendada',
+  em_recolha: 'Em Recolha',
+  recolhido: 'Recolhido',
+  rececionado: 'Rececionado (Arm. 04)',
+  cancelado: 'Cancelado',
+};
+
+export const MOTIVOS_RECOLHA = [
+  'Devolução Comercial',
+  'Validade Expirada / Curta',
+  'Produto Danificado / Avaria',
+  'Recolha de Lote / Recall',
+  'Erro de Expedição / Pedido',
+  'Outro',
+] as const;
+
+export interface PedidoRecolha {
+  id: string;
+  nr_pedido: string;
+  sigla_pedido?: string | null;
+  ref_documento?: string | null;
+  motivo_recolha?: string | null;
+  cliente_id: string;
+  destino_id?: string | null;
+  classifica_destino?: string | null;
+  nome_origem: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais: string;
+  contacto_local?: string | null;
+  data_pedido: string;
+  data_recolha?: string | null;
+  status: StatusPedidoRecolha | string;
+  armazem_destino?: string | null;
+  observacoes?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PedidoRecolhaLinha {
+  id: string;
+  pedido_recolha_id: string;
+  cliente_id: string;
+  artigo_id: string;
+  artigo_cli: string;
+  descricao: string;
+  lote: string;
+  validade?: string | null;
+  quantidade: number;
+  motivo_linha?: string | null;
+  created_at?: string;
+}
+
+export interface PedidoRecolhaComLinhas extends PedidoRecolha {
+  clientes?: Cliente;
+  clients?: Client;
+  destinos?: Destino;
+  pedido_recolha_linhas?: PedidoRecolhaLinha[];
+}
+
+export interface NovaLinhaRecolhaInput {
+  artigo_id: string;
+  artigo_cli: string;
+  descricao: string;
+  lote?: string;
+  validade?: string | null;
+  quantidade: number;
+  motivo_linha?: string;
+}
+
+export interface NovoPedidoRecolhaInput {
+  cliente_id: string;
+  destino_id?: string | null;
+  guardar_novo_destino?: boolean;
+  classifica_destino?: string;
+  ref_documento?: string;
+  motivo_recolha?: string;
+  nome_origem: string;
+  morada: string;
+  codigo_postal: string;
+  localidade: string;
+  pais: string;
+  contacto_local?: string;
+  data_pedido: string;
+  data_recolha?: string;
+  observacoes?: string;
+  linhas: NovaLinhaRecolhaInput[];
+}
+
+export interface RececaoArmazem04 {
+  id: string;
+  documento_ref: string;
+  ref_ser?: string | null;
+  data_movimento: string;
+  cliente_id: string;
+  cliente_sigla: string;
+  cliente_nome: string;
+  armazem: string;
+  armazem_loc: string;
+  tipo_movimento: string;
+  artigo_id: string;
+  artigo_cli: string;
+  descricao: string;
+  lote: string;
+  validade?: string | null;
+  quantidade: number;
+  origem_nome?: string | null;
+  localidade?: string | null;
+  requisicao?: string | null;
+}

@@ -12,6 +12,7 @@ export type NavTab =
   | 'stocks'
   | 'pedidos'
   | 'historico-pedidos'
+  | 'logistica-inversa'
   | 'proc-pedidos'
   | 'configuracao';
 
@@ -41,6 +42,7 @@ function resolveTabFromPathname(pathname: string): NavTab {
   const lower = pathname.toLowerCase();
   if (lower.includes('/stocks')) return 'stocks';
   if (lower.includes('/proc_pedidos') || lower.includes('/proc-pedidos')) return 'proc-pedidos';
+  if (lower.includes('/logistica-inversa') || lower.includes('/logistica_inversa')) return 'logistica-inversa';
   if (lower.includes('/historico-pedidos')) return 'historico-pedidos';
   if (lower.includes('/pedidos')) return 'pedidos';
   if (lower.includes('/configuracao')) return 'configuracao';
@@ -149,6 +151,13 @@ function HeaderBarUI({
       href: '/historico-pedidos',
       icon: 'receipt_long',
       label: t.nav.historicoPedidos,
+      visible: true,
+    },
+    {
+      tab: 'logistica-inversa',
+      href: '/logistica-inversa',
+      icon: 'assignment_return',
+      label: t.nav.logisticaInversa,
       visible: true,
     },
     {
@@ -264,6 +273,7 @@ function HeaderBarUI({
               {currentTab === 'stocks' && t.nav.stocks}
               {currentTab === 'pedidos' && t.nav.criarPedido}
               {currentTab === 'historico-pedidos' && t.nav.historicoPedidos}
+              {currentTab === 'logistica-inversa' && t.nav.logisticaInversa}
               {currentTab === 'proc-pedidos' && t.nav.procPedidos}
               {currentTab === 'configuracao' && t.nav.configuracao}
             </span>
