@@ -16,9 +16,9 @@ O módulo de **Stocks** (`/stocks`) centraliza o controlo físico, comercial e r
 flowchart TD
     subgraph Canvas ["Mapa de Arquitetura e Fluxo de Dados — Página Stocks (/stocks)"]
         subgraph Origem ["Tabelas Base (PostgreSQL)"]
-            T_STK["stock (Base Primária + data_stock timestamptz)"]
-            T_MOV["movimentos + movimentos_linhas (Apenas updated_at > data_stock)"]
-            T_PED["pedidos + pedido_linhas (Exceto doc_primavera = documento_ref)"]
+            T_STK["stock (Base Primária Consolidada ERP)"]
+            T_PED["pedidos + pedido_linhas (Pedidos Ativos)"]
+            T_MOV["movimentos (Validação doc_primavera = documento_ref)"]
             T_ART["artigos + armazens + tempos + clientes"]
         end
 
@@ -29,21 +29,21 @@ flowchart TD
         end
 
         subgraph Server ["Next.js Server Component & Actions"]
-            P_STK["/stocks (page.tsx - Promise.all)"]
+            P_STK["/stocks (page.tsx - Promise.all + Ordenação Composta)"]
             A_STK["actions.ts (Editar / Apagar Stock Admin)"]
         end
 
         subgraph Client ["Interface Interativa (StocksView - stocks-view.tsx)"]
-            KPI["4 KPIs Superiores + Filtros Multi-Critério"]
-            TAB1["Aba 1: Stock de Venda (FEFO)"]
+            KPI["4 KPIs Superiores + Filtros Multi-Critério (Auto-Switch Armazém)"]
+            TAB1["Aba 1: Stock de Venda (FEFO + Badge Tipo Artigo)"]
             TAB2["Aba 2: Stock Consolidado"]
-            TAB3["Aba 3: Resumo por Artigo"]
+            TAB3["Aba 3: Resumo por Artigo (Badge Tipo Artigo)"]
             TAB4["Aba 4: Controlo de Validades"]
-            TAB5["Aba 5: Artigos com Stock 0"]
+            TAB5["Aba 5: Artigos com Stock 0 (Badge Tipo Artigo)"]
             EXP["Exportação CSV e Excel (.xlsx)"]
         end
 
-        T_STK & T_MOV & T_PED & T_ART --> V_PED & V_ATU & V_ZER
+        T_STK & T_PED & T_MOV & T_ART --> V_PED & V_ATU & V_ZER
         V_PED & V_ATU & V_ZER & T_ART --> P_STK
         P_STK --> KPI
         KPI --> TAB1 & TAB2 & TAB3 & TAB4 & TAB5
@@ -84,34 +84,26 @@ flowchart TD
 ### Arquitetura de Ficheiros
 | Ficheiro | Função Principal |
 | :--- | :--- |
-| `src/app/stocks/page.tsx` | *Server Component* da rota `/stocks`; autentica o utilizador via `getAuthContext()`, aplica o isolamento por cliente (`userClientId`) e carrega em paralelo (`Promise.all`) as *views* `vw_stock_atual`, `vw_stock_pedidos`, `vw_stock_zero`, `clientes` e `tempos`. |
-| `src/app/stocks/stocks-view.tsx` | *Client Component* principal de visualização, filtragem multi-critério, ordenação dinâmica por colunas (`Intl.Collator`), cálculo dos 4 KPIs de topo, comutação instantânea entre as 5 abas e exportação para CSV / Excel (`.xlsx`). |
+| `src/app/stocks/page.tsx` | *Server Component* da rota `/stocks`; autentica o utilizador via `getAuthContext()`, aplica o isolamento por cliente (`userClientId`) e carrega em paralelo (`Promise.all`) as *views* `vw_stock_atual` (com ordenação composta determinística `artigo_id`, `cliente_id`, `tipo_armazem`, `lote`), `vw_stock_zero`, `clientes` e `tempos`, derivando `stockPedidos` a partir dos registos do Armazém `01` com `stock > 0`. |
+| `src/app/stocks/stocks-view.tsx` | *Client Component* principal de visualização, filtragem multi-critério (com comutação automática para a aba **Stock Consolidado** ao selecionar armazéns `<> 01`), conversão uniforme de `tipo_artigo` via `ID_TIPO_ARTIGO_MAP` / `TIPO_ARTIGO_LABELS`, ordenação dinâmica por colunas (`Intl.Collator`), cálculo dos 4 KPIs de topo e exportação para CSV / Excel (`.xlsx`). |
 | `src/app/stocks/actions.ts` | *Server Actions* restritas ao perfil `admin` (`editarLinhaStockAction` e `apagarLinhaStockAction`) para manutenção direta de registos na tabela `public.stock`, com invalidação automática de cache (`revalidatePath`). |
-| `supabase/migrations/20261108140500_stock_views_only_from_stock_table.sql` | Definição SQL das *views* de cálculo de stock (`vw_stock_atual`, `vw_stock_pedidos` e `vw_stock_zero`) e da função `sincronizar_pedido_para_movimentos`. |
+| `supabase/migrations/20261109201500_remove_movimentos_posteriores_from_stock_views.sql` | Definição SQL atualizada das *views* de cálculo de stock (`vw_stock_atual`, `vw_stock_pedidos` e `vw_stock_zero`) com base exclusivamente em `public.stock` menos os pedidos pendentes de faturação no ERP (`pedidos_pendentes_erp`). |
 
 ---
 
 ## 2. Motor de Contabilização de Stock (Regras de Negócio SQL)
 
-As *views* `public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero` calculam o saldo de cada cliente, armazém (`tipo_armazem`), artigo e lote combinando três fontes de dados segundo uma linha temporal rigorosa:
+As *views* `public.vw_stock_atual`, `public.vw_stock_pedidos` e `public.vw_stock_zero` calculam o saldo de cada cliente, armazém (`tipo_armazem`), artigo e lote combinando duas fontes de dados sem duplicação de movimentos históricos:
 
-$$\text{Stock Lote} = \text{Stock Base}_{\text{stock}} + \sum_{\text{updated\_at} > \text{data\_stock}} \left(\text{Entradas}_{\text{movimentos}} - \text{Saídas}_{\text{movimentos}}\right) - \sum_{\text{doc\_primavera} \notin \text{movimentos}} \text{Pedidos Ativos}_{\text{pedidos}}$$
+$$\text{Stock Lote} = \text{Stock Base}_{\text{stock}} - \sum_{\text{doc\_primavera} \notin \text{movimentos}} \text{Pedidos Ativos}_{\text{pedidos}}$$
 
-1. **Base de Stock (`public.stock` — CTE `stock_resolvido`)**:
-   - Constitui a referência base de saldo por cliente, armazém (`tipo_armazem`), artigo e lote.
-   - O campo `data_stock` é do tipo `timestamp with time zone` (data e hora exatas da foto de stock importada do ERP/Access, sem valor por defeito `now()`).
+1. **Base Primária Consolidada de Stock (`public.stock` — CTE `stock_resolvido`)**:
+   - Constitui a referência direta do saldo físico por cliente, armazém (`tipo_armazem`), artigo e lote sincronizado a partir do ERP Primavera / MS Access (`sync_stock_from_access` ou importação manual).
+   - O campo `data_stock` é do tipo `timestamp with time zone` (data e hora da linha de stock no ERP).
    - A associação ao cliente resolve-se por prioridade: `sigla`/`cliente_ser`, `entidade` (`cli_primavera`) ou prefixo de 3 caracteres do código de `armazem`.
+   - **Prevenção de Dupla Contabilização**: Como o snapshot da tabela `public.stock` já reflete todas as entradas (`ES`, `ET`) e saídas (`SS`, `ST`) registadas no ERP, as *views* não voltam a somar linhas de `public.movimentos_linhas`, eliminando duplicações causadas por timestamps de reimportação (`updated_at > data_stock`).
 
-2. **Movimentos Posteriores ao Stock (`public.movimentos` + `public.movimentos_linhas` — CTE `movimentos_posteriores`)**:
-   - São contabilizados **apenas** os movimentos cujo carimbo de atualização seja estritamente posterior à data/hora do registo de stock do respetivo cliente e armazém:
-     ```sql
-     COALESCE(ml.updated_at, m.updated_at) > COALESCE(rdl.max_data_stock_lote, rda.max_data_stock_armazem, rdc.max_data_stock_cliente)
-     ```
-   - **Entradas (`ES`, `ET`, `E`)**: Somam positivamente (`+quantidade`) ao stock do cliente e armazém correspondente.
-   - **Saídas (`SS`, `ST`, `S`)**: Abatem (`-quantidade`) ao stock do cliente e armazém correspondente.
-   - **Proteção de `updated_at` na Importação**: Nas RPCs `sync_movimentos_from_access` e `transferir_plat_movimentos_para_movimentos`, a cláusula `ON CONFLICT DO UPDATE` inclui `WHERE ... IS DISTINCT FROM ...`, garantindo que `updated_at` só é atualizado quando existem alterações reais nos valores face aos dados já importados.
-
-3. **Pedidos Efetuados Pendentes de ERP (`public.pedidos` + `public.pedido_linhas` — CTE `pedidos_pendentes_erp`)**:
+2. **Pedidos Efetuados Pendentes de ERP (`public.pedidos` + `public.pedido_linhas` — CTE `pedidos_pendentes_erp`)**:
    - Contabiliza todos os pedidos efetuados na plataforma (`COALESCE(p.stock, true) = true` e `status <> 'cancelado'`), abatendo `-quantidade` ao **Armazém `01` (Venda)** do respetivo cliente, artigo e lote.
    - **Exclusão Automática por `doc_primavera` (`documento_ref`)**: São excluídos do abate via `pedidos` todos os pedidos cujo campo `doc_primavera` coincida com algum `documento_ref` na tabela `public.movimentos`:
      ```sql
@@ -124,20 +116,20 @@ $$\text{Stock Lote} = \text{Stock Base}_{\text{stock}} + \sum_{\text{updated\_at
          )
      )
      ```
-   - Esta regra assegura que, assim que o documento correspondente entra no ERP (`public.movimentos`), o seu efeito no stock passa a ser governado exclusivamente pelo ERP (seja no saldo de `public.stock` ou em `movimentos_posteriores`), evitando qualquer duplicação de abate.
+   - Assim que o pedido é faturado/integrado no ERP (`public.movimentos`), deixa de ser abatido em duplicado via `pedidos_pendentes_erp`.
 
 ---
 
 ## 3. Indicadores Superiores (4 Cartões de KPI)
 
-No topo da página `/stocks` são calculados 4 indicadores operacionais numa única passagem $O(N)$ sobre `vw_stock_atual`:
+No topo da página `/stocks` são calculados 4 indicadores operacionais numa única passagem $O(N)$ sobre `vw_stock_atual` (com mapeamento de `tipo_artigo` via `ID_TIPO_ARTIGO_MAP`):
 
 | # | Indicador (KPI) | Regra de Negócio / Critério | Significado Operacional |
 | :-: | :--- | :--- | :--- |
 | **1** | **Stock Outros Armazéns** | $\sum \text{stock}$ onde `tipo_armazem <> '01'` | Total de unidades fora do circuito comercial (Quarentena `05`, Devoluções `04`, Expirados `02`, Danificados `03`, Destruição `06`, Farmacoteca `07`, Validade `09`, MIA `10`). |
-| **2** | **Alertas Validade DM** *(Dispositivos Médicos)* | Contagem de `artigo_id` distintos do tipo `DM` com $\text{dias até validade} \le 0$. | Dispositivos médicos com lote já expirado em armazém. |
-| **3** | **Alertas Validade DC e SA** *(Dermocosméticos e Suplementos)* | Contagem de `artigo_id` distintos dos tipos `DC` ou `SA` com $\text{dias até validade} \le 0$. | Dermocosméticos e suplementos alimentares expirados em armazém. |
-| **4** | **Alertas Validade MH** *(Medicamentos de Uso Humano)* | Contagem de `artigo_id` distintos do tipo `MH` com $\text{dias até validade} < 180\text{ dias}$. | Medicamentos humanos em janela regulamentar de risco de caducidade (inferior a 6 meses). |
+| **2** | **Alertas Validade DM** *(Dispositivos Médicos)* | Contagem de `artigo_id` distintos do tipo `DM` (`82`) com $\text{dias até validade} \le 0$. | Dispositivos médicos com lote já expirado em armazém. |
+| **3** | **Alertas Validade DC e SA** *(Dermocosméticos e Suplementos)* | Contagem de `artigo_id` distintos dos tipos `DC` (`83`) ou `SA` (`84`) com $\text{dias até validade} \le 0$. | Dermocosméticos e suplementos alimentares expirados em armazém. |
+| **4** | **Alertas Validade MH** *(Medicamentos de Uso Humano)* | Contagem de `artigo_id` distintos do tipo `MH` (`80`) com $\text{dias até validade} < 180\text{ dias}$. | Medicamentos humanos em janela regulamentar de risco de caducidade (inferior a 6 meses). |
 
 ---
 
@@ -152,9 +144,10 @@ O painel de filtragem atua transversalmente sobre as abas de stock:
    - `TC` — Temperatura Controlada ($15\text{–}25\text{ ºC}$)
    - `TA` — Temperatura Ambiente
 4. **Filtro de Tipo de Artigo (`tipo_artigo`)**:
-   - `MH` (Medicamento Humano), `MV` (Medicamento Veterinário), `DM` (Dispositivo Médico), `DC` (Dermo-Cosmético), `SC` (Substância Controlada), `SA` (Suplemento Alimentar).
+   - Compatível tanto com siglas (`MH`, `MV`, `DM`, `DC`, `SC`, `SA`) como com os códigos numéricos do catálogo (`80` a `85`) através de `ID_TIPO_ARTIGO_MAP`.
 5. **Filtro de Tipo de Armazém (`tipo_armazem`)**:
    - `01` (Venda), `02` (Expirados), `03` (Danificados), `04` (Devoluções), `05` (Quarentena), `06` (Destruição), `07` (Farmacoteca), `09` (Validade), `10` (MIA).
+   - **Comutação Inteligente de Aba**: Caso o utilizador esteja posicionado na aba **Stock de Venda** (`pedidos`) ou **Artigos com Stock 0** (`stock_zero`) e selecione no filtro um armazém diferente de `01` (ex.: `05 - Quarentena`), a vista muda automaticamente para a aba **Stock Consolidado** (`consolidado`), apresentando de imediato as existências desse armazém.
 
 ---
 
@@ -163,15 +156,17 @@ O painel de filtragem atua transversalmente sobre as abas de stock:
 A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) para comutação instantânea e permite ordenação crescente/decrescente clicando nos cabeçalhos **Artigo** e **Descrição do Artigo**:
 
 ### 5.1 Aba 1 — Stock de Venda (`vw_stock_pedidos`)
-- Apresenta exclusivamente os lotes alojados no **Armazém `01` (Venda Livre)** com saldo positivo (`stock > 0`), já líquidos de movimentos posteriores a `data_stock` e de pedidos pendentes de faturação no ERP, disponíveis para alocação imediata na criação de pedidos.
+- Apresenta exclusivamente os lotes alojados no **Armazém `01` (Venda Livre)** com saldo positivo (`stock > 0`), já líquidos de pedidos pendentes de faturação no ERP, disponíveis para alocação imediata na criação de pedidos.
+- **Coluna Tipo de Artigo**: Exibe a designação completa do tipo de artigo (`TIPO_ARTIGO_LABELS[ID_TIPO_ARTIGO_MAP[item.tipo_artigo]]`) num badge azul uniforme, idêntico ao da aba **Artigos com Stock 0**.
 - **Destaque de Limiar Parametrizado (`tempos`)**: Cruza cada linha com os limiares definidos para o cliente na tabela `public.tempos` (`VAL_MH`, `VAL_MV`, `VAL_DM`, `VAL_DC`, `VAL_SA`). Se os dias restantes até à validade forem iguais ou inferiores ao limiar do cliente ($\text{dias} \le \text{VAL\_TIPO}$), a linha é destacada a âmbar.
 
 ### 5.2 Aba 2 — Stock Consolidado (`vw_stock_atual`)
 - Mostra todos os lotes com saldo positivo distribuídos por **todos os armazéns** (`01` a `10`), identificando `armazem_loc`, `tipo_armazem`, a descrição do armazém, `data_stock` e `ultimo_movimento`.
 - **Modo Administrador (`isAdmin`)**: Nos perfis de administração, cada linha disponibiliza botões para **Editar** (`editarLinhaStockAction`) ou **Apagar** (`apagarLinhaStockAction`) o registo de stock correspondente.
 
-### 5.3 Aba 3 — Resumo por Artigo (`resumoArtigos`)
+### 5.3 Aba 3 — Agrupado por Artigo (`resumoArtigos`)
 - Agrega todos os lotes de cada referência (`cliente_id + artigo_id`) numa linha única, discriminando:
+  - **Tipo de Artigo**: Apresentado com o mesmo badge azul e tradução via `ID_TIPO_ARTIGO_MAP` / `TIPO_ARTIGO_LABELS`;
   - **Stock Venda (`01`)**: Unidades disponíveis para expedição comercial;
   - **Stock Outros (`<> 01`)**: Unidades retidas noutros armazéns;
   - **Stock Total**: Soma global ($\text{Stock Venda} + \text{Stock Outros}$);
@@ -182,8 +177,8 @@ A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) p
 - Calcula os **Dias Restantes** ($\lceil(\text{Validade} - \text{Hoje}) / 86\,400\,000\rceil$) e classifica o estado de cada lote consoante os tempos parametrizados por cliente e tipologia de artigo (**Expirado**, **Bloqueado / Alerta** ou **Conforme**).
 
 ### 5.5 Aba 5 — Artigos com Stock 0 (`vw_stock_zero`)
-- Identifica todas as referências do catálogo do cliente (`public.artigos`) ou com histórico de stock/movimentos/pedidos cujo saldo total atual em armazém é **zero** ($\sum \text{stock} \le 0$).
-- **Regra de Exclusão ao Nível do Artigo**: O lote é ignorado — se um artigo tiver stock positivo em qualquer lote ou armazém (`positive_articles`), nunca é listado como Stock 0. Mostra também a data do **Último Movimento** (`ultimo_movimento`) e o **Total de Registos** (`total_movimentos`).
+- Identifica todas as referências do catálogo do cliente (`public.artigos`) ou com histórico de stock/pedidos cujo saldo total atual em armazém é **zero** ($\sum \text{stock} \le 0$).
+- **Regra de Exclusão ao Nível do Artigo**: O lote é ignorado — se um artigo tiver stock positivo em qualquer lote ou armazém (`positive_articles`), nunca é listado como Stock 0. Mostra também o badge de **Tipo de Artigo**, a data do **Último Movimento** (`ultimo_movimento`) e o **Total de Registos** (`total_movimentos`).
 
 ---
 
@@ -191,4 +186,4 @@ A navegação entre abas preserva no DOM as abas já visitadas (`visitedTabs`) p
 
 Os botões de exportação no topo da página exportam exatamente a vista e os filtros ativos na aba selecionada:
 - **Exportação CSV**: Gera um ficheiro `.csv` codificado em `UTF-8 com BOM (\uFEFF)` para abertura direta no Microsoft Excel com acentuação portuguesa preservada.
-- **Exportação Excel (`.xlsx`)**: Carrega dinamicamente a biblioteca `ExcelJS` (`await import('exceljs')`) e gera uma folha de cálculo nativa formatada com cabeçalho institucional verde-floresta Sermail (`#1B4332`), larguras de coluna ajustadas e formatação numérica/datas localizada (`pt-PT`).
+- **Exportação Excel (`.xlsx`)**: Carrega dinamicamente a biblioteca `ExcelJS` (`await import('exceljs')`) e gera uma folha de cálculo nativa formatada com cabeçalho institucional verde-floresta Sermail (`#1B4332`), designação traduzida do **Tipo de Artigo**, larguras de coluna ajustadas e formatação numérica/datas localizada (`pt-PT`).

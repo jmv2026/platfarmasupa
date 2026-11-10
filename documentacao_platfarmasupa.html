@@ -762,17 +762,14 @@
   <p>Visão integral do inventário físico e logístico em armazém. Permite acompanhamento rigoroso de lotes farmacêuticos,
     posições de arrumação e cumprimento dos prazos regulamentares de validade (Good Distribution Practices - GDP).</p>
   <ul>
-    <li><strong>Motor de Contabilização Consolidada de Stock:</strong> O saldo de cada lote é apurado a partir da tabela
-      base <code>public.stock</code> (com data e hora exatas em <code>data_stock</code> do tipo
-      <code>timestamptz</code>, sem default <code>now()</code>), somando/abatendo apenas os movimentos de
-      <code>public.movimentos_linhas</code> cujo <code>updated_at</code> seja posterior a <code>data_stock</code> do
-      respetivo cliente e armazém, e deduzindo no Armazém <code>01</code> todos os pedidos ativos em
-      <code>public.pedidos</code> exceto aqueles cujo <code>doc_primavera</code> coincida com algum
-      <code>documento_ref</code> em <code>public.movimentos</code>.
+    <li><strong>Motor de Contabilização Consolidada de Stock:</strong> O saldo de cada lote é apurado exclusivamente a partir da tabela
+      base <code>public.stock</code> (sincronizada a partir do ERP/Access, com data e hora em <code>data_stock</code> do tipo
+      <code>timestamptz</code>), deduzindo no Armazém <code>01</code> todos os pedidos ativos em
+      <code>public.pedidos</code> (<code>stock = true</code> e <code>status &lt;&gt; 'cancelado'</code>) exceto aqueles cujo <code>doc_primavera</code> coincida com algum
+      <code>documento_ref</code> em <code>public.movimentos</code> (evitando dupla contabilização de movimentos históricos).
     </li>
-    <li><strong>Filtro Multidimensional:</strong> Filtragem por cliente, armazém (01 Venda a 10 MIA), lote,
-      código/descrição de artigo e estado de validade.</li>
-    <li><strong>Regras Regulamentares de Validade (Tabela <code>tempos</code>):</strong> Classificação visual de cada
+    <li><strong>Filtro Multidimensional com Comutação Inteligente de Armazém:</strong> Filtragem por cliente, conservação, tipo de artigo (com conversão automática dos códigos <code>80</code>–<code>85</code> para <code>MH</code>, <code>MV</code>, <code>DM</code>, <code>DC</code>, <code>SA</code>, <code>SC</code>), armazém (<code>01</code> Venda a <code>10</code> MIA, com mudança automática para a aba <em>Stock Consolidado</em> ao escolher armazéns diferentes de <code>01</code>), lote e código/descrição de artigo.</li>
+    <li><strong>Apresentação Uniforme de Tipo de Artigo e Regras de Validade (Tabela <code>tempos</code>):</strong> Exibição da designação completa do <code>tipo_artigo</code> nas listas <em>Stock de Venda</em>, <em>Agrupado por Artigo</em> e <em>Artigos com Stock 0</em>, e classificação visual de cada
       lote com base na sua categoria regulamentar (MH, MV, DM, DC, SA) e parametrizações de Validade (VAL) e Expirado
       (EXP).</li>
     <li><strong>Exportação CSV e Excel Avançada:</strong> Download instantâneo da listagem filtrada em CSV (UTF-8 BOM)
@@ -839,9 +836,8 @@
             class="type-badge">lote</span>, <span class="type-badge">validade</span>, <span
             class="type-badge">data_fabrico</span>, <span class="type-badge">stock</span>, <span
             class="type-badge">data_stock</span>, <span class="type-badge">ultimo_movimento</span></td>
-        <td>Fonte primária de dados para o inventário consolidado: combina <code>public.stock</code> + movimentos com
-          <code>updated_at &gt; data_stock</code> + pedidos sem <code>doc_primavera</code> em
-          <code>public.movimentos</code>.
+        <td>Fonte primária de dados para o inventário consolidado: combina o saldo de <code>public.stock</code> menos os
+          pedidos ativos sem <code>doc_primavera</code> em <code>public.movimentos</code>.
         </td>
       </tr>
       <tr>
@@ -1529,21 +1525,15 @@
   <h2>Views SQL Analíticas e Operacionais</h2>
 
   <h3>1. <code>vw_stock_atual</code></h3>
-  <p>Calcula o stock real consolidado de cada cliente, armazém (<code>tipo_armazem</code>), artigo e lote consolidando 3
-    fontes temporais:</p>
+  <p>Calcula o stock real consolidado de cada cliente, armazém (<code>tipo_armazem</code>), artigo e lote a partir de
+    duas fontes sem duplicação de movimentos históricos:</p>
   <div class="info-card">
     <strong>Lógica de Contabilização:</strong>
     <ul>
-      <li><strong>Base Primária (<code>public.stock</code>):</strong> Saldo de referência com data e hora exatas em
-        <code>data_stock</code> (<code>timestamp with time zone</code>, sem default <code>now()</code>).
+      <li><strong>Base Primária Consolidada (<code>public.stock</code>):</strong> Saldo de referência sincronizado do ERP/Access com data e hora em
+        <code>data_stock</code> (<code>timestamp with time zone</code>).
       </li>
-      <li><strong>Movimentos Posteriores (<code>public.movimentos_linhas</code> +
-          <code>public.movimentos</code>):</strong>
-        Apenas movimentos com <code>COALESCE(ml.updated_at, m.updated_at) &gt; data_stock</code> do respetivo cliente e
-        armazém (Entradas <code>ES</code>/<code>ET</code>/<code>E</code> somam <code>+quantidade</code>; Saídas
-        <code>SS</code>/<code>ST</code>/<code>S</code> abatem <code>-quantidade</code>).
-      </li>
-      <li><strong>Pedidos Efetuados (<code>public.pedidos</code> + <code>public.pedido_linhas</code>):</strong> Abate
+      <li><strong>Pedidos Efetuados Pendentes de ERP (<code>public.pedidos</code> + <code>public.pedido_linhas</code>):</strong> Abate
         (<code>-quantidade</code> no Armazém <code>01</code>) todos os pedidos com <code>stock = true</code> e
         <code>status &lt;&gt; 'cancelado'</code>, <strong>exceto</strong> aqueles cujo <code>doc_primavera</code>
         coincida com algum <code>documento_ref</code> em <code>public.movimentos</code>.
@@ -1554,7 +1544,7 @@
   <h3>2. <code>vw_stock_pedidos</code> e <code>vw_stock_zero</code></h3>
   <p><code>vw_stock_pedidos</code> filtra <code>vw_stock_atual</code> para <code>WHERE tipo_armazem = '01'</code> e
     <code>HAVING SUM(stock) &gt; 0</code> (existências disponíveis para venda). <code>vw_stock_zero</code> aplica a
-    mesma regra consolidada (<code>stock</code> + movimentos posteriores a <code>data_stock</code> + pedidos sem
+    mesma regra consolidada (<code>public.stock</code> menos pedidos ativos sem
     <code>doc_primavera</code> em <code>movimentos</code>) ao nível do artigo para listar as referências com saldo total
     igual ou inferior a zero.
   </p>
