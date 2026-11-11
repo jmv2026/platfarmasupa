@@ -58,6 +58,23 @@ export default async function DashboardPage() {
       return q;
     }, 2000);
 
+  // Buscar entradas de stock (ES) de forma paralela
+  const fetchEntradasES = () =>
+    fetchAllRowsFast<any>((from, to, countMode) => {
+      let q = supabase
+        .from('movimentos')
+        .select(
+          'documento_ref, cliente_id, sigla, cliente_ser, data_movimento, data, created_at, tipo_movimento, tipomovimento',
+          countMode ? { count: countMode } : undefined
+        )
+        .or('tipo_movimento.ilike.ES,tipomovimento.ilike.ES')
+        .range(from, to);
+      if (!isManagerOrAdmin && userClientId) {
+        q = q.eq('cliente_id', userClientId);
+      }
+      return q;
+    }, 2000);
+
   // Buscar todos os dados em paralelo
   const [
     { data: clients },
@@ -65,17 +82,20 @@ export default async function DashboardPage() {
     pedidosRaw,
     { data: faturacao },
     saidasRaw,
+    entradasRaw,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
     fetchPedidos(),
     faturacaoQuery,
     fetchSaidas(),
+    fetchEntradasES(),
   ]);
 
   const finalPedidos = pedidosRaw || [];
   const finalSaidas = saidasRaw || [];
   const finalFaturacao = faturacao || [];
+  const finalEntradas = entradasRaw || [];
 
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">
@@ -92,6 +112,7 @@ export default async function DashboardPage() {
         stockAtual={stockAtual || []}
         pedidos={finalPedidos}
         saidas={finalSaidas}
+        entradas={finalEntradas}
         faturacao={finalFaturacao}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}

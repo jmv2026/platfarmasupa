@@ -7,9 +7,11 @@ import { useRouter } from 'next/navigation';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
+import type { DashboardEntradaESItem } from './grafico-kpi-rececoes';
 
 const GraficoTopProdutos = dynamic(() => import('./grafico-top-produtos'));
 const GraficoFaturacaoMensal = dynamic(() => import('./grafico-faturacao-mensal'));
+const GraficoKpiRececoes = dynamic(() => import('./grafico-kpi-rececoes'));
 
 export interface DashboardFaturacaoItem {
   sigla_cliente: string | null;
@@ -81,6 +83,7 @@ interface DashboardViewProps {
   stockAtual: DashboardStockItem[];
   pedidos: DashboardPedidoItem[];
   saidas: DashboardSaidaItem[];
+  entradas?: DashboardEntradaESItem[];
   faturacao: DashboardFaturacaoItem[];
   currentUserProfile: UserProfile | null;
   isManagerOrAdmin: boolean;
@@ -91,6 +94,7 @@ export default function DashboardView({
   stockAtual,
   pedidos,
   saidas = [],
+  entradas = [],
   faturacao,
   currentUserProfile,
   isManagerOrAdmin,
@@ -98,15 +102,15 @@ export default function DashboardView({
   const { t } = useLanguage();
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao'>('pedidos');
-  const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao'>>(() => new Set(['pedidos']));
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes'>('pedidos');
+  const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes'>>(() => new Set(['pedidos']));
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao') {
+      if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao' || tab === 'kpi_rececoes') {
         setGraficoAtivo(tab);
         setVisitedCharts((prev) => new Set([...prev, tab]));
       }
@@ -118,7 +122,7 @@ export default function DashboardView({
   }, []);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes') => {
     setGraficoAtivo(tipo);
     setVisitedCharts((prev) => {
       if (prev.has(tipo)) return prev;
@@ -183,6 +187,18 @@ export default function DashboardView({
       (f) => f.cliente_id === selectedClientId || (selectedClientObj?.sigla && f.sigla_cliente === selectedClientObj.sigla)
     );
   }, [faturacao, selectedClientId, selectedClientObj, isManagerOrAdmin]);
+
+  const filteredEntradas = useMemo(() => {
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return entradas;
+    }
+    return entradas.filter(
+      (e) =>
+        e.cliente_id === selectedClientId ||
+        (selectedClientObj?.sigla &&
+          (e.sigla === selectedClientObj.sigla || e.cliente_ser === selectedClientObj.sigla))
+    );
+  }, [entradas, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
 
   // 2. Artigos em Risco (> 60d e < 180d - apenas MH) & 3. Artigos Bloqueados (> 0d e <= 60d)
@@ -511,6 +527,19 @@ export default function DashboardView({
             open_in_new
           </span>
         </Link>
+
+        <button
+          type="button"
+          onClick={() => handleSelecionarGrafico('kpi_rececoes')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+            graficoAtivo === 'kpi_rececoes'
+              ? 'bg-sermail-green text-white shadow-sm border border-sermail-green-dark'
+              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 border border-slate-200/90 shadow-2xs font-semibold'
+          }`}
+        >
+          <span className={`material-symbols-outlined text-base ${graficoAtivo === 'kpi_rececoes' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>inventory_2</span>
+          <span>KPI Receções</span>
+        </button>
       </div>
 
       {/* Container do Gráfico com Ref para Centralização Automática no Ecrã e transição instantânea de abas */}
@@ -519,6 +548,16 @@ export default function DashboardView({
           <div className={graficoAtivo === 'pedidos' ? 'block' : 'hidden'}>
             <GraficoPedidosMensal
               pedidos={filteredPedidos}
+              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              onSelectKpiRececoes={() => handleSelecionarGrafico('kpi_rececoes')}
+            />
+          </div>
+        )}
+
+        {visitedCharts.has('kpi_rececoes') && (
+          <div className={graficoAtivo === 'kpi_rececoes' ? 'block' : 'hidden'}>
+            <GraficoKpiRececoes
+              entradas={filteredEntradas}
               clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
             />
           </div>

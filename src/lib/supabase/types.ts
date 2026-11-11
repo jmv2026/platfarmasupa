@@ -531,6 +531,13 @@ export interface NovoDestinoInput {
   observacoes?: string;
 }
 
+export interface DocumentoAnexoPedido {
+  nome: string;
+  storage_path: string;
+  content_type?: string;
+  tamanho?: number;
+}
+
 export interface Pedido {
   id: string;
   nr_pedido: string;
@@ -555,6 +562,7 @@ export interface Pedido {
   doc_primavera?: string | null;
   stock?: boolean;
   observacoes: string | null;
+  documentos_anexos?: DocumentoAnexoPedido[] | null;
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -615,6 +623,7 @@ export interface NovoPedidoInput {
   data_entrega?: string;
   stock?: boolean;
   observacoes?: string;
+  documentos_anexos?: DocumentoAnexoPedido[];
   linhas: NovaLinhaPedidoInput[];
 }
 

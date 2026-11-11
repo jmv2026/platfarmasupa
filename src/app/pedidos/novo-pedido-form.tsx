@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/i18n/context';
+import { createClient } from '@/lib/supabase/client';
 import {
   Client,
   StockPedido,
   NovaLinhaPedidoInput,
+  DocumentoAnexoPedido,
   UserProfile,
   Destino,
   CLASSIFICACOES_DESTINO,
@@ -92,6 +94,10 @@ export default function NovoPedidoForm({
 
   // Lista de Linhas do Pedido
   const [linhas, setLinhas] = useState<NovaLinhaPedidoInput[]>([]);
+
+  // Anexos de Documentos (PDF, XLSX/XLS, CSV/TXT ou Imagem)
+  const [anexosFiles, setAnexosFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados de Submissão
   const [loading, setLoading] = useState(false);
@@ -411,6 +417,98 @@ export default function NovoPedidoForm({
     setLinhas(linhas.filter((_, i) => i !== index));
   };
 
+  // Validar se o ficheiro é PDF, XLSX/XLS, CSV/TXT ou Imagem
+  const isAllowedDocumentFile = (file: File): boolean => {
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const allowedExtensions = [
+      'pdf',
+      'xlsx',
+      'xls',
+      'csv',
+      'txt',
+      'png',
+      'jpg',
+      'jpeg',
+      'webp',
+      'gif',
+      'bmp',
+      'tif',
+      'tiff',
+    ];
+    if (allowedExtensions.includes(ext)) return true;
+    if (file.type && file.type.startsWith('image/')) return true;
+    return false;
+  };
+
+  const handleSelectFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedList = e.target.files;
+    if (!selectedList || selectedList.length === 0) return;
+
+    const validFiles: File[] = [];
+    const rejectedNames: string[] = [];
+
+    Array.from(selectedList).forEach((file) => {
+      if (isAllowedDocumentFile(file)) {
+        // Evitar duplicados pelo mesmo nome e tamanho
+        const exists = anexosFiles.some(
+          (f) => f.name === file.name && f.size === file.size
+        );
+        if (!exists) {
+          validFiles.push(file);
+        }
+      } else {
+        rejectedNames.push(file.name);
+      }
+    });
+
+    if (rejectedNames.length > 0) {
+      setFeedback({
+        type: 'error',
+        message:
+          language === 'pt'
+            ? `Formato não suportado (${rejectedNames.join(', ')}). Anexe apenas ficheiros PDF, XLSX/XLS, CSV/TXT ou Imagem.`
+            : language === 'es'
+              ? `Formato no admitido (${rejectedNames.join(', ')}). Adjunte solo archivos PDF, XLSX/XLS, CSV/TXT o Imagen.`
+              : `Unsupported format (${rejectedNames.join(', ')}). Please attach only PDF, XLSX/XLS, CSV/TXT, or Image files.`,
+      });
+    } else {
+      setFeedback(null);
+    }
+
+    if (validFiles.length > 0) {
+      setAnexosFiles((prev) => [...prev, ...validFiles]);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveAnexo = (index: number) => {
+    setAnexosFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(2)} MB`;
+  };
+
+  const getFileBadge = (fileName: string) => {
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
+    if (ext === 'pdf') {
+      return { label: 'PDF', icon: 'picture_as_pdf', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+    }
+    if (ext === 'xlsx' || ext === 'xls') {
+      return { label: ext.toUpperCase(), icon: 'table_view', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+    }
+    if (ext === 'csv' || ext === 'txt') {
+      return { label: ext.toUpperCase(), icon: 'description', cls: 'bg-amber-50 text-amber-800 border-amber-200' };
+    }
+    return { label: 'IMG', icon: 'image', cls: 'bg-sky-50 text-sky-700 border-sky-200' };
+  };
+
   // Submeter Pedido Completo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,6 +543,42 @@ export default function NovoPedidoForm({
     setFeedback(null);
 
     try {
+      // 1. Gravar documentos anexados no Supabase Storage (bucket 'Documentos')
+      const uploadedDocumentos: DocumentoAnexoPedido[] = [];
+      if (anexosFiles.length > 0) {
+        const supabase = createClient();
+        const folderPrefix = (clientSigla || finalClientId || 'GERAL').replace(/[^a-zA-Z0-9_-]/g, '');
+        const timestamp = Date.now();
+
+        for (let i = 0; i < anexosFiles.length; i++) {
+          const file = anexosFiles[i];
+          const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const storagePath = `pedidos/${folderPrefix}/${timestamp}_${i + 1}_${safeFileName}`;
+
+          const { error: uploadErr } = await supabase.storage
+            .from('Documentos')
+            .upload(storagePath, file, {
+              upsert: true,
+              contentType: file.type || undefined,
+            });
+
+          if (uploadErr) {
+            throw new Error(
+              language === 'pt'
+                ? `Erro ao gravar documento "${file.name}" no Storage Documentos: ${uploadErr.message}`
+                : `Error uploading document "${file.name}" to Storage Documentos: ${uploadErr.message}`
+            );
+          }
+
+          uploadedDocumentos.push({
+            nome: file.name,
+            storage_path: storagePath,
+            content_type: file.type || undefined,
+            tamanho: file.size,
+          });
+        }
+      }
+
       const res = await criarPedidoAction({
         cliente_id: finalClientId,
 
@@ -461,6 +595,7 @@ export default function NovoPedidoForm({
         data_entrega: dataEntrega || undefined,
         stock: contabilizarStock,
         observacoes: observacoes || undefined,
+        documentos_anexos: uploadedDocumentos.length > 0 ? uploadedDocumentos : undefined,
         linhas,
       });
 
@@ -479,6 +614,10 @@ export default function NovoPedidoForm({
         setLocalidade('');
         setRefDocumento('');
         setObservacoes('');
+        setAnexosFiles([]);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
         setContabilizarStock(true);
         setLinhas([]);
         setSelectedArtigoId('');
@@ -1028,19 +1167,122 @@ export default function NovoPedidoForm({
             </div>
           </div>
 
-          {/* SECÇÃO 5: Observações & Submissão */}
+          {/* SECÇÃO 5: Observações, Anexos & Submissão */}
           <div className="space-y-4 pt-4 border-t border-outline-variant/20">
-            <div>
-              <label className="block text-xs font-semibold text-on-surface mb-1">
-                {t.pedidos.notes}
-              </label>
-              <textarea
-                rows={2}
-                value={observacoes}
-                onChange={(e) => setObservacoes(e.target.value)}
-                placeholder={t.pedidos.notesPlaceholder}
-                className="w-full bg-surface-container border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary"
-              />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {/* Janela Esquerda (1/2): Observações */}
+              <div className="bg-surface-container/20 border border-outline-variant/30 rounded-xl p-4 flex flex-col justify-between">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-secondary">notes</span>
+                    {t.pedidos.notes}
+                  </label>
+                </div>
+                <textarea
+                  rows={3}
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  placeholder={t.pedidos.notesPlaceholder}
+                  className="w-full flex-1 bg-surface-container-lowest border border-outline-variant/40 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary resize-none"
+                />
+              </div>
+
+              {/* Janela Direita (1/2): Anexação de Documentos (Storage: Documentos) */}
+              <div className="bg-surface-container/20 border border-outline-variant/30 rounded-xl p-4 flex flex-col justify-between space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-secondary">attach_file</span>
+                    {language === 'pt'
+                      ? 'Anexar Documentos'
+                      : language === 'es'
+                        ? 'Adjuntar Documentos'
+                        : 'Attach Documents'}
+                    {anexosFiles.length > 0 && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-secondary text-on-secondary">
+                        {anexosFiles.length}
+                      </span>
+                    )}
+                  </label>
+                  <span className="text-[10px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded border border-outline-variant/30">
+                    PDF • XLSX/XLS • CSV/TXT • Imagem
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.xlsx,.xls,.csv,.txt,image/*"
+                    onChange={handleSelectFiles}
+                    className="hidden"
+                    id="pedido-anexos-input"
+                  />
+                  <label
+                    htmlFor="pedido-anexos-input"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/30 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    <span className="material-symbols-outlined text-sm">upload_file</span>
+                    {language === 'pt'
+                      ? 'Selecionar Ficheiros'
+                      : language === 'es'
+                        ? 'Seleccionar Archivos'
+                        : 'Select Files'}
+                  </label>
+                  <span className="text-[11px] text-on-surface-variant leading-tight">
+                    {language === 'pt'
+                      ? 'Gravados em Storage Documentos e enviados em anexo nos emails do pedido.'
+                      : language === 'es'
+                        ? 'Guardados en Storage Documentos y enviados adjuntos en los emails del pedido.'
+                        : 'Saved to Documentos Storage and attached to order emails.'}
+                  </span>
+                </div>
+
+                {anexosFiles.length > 0 ? (
+                  <div className="max-h-24 overflow-y-auto space-y-1.5 pr-1">
+                    {anexosFiles.map((file, idx) => {
+                      const badge = getFileBadge(file.name);
+                      return (
+                        <div
+                          key={`${file.name}-${idx}`}
+                          className="flex items-center justify-between gap-2 bg-surface-container-lowest border border-outline-variant/30 rounded-lg px-2.5 py-1.5 text-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold border shrink-0 ${badge.cls}`}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">{badge.icon}</span>
+                              {badge.label}
+                            </span>
+                            <span className="font-medium text-on-surface truncate" title={file.name}>
+                              {file.name}
+                            </span>
+                            <span className="text-[10px] text-on-surface-variant font-mono shrink-0">
+                              ({formatFileSize(file.size)})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAnexo(idx)}
+                            className="text-rose-600 hover:text-rose-800 p-0.5 rounded hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+                            title={t.common.delete}
+                          >
+                            <span className="material-symbols-outlined text-sm">close</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-on-surface-variant/80 italic bg-surface-container-lowest/60 border border-dashed border-outline-variant/30 rounded-lg px-3 py-2 text-center">
+                    {language === 'pt'
+                      ? 'Nenhum documento anexado ao pedido.'
+                      : language === 'es'
+                        ? 'Ningún documento adjunto al pedido.'
+                        : 'No documents attached to the order.'}
+                  </div>
+                )}
+              </div>
             </div>
 
             {isManagerOrAdmin && (

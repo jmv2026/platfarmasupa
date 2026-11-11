@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   PedidoComLinhas,
   Client,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
+import { apagarMovimentoAction } from './actions';
 
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
@@ -27,11 +29,22 @@ export default function HistoricoPedidosView({
   clients,
   currentUserProfile,
 }: HistoricoPedidosViewProps) {
+  const router = useRouter();
   const supabase = createClient();
   const { t, language } = useLanguage();
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  // Estados para eliminação de movimento (Apenas Admin / Gestor)
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [pedidoToDelete, setPedidoToDelete] = useState<PedidoComLinhas | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  const activePedidos = useMemo(() => {
+    if (deletedIds.size === 0) return pedidos;
+    return pedidos.filter((p) => !deletedIds.has(p.id));
+  }, [pedidos, deletedIds]);
 
   // Estado e cache para o visualizador do comprovativo
   const [comprovativoImage, setComprovativoImage] = useState<string | null>(null);
@@ -166,21 +179,71 @@ export default function HistoricoPedidosView({
     return d.toISOString().split('T')[0];
   };
 
+  const handleConfirmDeleteMovimento = async () => {
+    if (!pedidoToDelete) return;
+    setIsDeleting(true);
+    setFeedback(null);
+
+    try {
+      const res = await apagarMovimentoAction({
+        id: pedidoToDelete.id,
+        nr_pedido: pedidoToDelete.nr_pedido,
+        sigla_pedido: pedidoToDelete.sigla_pedido,
+        cliente_id: pedidoToDelete.cliente_id,
+        cliente_sigla: pedidoToDelete.clients?.sigla || pedidoToDelete.clientes?.sigla,
+      });
+
+      if (res.success) {
+        const deletedId = pedidoToDelete.id;
+        const deletedDoc = pedidoToDelete.nr_pedido;
+        setDeletedIds((prev) => {
+          const next = new Set(prev);
+          next.add(deletedId);
+          return next;
+        });
+        if (selectedModalPedido?.id === deletedId) {
+          setSelectedModalPedido(null);
+        }
+        setPedidoToDelete(null);
+        setFeedback({
+          type: 'success',
+          message:
+            language === 'pt'
+              ? `Movimento ${deletedDoc} e respetivas linhas apagados com sucesso.`
+              : language === 'es'
+                ? `Movimiento ${deletedDoc} y sus líneas eliminados con éxito.`
+                : `Movement ${deletedDoc} and its associated lines deleted successfully.`,
+        });
+        router.refresh();
+      } else {
+        setFeedback({
+          type: 'error',
+          message: res.error || 'Erro ao apagar o movimento.',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro ao apagar o movimento.';
+      setFeedback({ type: 'error', message: msg });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Estados disponíveis para filtro (únicos e em ordem alfabética)
   const availableStatuses = useMemo(() => {
     const statuses = new Set<string>();
-    pedidos.forEach((ped) => {
+    activePedidos.forEach((ped) => {
       if (ped.status) {
         statuses.add(ped.status);
       }
     });
     return Array.from(statuses).sort();
-  }, [pedidos]);
+  }, [activePedidos]);
 
   // Destinos disponíveis para filtro na aba "Histórico de Movimentos"
   const availableDestinos = useMemo(() => {
     const destinosSet = new Set<string>();
-    pedidos.forEach((ped) => {
+    activePedidos.forEach((ped) => {
       if (ped.processado) return;
       if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) return;
       const destNome = (ped.nome_destinatario || ped.destinos?.nome || '').trim();
@@ -190,12 +253,12 @@ export default function HistoricoPedidosView({
     });
     const collator = new Intl.Collator('pt-PT', { sensitivity: 'base' });
     return Array.from(destinosSet).sort((a, b) => collator.compare(a, b));
-  }, [pedidos, selectedClientId]);
+  }, [activePedidos, selectedClientId]);
 
   // Artigos disponíveis para filtro nos pedidos / movimentos (indexados por artigo_id)
   const availableArtigos = useMemo(() => {
     const map = new Map<string, string>();
-    pedidos.forEach((ped) => {
+    activePedidos.forEach((ped) => {
       if (ped.processado) return;
       if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) return;
       ped.pedido_linhas?.forEach((l) => {
@@ -211,7 +274,7 @@ export default function HistoricoPedidosView({
     return Array.from(map.entries())
       .map(([codigo, descricao]) => ({ codigo, descricao }))
       .sort((a, b) => collator.compare(a.codigo, b.codigo));
-  }, [pedidos, selectedClientId]);
+  }, [activePedidos, selectedClientId]);
 
   // Opções de artigos filtradas pela pesquisa rápida na aba "Por Artigo"
   const filteredArtigosOptions = useMemo(() => {
@@ -284,8 +347,8 @@ export default function HistoricoPedidosView({
     const lotesSet = new Set<string>();
     const qArt = artigoSearchQuery.trim().toLowerCase();
 
-    for (let i = 0; i < pedidos.length; i++) {
-      const ped = pedidos[i];
+    for (let i = 0; i < activePedidos.length; i++) {
+      const ped = activePedidos[i];
       if (ped.processado) continue;
       if (selectedClientId !== 'todos' && ped.cliente_id !== selectedClientId) continue;
 
@@ -370,7 +433,7 @@ export default function HistoricoPedidosView({
       selectedArtigoInfo: foundArt,
     };
   }, [
-    pedidos,
+    activePedidos,
     selectedClientId,
     tabArtigoSelected,
     artigoSearchQuery,
@@ -391,7 +454,7 @@ export default function HistoricoPedidosView({
     const thirtyDaysAgoMs = nowMs - 30 * 24 * 60 * 60 * 1000;
     const query = searchTerm.trim().toLowerCase();
 
-    return pedidos.filter((ped) => {
+    return activePedidos.filter((ped) => {
       // REGRA: Pedidos cujo campo processado esteja selecionado não devem ser apresentados no histórico de movimentos
       if (ped.processado) {
         return false;
@@ -477,7 +540,7 @@ export default function HistoricoPedidosView({
 
       return true;
     });
-  }, [pedidos, selectedClientId, selectedStatus, selectedTipoMov, selectedDestino, selectedDateFilter, searchTerm]);
+  }, [activePedidos, selectedClientId, selectedStatus, selectedTipoMov, selectedDestino, selectedDateFilter, searchTerm]);
 
   // Total de unidades filtradas
   const totalUnidadesFiltradas = useMemo(() => {
@@ -1477,6 +1540,22 @@ export default function HistoricoPedidosView({
                                               <span className="text-xs text-on-surface-variant font-mono">
                                                 {formatDate(ped.data_pedido)}
                                               </span>
+
+                                              {isManagerOrAdmin && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setPedidoToDelete(ped)}
+                                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                                                  title={
+                                                    language === 'pt'
+                                                      ? 'Apagar movimento e linhas associadas'
+                                                      : 'Delete movement and associated lines'
+                                                  }
+                                                >
+                                                  <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                  {language === 'pt' ? 'Apagar' : 'Delete'}
+                                                </button>
+                                              )}
                                             </div>
                                           </div>
 
@@ -1583,7 +1662,12 @@ export default function HistoricoPedidosView({
                                           <th className="py-2.5 px-3 text-center">{t.historico.colLines}</th>
                                           <th className="py-2.5 px-3 text-right">{t.historico.colTotalQty}</th>
                                           <th className="py-2.5 px-3 text-center">{t.historico.colStatus}</th>
-                                          <th className="py-2.5 px-3 text-center rounded-r-lg">Comprovativo</th>
+                                          <th className={`py-2.5 px-3 text-center ${!isManagerOrAdmin ? 'rounded-r-lg' : ''}`}>Comprovativo</th>
+                                          {isManagerOrAdmin && (
+                                            <th className="py-2.5 px-3 text-center rounded-r-lg">
+                                              {language === 'pt' ? 'Ações' : language === 'es' ? 'Acciones' : 'Actions'}
+                                            </th>
+                                          )}
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-outline-variant/10 text-on-surface">
@@ -1654,6 +1738,22 @@ export default function HistoricoPedidosView({
                                                   </button>
                                                 )}
                                               </td>
+                                              {isManagerOrAdmin && (
+                                                <td className="py-3 px-3 text-center">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setPedidoToDelete(ped)}
+                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                                                    title={
+                                                      language === 'pt'
+                                                        ? 'Apagar movimento e linhas associadas'
+                                                        : 'Delete movement and associated lines'
+                                                    }
+                                                  >
+                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                  </button>
+                                                </td>
+                                              )}
                                             </tr>
                                           );
                                         })}
@@ -1847,6 +1947,101 @@ export default function HistoricoPedidosView({
                                     </a>
                                   </div>
                                 )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Modal de Confirmação para Apagar Movimento e Linhas (Admin / Gestor) */}
+                          {isManagerOrAdmin && pedidoToDelete && (
+                            <div
+                              className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs"
+                              onClick={() => !isDeleting && setPedidoToDelete(null)}
+                            >
+                              <div
+                                className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-4"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-100">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
+                                      <span className="material-symbols-outlined text-xl">delete_forever</span>
+                                    </div>
+                                    <div>
+                                      <h3 className="text-sm font-bold text-slate-900">
+                                        {language === 'pt'
+                                          ? 'Apagar Movimento e Linhas'
+                                          : language === 'es'
+                                            ? 'Eliminar Movimiento y Líneas'
+                                            : 'Delete Movement and Lines'}
+                                      </h3>
+                                      <p className="text-[11px] text-slate-500">
+                                        {language === 'pt'
+                                          ? 'Ação restrita a Administrador e Gestor'
+                                          : 'Restricted to Administrator and Manager'}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    disabled={isDeleting}
+                                    onClick={() => setPedidoToDelete(null)}
+                                    className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <span className="material-symbols-outlined text-base">close</span>
+                                  </button>
+                                </div>
+
+                                <div className="bg-rose-50/60 border border-rose-200/80 rounded-xl p-3.5 text-xs text-slate-800 space-y-1.5">
+                                  <p className="font-semibold text-rose-900">
+                                    {language === 'pt'
+                                      ? 'Tem a certeza que deseja apagar permanentemente este movimento e todas as linhas a ele associadas?'
+                                      : 'Are you sure you want to permanently delete this movement and all its associated lines?'}
+                                  </p>
+                                  <div className="pt-1 space-y-0.5 text-[11px] text-slate-700 font-mono">
+                                    <div>
+                                      <strong>Documento:</strong> {pedidoToDelete.nr_pedido}{' '}
+                                      {pedidoToDelete.tipo_movimento ? `(${pedidoToDelete.tipo_movimento})` : ''}
+                                    </div>
+                                    <div>
+                                      <strong>Destino:</strong>{' '}
+                                      {pedidoToDelete.nome_destinatario || pedidoToDelete.destinos?.nome || '-'}
+                                    </div>
+                                    <div>
+                                      <strong>Linhas associadas:</strong> {pedidoToDelete.pedido_linhas?.length || 0} linha(s)
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2.5 pt-2">
+                                  <button
+                                    type="button"
+                                    disabled={isDeleting}
+                                    onClick={() => setPedidoToDelete(null)}
+                                    className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer disabled:opacity-50"
+                                  >
+                                    {t.common.cancel}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={isDeleting}
+                                    onClick={handleConfirmDeleteMovimento}
+                                    className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+                                  >
+                                    {isDeleting ? (
+                                      <>
+                                        <span className="material-symbols-outlined animate-spin text-sm">
+                                          progress_activity
+                                        </span>
+                                        {language === 'pt' ? 'A apagar...' : 'Deleting...'}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="material-symbols-outlined text-sm">delete</span>
+                                        {language === 'pt' ? 'Confirmar e Apagar' : 'Confirm & Delete'}
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}

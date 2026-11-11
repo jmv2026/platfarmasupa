@@ -201,6 +201,10 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
       doc_primavera: null,
       stock: finalStock,
       observacoes: input.observacoes || null,
+      documentos_anexos:
+        input.documentos_anexos && input.documentos_anexos.length > 0
+          ? input.documentos_anexos
+          : [],
       created_by: user.id,
     })
     .select()
@@ -277,9 +281,37 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
 
   const defaultArmazem = `${client.sigla.toUpperCase()}01`;
 
+  // 5.1 Carregar do bucket 'Documentos' os documentos anexados ao pedido para enviar por email
+  const anexosExtras: { filename: string; content: Buffer; contentType?: string }[] = [];
+  if (input.documentos_anexos && input.documentos_anexos.length > 0) {
+    for (const doc of input.documentos_anexos) {
+      if (!doc.storage_path) continue;
+      try {
+        const { data: blobData, error: dlErr } = await supabase.storage
+          .from('Documentos')
+          .download(doc.storage_path);
+        if (!dlErr && blobData) {
+          const arrayBuffer = await blobData.arrayBuffer();
+          anexosExtras.push({
+            filename: doc.nome || doc.storage_path.split('/').pop() || 'anexo',
+            content: Buffer.from(arrayBuffer),
+            contentType: doc.content_type || blobData.type || undefined,
+          });
+        } else if (dlErr) {
+          console.warn(
+            `[criarPedidoAction] Falha ao descarregar anexo ${doc.storage_path} do bucket Documentos:`,
+            dlErr.message
+          );
+        }
+      } catch (err) {
+        console.warn('[criarPedidoAction] Erro ao processar anexo para envio de email:', err);
+      }
+    }
+  }
+
   // 6. Enviar emails automáticos via Resend:
-  //    a) Email de confirmação do pedido (com a guia Pedido_<nr_pedido>.xlsx) para o executante
-  //    b) Email separado exclusivamente para o administrador com o ficheiro Template-Pedidos_<nr_pedido>.xlsx
+  //    a) Email de confirmação do pedido (com a guia Pedido_<nr_pedido>.xlsx + documentos anexos) para o executante
+  //    b) Email separado exclusivamente para o administrador com o ficheiro Template-Pedidos_<nr_pedido>.xlsx + documentos anexos
   const dadosEmail = {
     nr_pedido: pedido.nr_pedido,
     ref_documento: pedido.ref_documento,
@@ -296,6 +328,7 @@ export async function criarPedidoAction(input: NovoPedidoInput) {
     observacoes: pedido.observacoes,
     utilizador_nome: userProfile?.full_name || user.email?.split('@')[0],
     utilizador_email: user.email || userProfile?.email || 'admin@sermail.pt',
+    anexosExtras,
     linhas: input.linhas.map((l) => {
       const artIdClean = l.artigo_id.trim();
       const artCliClean = (l.artigo_cli || l.artigo_codigo || '').trim();

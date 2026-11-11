@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/i18n/context';
 interface GraficoPedidosMensalProps {
   pedidos: DashboardPedidoItem[];
   clientName?: string | null;
+  onSelectKpiRececoes?: () => void;
 }
 
 type PeriodoFiltro = 'mes-atual' | '3m' | '6m' | '12m' | 'ano-atual' | 'todos';
@@ -41,11 +42,11 @@ function extrairAnoMes(dateStr: string | null | undefined): { year: number; mont
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPedidosMensalProps) {
+export default function GraficoPedidosMensal({ pedidos, clientName, onSelectKpiRececoes }: GraficoPedidosMensalProps) {
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -772,91 +773,60 @@ export default function GraficoPedidosMensal({ pedidos, clientName }: GraficoPed
         })()}
         </div>
 
-        {/* Coluna Lateral Direita: 4 Cartões KPI a atribuir com o mesmo formato */}
+        {/* Coluna Lateral Direita: 4 Cartões KPI */}
         <div className="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-4 gap-2.5 sm:gap-3 w-full lg:w-56 xl:w-64 shrink-0">
-          {/* 1. KPI a atribuir */}
-          <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between">
+          {/* 1. KPI receção */}
+          <div
+            onClick={onSelectKpiRececoes}
+            className={`min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-50/90 to-emerald-50/50 border border-lime-200/70 shadow-2xs flex flex-col justify-between transition-all ${
+              onSelectKpiRececoes ? 'cursor-pointer hover:border-lime-400 hover:shadow-sm' : ''
+            }`}
+          >
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-lime-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                KPI a atribuir
+                KPI receção
               </span>
               <span className="w-2 h-2 rounded-full bg-lime-500 ring-4 ring-lime-200/50 shrink-0 mt-0.5"></span>
             </div>
-            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm sm:text-base font-bold font-headline text-emerald-950 leading-none">
-                  KPI a atribuir
-                </span>
-              </div>
-              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-                KPI a atribuir
-              </span>
-            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5"></div>
           </div>
 
-          {/* 2. KPI a atribuir */}
+          {/* 2. KPI pedidos */}
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                KPI a atribuir
+                KPI pedidos
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
             </div>
-            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm sm:text-base font-bold font-headline text-emerald-950 leading-none">
-                  KPI a atribuir
-                </span>
-              </div>
-              <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-                KPI a atribuir
-              </span>
-            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5"></div>
           </div>
 
-          {/* 3. KPI a atribuir */}
+          {/* 3. KPI entregas */}
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-lime-100/70 via-emerald-50/60 to-lime-50/80 border border-lime-300/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-lime-950 uppercase tracking-wide flex items-center gap-1 leading-snug whitespace-normal">
                 <span className="material-symbols-outlined text-[13px] text-lime-700 shrink-0">bookmark</span>
-                <span>KPI a atribuir</span>
+                <span>KPI entregas</span>
               </span>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-lime-300 text-lime-950 leading-none shrink-0">
                 KPI
               </span>
             </div>
-            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm sm:text-base font-bold font-headline text-emerald-950 leading-none">
-                  KPI a atribuir
-                </span>
-              </div>
-              <span className="text-[10px] text-emerald-800 font-semibold leading-tight whitespace-normal">
-                KPI a atribuir
-              </span>
-            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5"></div>
           </div>
 
-          {/* 4. KPI a atribuir */}
+          {/* 4. KPI reclamações */}
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                KPI a atribuir
+                KPI reclamações
               </span>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 bg-lime-300 text-emerald-950">
                 KPI
               </span>
             </div>
-            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5">
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm sm:text-base font-bold font-headline text-emerald-950 leading-none">
-                  KPI a atribuir
-                </span>
-              </div>
-              <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-                KPI a atribuir
-              </span>
-            </div>
+            <div className="flex items-baseline justify-between gap-1 flex-wrap pt-0.5"></div>
           </div>
         </div>
       </div>

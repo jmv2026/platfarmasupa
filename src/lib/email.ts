@@ -32,6 +32,11 @@ export interface EmailPedidoDados {
   utilizador_nome?: string | null;
   utilizador_email: string;
   linhas: LinhaPedidoEmail[];
+  anexosExtras?: {
+    filename: string;
+    content: Buffer;
+    contentType?: string;
+  }[];
 }
 
 export interface EmailEnvioResult {
@@ -302,6 +307,14 @@ function gerarEmailPedidoHtml(dados: EmailPedidoDados): string {
               <strong style="color: #166534; font-size: 13px;">Documento Anexo:</strong>
               <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: #15803d;"> Pedido_${dados.nr_pedido}.xlsx</span>
               <div style="font-size: 11px; color: #166534; margin-top: 2px;">Folha de cálculo Excel com a guia integral de pedido, destinatário e alocação de lotes FEFO.</div>
+              ${
+                dados.anexosExtras && dados.anexosExtras.length > 0
+                  ? `<div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #86efac; font-size: 12px; color: #166534;">
+                      <strong>Documentos Anexados pelo Utilizador (${dados.anexosExtras.length}):</strong>
+                      <span style="font-family: monospace; font-weight: 600;"> ${dados.anexosExtras.map((a) => a.filename).join(', ')}</span>
+                    </div>`
+                  : ''
+              }
             </td>
           </tr>
         </table>
@@ -372,7 +385,11 @@ Total de Unidades: ${totalUnidades} un
 
 ${dados.observacoes ? `OBSERVAÇÕES:\n${dados.observacoes}\n` : ''}
 DOCUMENTO ANEXO:
-- Pedido_${dados.nr_pedido}.xlsx (Ficheiro Excel com resumo e linhas de expedição)
+- Pedido_${dados.nr_pedido}.xlsx (Ficheiro Excel com resumo e linhas de expedição)${
+    dados.anexosExtras && dados.anexosExtras.length > 0
+      ? '\n' + dados.anexosExtras.map((a) => `- ${a.filename}`).join('\n')
+      : ''
+  }
 
 =================================================================
 Este email foi gerado automaticamente pela Plataforma Farma.
@@ -398,19 +415,23 @@ export async function enviarEmailConfirmacaoPedido(dados: EmailPedidoDados): Pro
   const html = gerarEmailPedidoHtml(dados);
   const text = gerarEmailPedidoTexto(dados);
 
-  // Gerar anexo Excel (.xlsx) com a guia do pedido
-  let attachments: { filename: string; content: Buffer }[] | undefined = undefined;
+  // Gerar anexo Excel (.xlsx) com a guia do pedido + documentos anexados pelo utilizador
+  const attachmentsList: { filename: string; content: Buffer; contentType?: string }[] = [];
   try {
     const excelBuffer = await gerarExcelPedido(dados);
-    attachments = [
-      {
-        filename: `Pedido_${dados.nr_pedido}.xlsx`,
-        content: excelBuffer,
-      },
-    ];
+    attachmentsList.push({
+      filename: `Pedido_${dados.nr_pedido}.xlsx`,
+      content: excelBuffer,
+    });
   } catch (excelErr) {
     console.error('[Excel Attachment Error] Falha ao gerar o anexo Excel do pedido:', excelErr);
   }
+
+  if (dados.anexosExtras && dados.anexosExtras.length > 0) {
+    attachmentsList.push(...dados.anexosExtras);
+  }
+
+  const attachments = attachmentsList.length > 0 ? attachmentsList : undefined;
 
   return enviarMensagemResend({
     from: fromEmail,
@@ -474,6 +495,11 @@ export async function enviarEmailTemplatePedidoAdmin(
   const filename = `Template-Pedidos_${dados.nr_pedido}.xlsx`;
   const subject = `[Plataforma Farma] Ficheiro Template Pedido: ${dados.nr_pedido} (${dados.cliente_sigla})`;
 
+  const extraNames =
+    dados.anexosExtras && dados.anexosExtras.length > 0
+      ? dados.anexosExtras.map((a) => a.filename).join(', ')
+      : '';
+
   const html = `
 <!DOCTYPE html>
 <html lang="pt">
@@ -501,6 +527,13 @@ export async function enviarEmailTemplatePedidoAdmin(
       <p style="margin-bottom: 0; font-size: 13px; color: #166534;">
         📎 <strong>Anexo:</strong> <span style="font-family: monospace;">${filename}</span>
       </p>
+      ${
+        extraNames
+          ? `<p style="margin-top: 6px; margin-bottom: 0; font-size: 13px; color: #166534;">
+              📎 <strong>Documentos Anexados (${dados.anexosExtras?.length}):</strong> <span style="font-family: monospace;">${extraNames}</span>
+            </p>`
+          : ''
+      }
     </div>
   </div>
 </body>
@@ -514,20 +547,25 @@ export async function enviarEmailTemplatePedidoAdmin(
     `Data do Pedido: ${dados.data_pedido}`,
     `Total de Linhas: ${dados.linhas.length}`,
     `Anexo: ${filename}`,
+    ...(extraNames ? [`Documentos Anexados: ${extraNames}`] : []),
   ].join('\n');
 
-  let attachments: { filename: string; content: Buffer }[] | undefined = undefined;
+  const attachmentsList: { filename: string; content: Buffer; contentType?: string }[] = [];
   try {
     const templateBuffer = await gerarExcelTemplatePedido(dados);
-    attachments = [
-      {
-        filename,
-        content: templateBuffer,
-      },
-    ];
+    attachmentsList.push({
+      filename,
+      content: templateBuffer,
+    });
   } catch (err) {
     console.error('[Template Excel Attachment Error] Falha ao gerar o ficheiro Template-Pedidos:', err);
   }
+
+  if (dados.anexosExtras && dados.anexosExtras.length > 0) {
+    attachmentsList.push(...dados.anexosExtras);
+  }
+
+  const attachments = attachmentsList.length > 0 ? attachmentsList : undefined;
 
   return enviarMensagemResend({
     from: fromEmail,
