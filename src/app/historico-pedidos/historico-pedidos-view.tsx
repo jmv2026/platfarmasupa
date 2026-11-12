@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   PedidoComLinhas,
@@ -13,19 +13,54 @@ import { useLanguage } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
 import { apagarMovimentoAction } from './actions';
 
+export interface HistoricoFaturaItem {
+  documento_ref: string;
+  data?: string | null;
+  entidade?: string | null;
+  tipo_doc?: string | null;
+  num_doc?: string | null;
+  documento?: string | null;
+  requisicao?: string | null;
+  num_contribuinte?: string | null;
+  total_iva?: number | string | null;
+  total_merc?: number | string | null;
+  total_outros?: number | string | null;
+  total_desc?: number | string | null;
+  nome?: string | null;
+  morada?: string | null;
+  localidade?: string | null;
+  cod_postal?: string | null;
+  cod_postal_localidade?: string | null;
+  pais?: string | null;
+  nome_entrega?: string | null;
+  morada_entrega?: string | null;
+  cod_postal_localidade_entrega?: string | null;
+  cod_postal_entrega?: string | null;
+  localidade_entrega?: string | null;
+  entidade_entrega?: string | null;
+  cli_primavera?: string | null;
+  sigla?: string | null;
+  cliente_ser?: string | null;
+  cliente_id?: string | null;
+  cliente_sigla?: string | null;
+  cliente_nome?: string | null;
+}
+
 interface HistoricoPedidosViewProps {
   pedidos: PedidoComLinhas[];
+  faturas?: HistoricoFaturaItem[];
   clients: Client[];
   currentUserProfile: UserProfile | null;
 }
 
 type DateFilterType = 'todos' | 'hoje' | '7dias' | '30dias' | 'este_mes' | 'este_ano' | 'personalizado';
 type ViewModeType = 'detalhado' | 'tabela';
-type HistoricoTabType = 'movimentos' | 'por_artigo';
+type HistoricoTabType = 'movimentos' | 'por_artigo' | 'faturacao';
 
 
 export default function HistoricoPedidosView({
   pedidos,
+  faturas = [],
   clients,
   currentUserProfile,
 }: HistoricoPedidosViewProps) {
@@ -70,10 +105,51 @@ export default function HistoricoPedidosView({
   const [tabArtigoDateTo, setTabArtigoDateTo] = useState<string>('');
   const [tabArtigoTipoMov, setTabArtigoTipoMov] = useState<string>('todos');
 
+  // Estados específicos da aba "Faturação" (Apenas Clientes CF)
+  const [faturaSearchQuery, setFaturaSearchQuery] = useState<string>('');
+  const [faturaTipoDoc, setFaturaTipoDoc] = useState<string>('todos');
+  const [faturaPeriod, setFaturaPeriod] = useState<DateFilterType>('todos');
+  const [faturaDateFrom, setFaturaDateFrom] = useState<string>('');
+  const [faturaDateTo, setFaturaDateTo] = useState<string>('');
+  const [selectedModalFatura, setSelectedModalFatura] = useState<HistoricoFaturaItem | null>(null);
+
   const isManagerOrAdmin =
     currentUserProfile?.role === 'admin' ||
     currentUserProfile?.role === 'gestor' ||
     currentUserProfile?.email === 'admin@sermail.pt';
+
+  // Clientes com Faturação (CF) e visibilidade da aba "Faturação"
+  const cfClients = useMemo(() => {
+    return clients.filter((c) => c.tipo_cliente === 'CF');
+  }, [clients]);
+
+  const effectiveClientObj = useMemo(() => {
+    if (isManagerOrAdmin) {
+      return selectedClientId === 'todos'
+        ? null
+        : clients.find((c) => c.id === selectedClientId) || null;
+    }
+    return (
+      clients.find((c) => c.id === currentUserProfile?.cliente_id) ||
+      clients[0] ||
+      null
+    );
+  }, [isManagerOrAdmin, selectedClientId, clients, currentUserProfile]);
+
+  const showFaturacaoTab = useMemo(() => {
+    if (isManagerOrAdmin) {
+      return selectedClientId === 'todos'
+        ? cfClients.length > 0
+        : effectiveClientObj?.tipo_cliente === 'CF';
+    }
+    return effectiveClientObj?.tipo_cliente === 'CF';
+  }, [isManagerOrAdmin, selectedClientId, cfClients, effectiveClientObj]);
+
+  useEffect(() => {
+    if (activeTab === 'faturacao' && !showFaturacaoTab) {
+      setActiveTab('movimentos');
+    }
+  }, [activeTab, showFaturacaoTab]);
 
 
   const getStatusLabel = (status: StatusPedido | string) => {
@@ -551,10 +627,246 @@ export default function HistoricoPedidosView({
     }, 0);
   }, [filteredPedidos]);
 
+  // Handler para atalhos de período temporal na aba "Faturação"
+  const handleFaturaPeriodChange = (period: DateFilterType) => {
+    setFaturaPeriod(period);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (period === 'todos') {
+      setFaturaDateFrom('');
+      setFaturaDateTo('');
+    } else if (period === 'hoje') {
+      setFaturaDateFrom(todayStr);
+      setFaturaDateTo(todayStr);
+    } else if (period === '7dias') {
+      const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      setFaturaDateFrom(d.toISOString().split('T')[0]);
+      setFaturaDateTo(todayStr);
+    } else if (period === '30dias') {
+      const d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      setFaturaDateFrom(d.toISOString().split('T')[0]);
+      setFaturaDateTo(todayStr);
+    } else if (period === 'este_mes') {
+      const firstDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      setFaturaDateFrom(firstDay);
+      setFaturaDateTo(todayStr);
+    } else if (period === 'este_ano') {
+      const firstDayYear = `${now.getFullYear()}-01-01`;
+      setFaturaDateFrom(firstDayYear);
+      setFaturaDateTo(todayStr);
+    }
+  };
+
+  // Tipos de documento disponíveis na tabela faturas
+  const availableFaturaTipoDocs = useMemo(() => {
+    const set = new Set<string>();
+    faturas.forEach((f) => {
+      const td = (f.tipo_doc || '').toString().trim().toUpperCase();
+      if (td) set.add(td);
+    });
+    return Array.from(set).sort();
+  }, [faturas]);
+
+  // Filtragem e totais da aba "Faturação"
+  const { filteredFaturas, faturasResumoTotais } = useMemo(() => {
+    const q = faturaSearchQuery.trim().toLowerCase();
+    const selClient = selectedClientId !== 'todos' ? clients.find((c) => c.id === selectedClientId) : null;
+
+    const list = faturas.filter((f) => {
+      // Filtro por cliente
+      if (isManagerOrAdmin && selectedClientId !== 'todos') {
+        const matchId = f.cliente_id === selectedClientId;
+        const matchSigla =
+          selClient?.sigla &&
+          (String(f.sigla || '').trim().toUpperCase() === selClient.sigla.trim().toUpperCase() ||
+            String(f.cliente_sigla || '').trim().toUpperCase() === selClient.sigla.trim().toUpperCase());
+        const matchPrim =
+          selClient?.cli_primavera &&
+          String(f.cli_primavera || '').trim() === selClient.cli_primavera.trim();
+        if (!matchId && !matchSigla && !matchPrim) return false;
+      }
+
+      // Filtro por tipo de documento
+      if (faturaTipoDoc !== 'todos') {
+        const td = String(f.tipo_doc || '').trim().toUpperCase();
+        if (td !== faturaTipoDoc.toUpperCase()) return false;
+      }
+
+      // Filtro por intervalo de datas
+      const fDateStr = getPedidoDateStr(f.data);
+      if (faturaDateFrom && (!fDateStr || fDateStr < faturaDateFrom)) return false;
+      if (faturaDateTo && (!fDateStr || fDateStr > faturaDateTo)) return false;
+
+      // Pesquisa livre
+      if (q) {
+        const matchDocRef = String(f.documento_ref || '').toLowerCase().includes(q);
+        const matchDoc = String(f.documento || '').toLowerCase().includes(q);
+        const matchNumDoc = String(f.num_doc || '').toLowerCase().includes(q);
+        const matchEntidade = String(f.entidade || '').toLowerCase().includes(q);
+        const matchNome = String(f.nome || f.nome_entrega || '').toLowerCase().includes(q);
+        const matchNif = String(f.num_contribuinte || '').toLowerCase().includes(q);
+        const matchReq = String(f.requisicao || '').toLowerCase().includes(q);
+        const matchLoc = String(f.localidade || f.cod_postal_localidade || f.localidade_entrega || '')
+          .toLowerCase()
+          .includes(q);
+        const matchCli = String(f.cliente_sigla || f.sigla || f.cliente_ser || '')
+          .toLowerCase()
+          .includes(q);
+
+        if (
+          !matchDocRef &&
+          !matchDoc &&
+          !matchNumDoc &&
+          !matchEntidade &&
+          !matchNome &&
+          !matchNif &&
+          !matchReq &&
+          !matchLoc &&
+          !matchCli
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    let totalMerc = 0;
+    let totalDesc = 0;
+    let totalIva = 0;
+    let totalOutros = 0;
+    let totalLiquido = 0;
+
+    list.forEach((f) => {
+      const merc = Number(f.total_merc) || 0;
+      const desc = Number(f.total_desc) || 0;
+      const iva = Number(f.total_iva) || 0;
+      const outros = Number(f.total_outros) || 0;
+      const liq = merc - iva - desc;
+
+      totalMerc += merc;
+      totalDesc += desc;
+      totalIva += iva;
+      totalOutros += outros;
+      totalLiquido += liq;
+    });
+
+    return {
+      filteredFaturas: list,
+      faturasResumoTotais: {
+        totalDocs: list.length,
+        totalMerc,
+        totalDesc,
+        totalIva,
+        totalOutros,
+        totalLiquido,
+      },
+    };
+  }, [
+    faturas,
+    isManagerOrAdmin,
+    selectedClientId,
+    clients,
+    faturaTipoDoc,
+    faturaDateFrom,
+    faturaDateTo,
+    faturaSearchQuery,
+  ]);
+
+  const handleClearFaturaFilters = () => {
+    setFaturaSearchQuery('');
+    setFaturaTipoDoc('todos');
+    setFaturaPeriod('todos');
+    setFaturaDateFrom('');
+    setFaturaDateTo('');
+    if (isManagerOrAdmin) {
+      setSelectedClientId('todos');
+    }
+  };
+
+  const hasFaturaActiveFilters =
+    faturaSearchQuery !== '' ||
+    faturaTipoDoc !== 'todos' ||
+    faturaPeriod !== 'todos' ||
+    faturaDateFrom !== '' ||
+    faturaDateTo !== '' ||
+    selectedClientId !== 'todos';
+
+  const formatCurrency = (val: number | string | null | undefined) => {
+    const num = Number(val) || 0;
+    const loc = language === 'en' ? 'en-GB' : language === 'es' ? 'es-ES' : 'pt-PT';
+    return `${num.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+  };
+
   // Exportar CSV
   const handleExportCSV = () => {
     try {
       const sanitize = (val: unknown) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
+      if (activeTab === 'faturacao') {
+        const headers = [
+          'Ref Documento',
+          'Documento',
+          'Tipo Doc',
+          'Num Doc',
+          'Data',
+          'Cliente',
+          'Entidade',
+          'Nome / Destinatario',
+          'NIF',
+          'Morada',
+          'Codigo Postal',
+          'Localidade',
+          'Requisicao',
+          'Total Mercadoria (EUR)',
+          'Total Desconto (EUR)',
+          'Total IVA (EUR)',
+          'Total Liquido (EUR)',
+        ];
+
+        const rows: string[] = [headers.join(',')];
+
+        filteredFaturas.forEach((f) => {
+          const merc = Number(f.total_merc) || 0;
+          const desc = Number(f.total_desc) || 0;
+          const iva = Number(f.total_iva) || 0;
+          const liq = merc - iva - desc;
+
+          const rowParts = [
+            sanitize(f.documento_ref),
+            sanitize(f.documento || ''),
+            sanitize(f.tipo_doc || ''),
+            sanitize(f.num_doc || ''),
+            sanitize(f.data || ''),
+            sanitize(f.cliente_sigla || f.sigla || ''),
+            sanitize(f.entidade || ''),
+            sanitize(f.nome || f.nome_entrega || ''),
+            sanitize(f.num_contribuinte || ''),
+            sanitize(f.morada || f.morada_entrega || ''),
+            sanitize(f.cod_postal || f.cod_postal_entrega || ''),
+            sanitize(f.localidade || f.cod_postal_localidade || f.localidade_entrega || ''),
+            sanitize(f.requisicao || ''),
+            merc.toFixed(2),
+            desc.toFixed(2),
+            iva.toFixed(2),
+            liq.toFixed(2),
+          ];
+          rows.push(rowParts.join(','));
+        });
+
+        const csvString = '\uFEFF' + rows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `faturacao_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
 
       if (activeTab === 'por_artigo') {
         const headers = [
@@ -755,11 +1067,11 @@ export default function HistoricoPedidosView({
         </div>
 
         {/* Botões de Seleção de Aba à Direita da Janela do Título */}
-        <div className="bg-white border border-slate-200/90 rounded-xl p-1 h-12 shadow-2xs flex items-center gap-1.5 shrink-0 self-start lg:self-auto">
+        <div className="bg-white border border-lime-400 rounded-xl p-1 h-12 shadow-2xs flex items-center gap-1.5 shrink-0 self-start lg:self-auto">
           <button
             type="button"
             onClick={() => setActiveTab('movimentos')}
-            className={`h-full px-4 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'movimentos'
+            className={`h-full px-4 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${activeTab === 'movimentos'
                 ? 'bg-sermail-green text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
@@ -790,7 +1102,7 @@ export default function HistoricoPedidosView({
           <button
             type="button"
             onClick={() => setActiveTab('por_artigo')}
-            className={`h-full px-4 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer ${activeTab === 'por_artigo'
+            className={`h-full px-4 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${activeTab === 'por_artigo'
                 ? 'bg-sermail-green text-white shadow-xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
@@ -817,6 +1129,33 @@ export default function HistoricoPedidosView({
               {availableArtigos.length}
             </span>
           </button>
+
+          {showFaturacaoTab && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('faturacao')}
+              className={`h-full px-4 rounded-lg text-xs sm:text-sm font-bold flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${activeTab === 'faturacao'
+                  ? 'bg-sermail-green text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+            >
+              <span
+                className={`material-symbols-outlined text-base ${activeTab === 'faturacao' ? 'text-sermail-lime-border' : 'text-slate-400'
+                  }`}
+              >
+                euro_symbol
+              </span>
+              <span>Faturação</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-mono ${activeTab === 'faturacao'
+                    ? 'bg-white/15 text-white'
+                    : 'bg-slate-100 text-slate-600'
+                  }`}
+              >
+                {filteredFaturas.length}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -843,7 +1182,413 @@ export default function HistoricoPedidosView({
         </div>
       )}
 
-      {activeTab === 'por_artigo' ? (
+      {activeTab === 'faturacao' && showFaturacaoTab ? (
+        /* =========================================================
+           ABA 3: FATURAÇÃO (APENAS CLIENTES CF)
+           ========================================================= */
+        <div className="space-y-5">
+          {/* Painel de Filtros da Aba Faturação */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-sermail-green">
+                  <span className="material-symbols-outlined text-lg">euro_symbol</span>
+                </div>
+                <div>
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+                    Listagem de Faturação (Clientes CF)
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Consulte as linhas da tabela de faturas relativas ao cliente e filtre por período ou tipo de documento
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {hasFaturaActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearFaturaFilters}
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-lime-400 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                    Limpar Filtros
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  disabled={filteredFaturas.length === 0}
+                  className="px-4 py-2 bg-white border border-lime-400 text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm text-sermail-green">download</span>
+                  {t.common.export} CSV
+                </button>
+              </div>
+            </div>
+
+            {/* Filtro de Cliente CF (Exclusivo para Administrador e Gestor) */}
+            {isManagerOrAdmin && (
+              <div className="pb-3 border-b border-slate-100">
+                <div className="max-w-sm">
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-sermail-green">business</span>
+                    {t.historico.filterClient} (CF)
+                  </label>
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-sermail-green/20 focus:border-sermail-green cursor-pointer"
+                  >
+                    <option value="todos">Todos os Clientes (CF)</option>
+                    {cfClients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.sigla} - {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Linha Principal de Filtros (Pesquisa Livre, Período Temporal e Tipo de Documento) */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              {/* 1. Pesquisa Rápida */}
+              <div className="md:col-span-5">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-sm text-sermail-green">search</span>
+                    Pesquisar Fatura / Destinatário / NIF / Requisição
+                  </span>
+                </label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    value={faturaSearchQuery}
+                    onChange={(e) => setFaturaSearchQuery(e.target.value)}
+                    placeholder="Filtrar por nº fatura, entidade, nome, NIF, requisição ou localidade..."
+                    className="w-full h-9 pl-8 pr-7 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sermail-green/20 focus:border-sermail-green"
+                  />
+                  {faturaSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setFaturaSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Período Temporal */}
+              <div className="md:col-span-5">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-sermail-green">calendar_month</span>
+                  Período Temporal
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div>
+                    <select
+                      value={faturaPeriod}
+                      onChange={(e) => handleFaturaPeriodChange(e.target.value as DateFilterType)}
+                      className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
+                    >
+                      <option value="todos">Todo o Histórico</option>
+                      <option value="hoje">Hoje</option>
+                      <option value="7dias">Últimos 7 dias</option>
+                      <option value="30dias">Últimos 30 dias</option>
+                      <option value="este_mes">Este Mês</option>
+                      <option value="este_ano">Este Ano</option>
+                      <option value="personalizado">Personalizado</option>
+                    </select>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={faturaDateFrom}
+                      onChange={(e) => {
+                        setFaturaDateFrom(e.target.value);
+                        setFaturaPeriod('personalizado');
+                      }}
+                      title="Data de Início (De)"
+                      className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green"
+                    />
+                    <span className="absolute -top-2 left-2 px-1 bg-white text-[9px] font-bold uppercase text-slate-400">
+                      De
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={faturaDateTo}
+                      onChange={(e) => {
+                        setFaturaDateTo(e.target.value);
+                        setFaturaPeriod('personalizado');
+                      }}
+                      title="Data de Fim (Até)"
+                      className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green"
+                    />
+                    <span className="absolute -top-2 left-2 px-1 bg-white text-[9px] font-bold uppercase text-slate-400">
+                      Até
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Tipo de Documento */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm text-sermail-green">description</span>
+                  Tipo Doc.
+                </label>
+                <select
+                  value={faturaTipoDoc}
+                  onChange={(e) => setFaturaTipoDoc(e.target.value)}
+                  className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
+                >
+                  <option value="todos">Todos ({availableFaturaTipoDocs.join('/') || 'FA'})</option>
+                  {availableFaturaTipoDocs.map((td) => (
+                    <option key={td} value={td}>
+                      {td}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Resumo Monetário da Faturação no Período */}
+          <div className="bg-gradient-to-br from-emerald-950 via-sermail-green-dark to-[#004d3b] text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-800/40 relative overflow-hidden">
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-lime-400/20 text-lime-300 border border-lime-400/30">
+                    Resumo de Faturação
+                  </span>
+                  <span className="text-xs text-emerald-200 font-mono flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">date_range</span>
+                    {faturaDateFrom || faturaDateTo
+                      ? `${faturaDateFrom ? formatDate(faturaDateFrom) : 'Início'} até ${
+                          faturaDateTo ? formatDate(faturaDateTo) : 'Hoje'
+                        }`
+                      : 'Todo o período disponível'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-xl font-bold font-headline text-white truncate">
+                  {effectiveClientObj
+                    ? `[${effectiveClientObj.sigla}] ${effectiveClientObj.name}`
+                    : 'Todos os Clientes com Faturação (CF)'}
+                </h3>
+                <p className="text-xs text-emerald-200/90">
+                  {faturasResumoTotais.totalDocs} documento(s) listado(s) na tabela faturas
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+                {/* Total Mercadoria */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3.5 py-2.5 border border-white/10">
+                  <span className="block text-[10px] uppercase tracking-wider font-semibold text-emerald-200">
+                    Total Mercadoria
+                  </span>
+                  <div className="text-sm sm:text-base font-bold font-mono text-white mt-0.5">
+                    {formatCurrency(faturasResumoTotais.totalMerc)}
+                  </div>
+                </div>
+
+                {/* Total Desconto */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3.5 py-2.5 border border-white/10">
+                  <span className="block text-[10px] uppercase tracking-wider font-semibold text-amber-200">
+                    Total Descontos
+                  </span>
+                  <div className="text-sm sm:text-base font-bold font-mono text-white mt-0.5">
+                    {formatCurrency(faturasResumoTotais.totalDesc)}
+                  </div>
+                </div>
+
+                {/* Total IVA */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl px-3.5 py-2.5 border border-white/10">
+                  <span className="block text-[10px] uppercase tracking-wider font-semibold text-sky-200">
+                    Total IVA
+                  </span>
+                  <div className="text-sm sm:text-base font-bold font-mono text-white mt-0.5">
+                    {formatCurrency(faturasResumoTotais.totalIva)}
+                  </div>
+                </div>
+
+                {/* Total Líquido */}
+                <div className="bg-white/15 backdrop-blur-md rounded-xl px-4 py-2.5 border border-lime-400/40 shadow-inner">
+                  <span className="block text-[10px] uppercase tracking-wider font-bold text-lime-300">
+                    Total Líquido
+                  </span>
+                  <div className="text-base sm:text-lg font-extrabold font-mono text-white mt-0.5">
+                    {formatCurrency(faturasResumoTotais.totalLiquido)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabela das Linhas da Tabela Faturas */}
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-outline-variant/20 gap-2">
+              <div>
+                <h2 className="text-base sm:text-lg font-bold font-headline text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">receipt</span>
+                  Lista de Faturas do Cliente
+                </h2>
+                <p className="text-xs text-on-surface-variant">
+                  Clique na referência do documento para consultar todos os detalhes de faturação e entrega
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-secondary-container text-on-secondary-container">
+                  {filteredFaturas.length} fatura(s) • Líquido: {formatCurrency(faturasResumoTotais.totalLiquido)}
+                </span>
+              </div>
+            </div>
+
+            {filteredFaturas.length > 0 ? (
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="py-2.5 px-3 rounded-l-lg">Ref. Documento</th>
+                      <th className="py-2.5 px-2 text-center">Tipo</th>
+                      <th className="py-2.5 px-2.5">Data</th>
+                      {isManagerOrAdmin && <th className="py-2.5 px-2.5">Cliente</th>}
+                      <th className="py-2.5 px-2.5">Entidade</th>
+                      <th className="py-2.5 px-3">Nome / Destinatário</th>
+                      <th className="py-2.5 px-2.5">NIF</th>
+                      <th className="py-2.5 px-3">Localidade</th>
+                      <th className="py-2.5 px-2.5">Requisição</th>
+                      <th className="py-2.5 px-3 text-right">Total Merc.</th>
+                      <th className="py-2.5 px-3 text-right">Total Desc.</th>
+                      <th className="py-2.5 px-3 text-right">Total IVA</th>
+                      <th className="py-2.5 px-3 text-right rounded-r-lg">Total Líquido</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/10 text-on-surface">
+                    {filteredFaturas.map((f, idx) => {
+                      const merc = Number(f.total_merc) || 0;
+                      const desc = Number(f.total_desc) || 0;
+                      const iva = Number(f.total_iva) || 0;
+                      const liq = merc - iva - desc;
+                      const tipoUpper = (f.tipo_doc || '').toUpperCase();
+
+                      return (
+                        <tr
+                          key={`${f.documento_ref}_${idx}`}
+                          className="hover:bg-emerald-50/80 transition-colors"
+                        >
+                          <td className="py-2.5 px-3 font-mono font-bold text-secondary whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedModalFatura(f)}
+                              className="hover:underline cursor-pointer focus:outline-none text-left"
+                              title="Ver detalhes completos da fatura"
+                            >
+                              {f.documento_ref || f.documento}
+                            </button>
+                          </td>
+                          <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase shadow-2xs ${
+                                tipoUpper.startsWith('NC')
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                              }`}
+                            >
+                              {tipoUpper || '-'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-2.5 font-mono text-on-surface-variant whitespace-nowrap">
+                            {formatDate(f.data)}
+                          </td>
+                          {isManagerOrAdmin && (
+                            <td className="py-2.5 px-2.5 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                                {f.cliente_sigla || f.sigla || '-'}
+                              </span>
+                            </td>
+                          )}
+                          <td className="py-2.5 px-2.5 font-mono text-slate-700 whitespace-nowrap">
+                            {f.entidade || '-'}
+                          </td>
+                          <td
+                            className="py-2.5 px-3 font-medium max-w-[230px] truncate"
+                            title={f.nome || f.nome_entrega || '-'}
+                          >
+                            {f.nome || f.nome_entrega || '-'}
+                          </td>
+                          <td className="py-2.5 px-2.5 font-mono text-on-surface-variant whitespace-nowrap">
+                            {f.num_contribuinte || '-'}
+                          </td>
+                          <td
+                            className="py-2.5 px-3 text-on-surface-variant max-w-[160px] truncate"
+                            title={f.localidade || f.cod_postal_localidade || f.localidade_entrega || '-'}
+                          >
+                            {f.localidade || f.cod_postal_localidade || f.localidade_entrega || '-'}
+                          </td>
+                          <td className="py-2.5 px-2.5 font-mono text-on-surface-variant whitespace-nowrap">
+                            {f.requisicao || '-'}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-800 whitespace-nowrap">
+                            {formatCurrency(merc)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-amber-800 whitespace-nowrap">
+                            {formatCurrency(desc)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700 whitespace-nowrap">
+                            {formatCurrency(iva)}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-sermail-green-dark whitespace-nowrap">
+                            {formatCurrency(liq)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-emerald-50/90 border-t-2 border-emerald-200 text-slate-900 font-bold text-xs">
+                    <tr>
+                      <td
+                        colSpan={isManagerOrAdmin ? 9 : 8}
+                        className="py-3 px-3 text-right uppercase tracking-wider text-[11px] text-emerald-950"
+                      >
+                        Totais ({filteredFaturas.length} documentos):
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                        {formatCurrency(faturasResumoTotais.totalMerc)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-amber-900 whitespace-nowrap">
+                        {formatCurrency(faturasResumoTotais.totalDesc)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
+                        {formatCurrency(faturasResumoTotais.totalIva)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono text-sm text-sermail-green whitespace-nowrap">
+                        {formatCurrency(faturasResumoTotais.totalLiquido)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="py-12 text-center text-on-surface-variant border border-dashed border-outline-variant/40 rounded-xl">
+                <span className="material-symbols-outlined text-4xl text-outline mb-2">receipt</span>
+                <p className="text-sm font-medium">
+                  Nenhuma fatura encontrada para os filtros selecionados.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : activeTab === 'por_artigo' ? (
         /* =========================================================
            ABA 2: LISTAGEM POR ARTIGO SELECIONADO + TOTAL NO PERÍODO
            ========================================================= */
@@ -870,7 +1615,7 @@ export default function HistoricoPedidosView({
                   <button
                     type="button"
                     onClick={handleClearTabArtigoFilters}
-                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-lime-400 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">filter_alt_off</span>
                     Limpar Filtros
@@ -880,7 +1625,7 @@ export default function HistoricoPedidosView({
                   type="button"
                   onClick={handleExportCSV}
                   disabled={artigoMovimentosList.length === 0}
-                  className="px-4 py-2 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-white border border-lime-400 text-slate-800 hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm text-sermail-green">download</span>
                   {t.common.export} CSV
@@ -1307,7 +2052,7 @@ export default function HistoricoPedidosView({
                 {hasActiveFilters && (
                   <button
                     onClick={handleClearFilters}
-                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-lime-400 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">filter_alt_off</span>
                     {language === 'pt' ? 'Limpar Filtros' : language === 'es' ? 'Limpiar Filtros' : 'Clear Filters'}
@@ -1315,11 +2060,11 @@ export default function HistoricoPedidosView({
                 )}
 
                 {/* Alternador de Vista (Tabela vs Linhas) */}
-                <div className="flex items-center bg-slate-100/80 rounded-xl p-1 border border-slate-200">
+                <div className="flex items-center gap-1 bg-slate-100/80 rounded-xl p-1 border border-lime-400">
                   <button
                     onClick={() => setViewMode('tabela')}
                     title={t.historico.viewTable}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'tabela'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-lime-400 transition-all cursor-pointer ${viewMode === 'tabela'
                       ? 'bg-sermail-green text-white shadow-xs font-bold'
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
@@ -1330,7 +2075,7 @@ export default function HistoricoPedidosView({
                   <button
                     onClick={() => setViewMode('detalhado')}
                     title={t.historico.viewCards}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${viewMode === 'detalhado'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border border-lime-400 transition-all cursor-pointer ${viewMode === 'detalhado'
                       ? 'bg-sermail-green text-white shadow-xs font-bold'
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
@@ -1342,7 +2087,7 @@ export default function HistoricoPedidosView({
 
                 <button
                   onClick={handleExportCSV}
-                  className="px-4 py-2.5 bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2.5 bg-white border border-lime-400 text-slate-800 hover:bg-slate-50 font-semibold text-xs rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm text-sermail-green">download</span>
                   {t.common.export} CSV
@@ -1528,7 +2273,7 @@ export default function HistoricoPedidosView({
                                                 {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
                                                   <button
                                                     onClick={() => handleViewComprovativo((ped as any).url_comprovativo, (ped as any).ref_ser || ped.nr_pedido)}
-                                                    className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
+                                                    className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark border border-lime-400 transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1"
                                                     title="Ver Comprovativo"
                                                   >
                                                     <span className="material-symbols-outlined text-[14px]">visibility</span>
@@ -1545,7 +2290,7 @@ export default function HistoricoPedidosView({
                                                 <button
                                                   type="button"
                                                   onClick={() => setPedidoToDelete(ped)}
-                                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+                                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-lime-400 transition-colors cursor-pointer"
                                                   title={
                                                     language === 'pt'
                                                       ? 'Apagar movimento e linhas associadas'
@@ -1730,7 +2475,7 @@ export default function HistoricoPedidosView({
                                                 {(String(getStatusLabel(ped.status)).toLowerCase() === 'entregue' || String(getStatusLabel(ped.status)).toLowerCase() === 'entregue pda') && (ped as any).url_comprovativo && (
                                                   <button
                                                     onClick={() => handleViewComprovativo((ped as any).url_comprovativo, (ped as any).ref_ser || ped.nr_pedido)}
-                                                    className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1 mx-auto"
+                                                    className="bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary-dark border border-lime-400 transition-colors px-2 py-1 rounded text-xs font-semibold flex items-center justify-center gap-1 mx-auto"
                                                     title="Ver Comprovativo"
                                                   >
                                                     <span className="material-symbols-outlined text-[14px]">visibility</span>
@@ -1743,7 +2488,7 @@ export default function HistoricoPedidosView({
                                                   <button
                                                     type="button"
                                                     onClick={() => setPedidoToDelete(ped)}
-                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                                                    className="inline-flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-lime-400 transition-colors cursor-pointer"
                                                     title={
                                                       language === 'pt'
                                                         ? 'Apagar movimento e linhas associadas'
@@ -1772,6 +2517,157 @@ export default function HistoricoPedidosView({
                             </div>
                           </>
       )}
+
+                          {selectedModalFatura && (() => {
+                            const f = selectedModalFatura;
+                            const merc = Number(f.total_merc) || 0;
+                            const desc = Number(f.total_desc) || 0;
+                            const iva = Number(f.total_iva) || 0;
+                            const outros = Number(f.total_outros) || 0;
+                            const liq = merc - iva - desc;
+
+                            return (
+                              <div
+                                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+                                onClick={() => setSelectedModalFatura(null)}
+                              >
+                                <div
+                                  className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-surface rounded-2xl shadow-2xl relative border border-slate-200"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <button
+                                    onClick={() => setSelectedModalFatura(null)}
+                                    className="absolute top-4 right-4 text-on-surface-variant hover:text-on-surface bg-surface-container hover:bg-surface-container-high rounded-full p-1.5 z-10 transition-colors flex items-center justify-center cursor-pointer"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">close</span>
+                                  </button>
+
+                                  <div className="p-6 md:p-8 space-y-5">
+                                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-outline-variant/20">
+                                      <div className="flex items-center gap-2.5 flex-wrap">
+                                        <span className="inline-block px-3 py-1 bg-sermail-green text-white rounded-lg font-mono font-bold text-xs shadow-xs">
+                                          {f.documento_ref || f.documento}
+                                        </span>
+                                        {f.tipo_doc && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-lime-200 text-emerald-950 uppercase">
+                                            {f.tipo_doc} #{f.num_doc || '-'}
+                                          </span>
+                                        )}
+                                        {(f.cliente_sigla || f.sigla) && (
+                                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-secondary-container">
+                                            [{f.cliente_sigla || f.sigla}] {f.cliente_nome || f.cliente_ser || ''}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <span className="text-xs font-mono font-semibold text-slate-600 pr-6">
+                                        Data: {formatDate(f.data)}
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-sermail-green">
+                                          Dados da Entidade / Faturação
+                                        </span>
+                                        <div>
+                                          <strong className="text-slate-600">Nome:</strong>{' '}
+                                          <span className="font-semibold text-slate-900">{f.nome || '-'}</span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-4">
+                                          <div>
+                                            <strong className="text-slate-600">Entidade:</strong>{' '}
+                                            <span className="font-mono">{f.entidade || '-'}</span>
+                                          </div>
+                                          <div>
+                                            <strong className="text-slate-600">NIF:</strong>{' '}
+                                            <span className="font-mono">{f.num_contribuinte || '-'}</span>
+                                          </div>
+                                          <div>
+                                            <strong className="text-slate-600">Requisição:</strong>{' '}
+                                            <span className="font-mono">{f.requisicao || '-'}</span>
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <strong className="text-slate-600">Morada:</strong>{' '}
+                                          <span>
+                                            {f.morada || '-'}, {f.cod_postal || ''}{' '}
+                                            {f.localidade || f.cod_postal_localidade || ''} ({f.pais || 'PT'})
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2">
+                                        <span className="block text-[10px] font-bold uppercase tracking-wider text-sermail-green">
+                                          Dados de Entrega
+                                        </span>
+                                        <div>
+                                          <strong className="text-slate-600">Destinatário Entrega:</strong>{' '}
+                                          <span className="font-semibold text-slate-900">
+                                            {f.nome_entrega || f.nome || '-'}
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <strong className="text-slate-600">Entidade Entrega:</strong>{' '}
+                                          <span className="font-mono">{f.entidade_entrega || f.entidade || '-'}</span>
+                                        </div>
+                                        <div>
+                                          <strong className="text-slate-600">Morada Entrega:</strong>{' '}
+                                          <span>
+                                            {f.morada_entrega || f.morada || '-'},{' '}
+                                            {f.cod_postal_entrega || f.cod_postal || ''}{' '}
+                                            {f.localidade_entrega || f.cod_postal_localidade_entrega || f.localidade || ''}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4 text-xs">
+                                      <div>
+                                        <span className="block text-[10px] uppercase font-bold text-slate-500">
+                                          Total Mercadoria
+                                        </span>
+                                        <span className="font-mono font-bold text-sm text-slate-900">
+                                          {formatCurrency(merc)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[10px] uppercase font-bold text-amber-800">
+                                          Total Desconto
+                                        </span>
+                                        <span className="font-mono font-bold text-sm text-amber-900">
+                                          {formatCurrency(desc)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[10px] uppercase font-bold text-slate-500">
+                                          Total IVA
+                                        </span>
+                                        <span className="font-mono font-bold text-sm text-slate-900">
+                                          {formatCurrency(iva)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[10px] uppercase font-bold text-slate-500">
+                                          Total Outros
+                                        </span>
+                                        <span className="font-mono font-bold text-sm text-slate-900">
+                                          {formatCurrency(outros)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[10px] uppercase font-bold text-sermail-green">
+                                          Total Líquido
+                                        </span>
+                                        <span className="font-mono font-extrabold text-sm text-sermail-green-dark">
+                                          {formatCurrency(liq)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {selectedModalPedido && (() => {
                             const ped = selectedModalPedido;

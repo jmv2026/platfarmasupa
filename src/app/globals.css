@@ -68,6 +68,14 @@ h1, h2, h3, h4, h5, h6 {
   gap: 0.25rem;
 }
 
+/* Rebordo em cor Lima (#a3e635 / lime-400) nos botões existentes em todas as páginas */
+button[class*="rounded"],
+a[class*="rounded"][class*="px-"],
+a[class*="rounded"][class*="p-"],
+label[class*="rounded"][class*="cursor-pointer"] {
+  border: 1px solid #a3e635 !important;
+}
+
 /* Scrollbar refinada em cor Lima Sermail (Horizontal e Vertical) */
 * {
   scrollbar-width: thin;

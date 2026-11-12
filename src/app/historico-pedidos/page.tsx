@@ -26,13 +26,14 @@ export default async function HistoricoPedidosPage() {
     pedidosQuery = pedidosQuery.eq('cliente_id', userClientId);
   }
 
-  // Buscar clientes, pedidos, artigos, status de expedição e movimentos tudo em paralelo simultâneo
+  // Buscar clientes, pedidos, artigos, status de expedição, movimentos e faturas tudo em paralelo simultâneo
   const [
     { data: clients },
     { data: pedidos },
     artigosList,
     torrestirStatus,
     cfMovimentos,
+    faturasList,
   ] = await Promise.all([
     clientsQuery,
     pedidosQuery,
@@ -59,6 +60,16 @@ export default async function HistoricoPedidosPage() {
         q = q.eq('movimentos.cliente_id', userClientId);
       }
       return q.order('data_movimento', { ascending: false }).range(from, to);
+    }, 2000),
+    fetchAllRowsFast<any>((from, to, countMode) => {
+      return supabase
+        .from('faturas')
+        .select(
+          'documento_ref, data, entidade, tipo_doc, num_doc, documento, requisicao, num_contribuinte, total_iva, total_merc, total_outros, total_desc, nome, morada, localidade, cod_postal, cod_postal_localidade, pais, nome_entrega, morada_entrega, cod_postal_localidade_entrega, cod_postal_entrega, localidade_entrega, entidade_entrega, cli_primavera, sigla, cliente_ser',
+          countMode ? { count: countMode } : undefined
+        )
+        .order('data', { ascending: false })
+        .range(from, to);
     }, 2000),
   ]);
 
@@ -257,6 +268,42 @@ export default async function HistoricoPedidosPage() {
   // Ordenar por data decrescente usando o timestamp pré-calculado em O(1)
   finalPedidos.sort((a: any, b: any) => b._sortTs - a._sortTs);
 
+  // Mapear faturas com o respetivo cliente (apenas clientes CF)
+  const clientsArray = (clients || []) as any[];
+  const finalFaturas = (faturasList || [])
+    .map((f: any) => {
+      const fSigla = (f.sigla || '').toString().trim().toUpperCase();
+      const fCliPrim = (f.cli_primavera || '').toString().trim();
+      const fCliSer = (f.cliente_ser || '').toString().trim().toUpperCase();
+      const docPrefix = f.documento_ref ? String(f.documento_ref).split('-')[0].trim().toUpperCase() : '';
+
+      const matchedClient = clientsArray.find((c) => {
+        const cSigla = (c.sigla || '').toString().trim().toUpperCase();
+        const cCliPrim = (c.cli_primavera || '').toString().trim();
+        const cName = (c.name || '').toString().trim().toUpperCase();
+        return (
+          (cCliPrim && fCliPrim && cCliPrim === fCliPrim) ||
+          (cSigla && fSigla && cSigla === fSigla) ||
+          (cSigla && fCliSer && cSigla === fCliSer) ||
+          (cName && fCliSer && cName === fCliSer) ||
+          (cSigla && docPrefix && cSigla === docPrefix)
+        );
+      });
+
+      return {
+        ...f,
+        cliente_id: matchedClient?.id || null,
+        cliente_sigla: matchedClient?.sigla || f.sigla || docPrefix || '',
+        cliente_nome: matchedClient?.name || f.cliente_ser || '',
+      };
+    })
+    .filter((f: any) => {
+      if (!isManagerOrAdmin && userClientId) {
+        return f.cliente_id === userClientId;
+      }
+      return true;
+    });
+
   return (
     <div className="min-h-screen bg-background text-on-background pb-12">
       {/* Header com Navegação e Seletor de Idioma */}
@@ -269,6 +316,7 @@ export default async function HistoricoPedidosPage() {
       {/* Main Content */}
       <HistoricoPedidosView
         pedidos={finalPedidos as PedidoComLinhas[]}
+        faturas={finalFaturas}
         clients={(clients as Client[]) || []}
         currentUserProfile={(profile as UserProfile) || null}
       />

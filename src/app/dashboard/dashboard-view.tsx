@@ -477,10 +477,10 @@ export default function DashboardView({
         <button
           type="button"
           onClick={() => handleSelecionarGrafico('pedidos')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
             graficoAtivo === 'pedidos'
-              ? 'bg-sermail-green text-white shadow-sm border border-sermail-green-dark'
-              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 border border-slate-200/90 shadow-2xs font-semibold'
+              ? 'bg-sermail-green text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
           }`}
         >
           <span className={`material-symbols-outlined text-base ${graficoAtivo === 'pedidos' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>insights</span>
@@ -490,10 +490,10 @@ export default function DashboardView({
         <button
           type="button"
           onClick={() => handleSelecionarGrafico('top10')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
             graficoAtivo === 'top10'
-              ? 'bg-sermail-green text-white shadow-sm border border-sermail-green-dark'
-              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 border border-slate-200/90 shadow-2xs font-semibold'
+              ? 'bg-sermail-green text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
           }`}
         >
           <span className={`material-symbols-outlined text-base ${graficoAtivo === 'top10' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>leaderboard</span>
@@ -504,10 +504,10 @@ export default function DashboardView({
           <button
             type="button"
             onClick={() => handleSelecionarGrafico('faturacao')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
               graficoAtivo === 'faturacao'
-                ? 'bg-sermail-green text-white shadow-sm border border-sermail-green-dark'
-                : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 border border-slate-200/90 shadow-2xs font-semibold'
+                ? 'bg-sermail-green text-white shadow-sm'
+                : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
             }`}
           >
             <span className={`material-symbols-outlined text-base ${graficoAtivo === 'faturacao' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>euro_symbol</span>
@@ -518,7 +518,7 @@ export default function DashboardView({
         <Link
           href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
           prefetch={true}
-          className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer bg-white text-sermail-green hover:bg-sermail-lime-light border border-slate-200/90 hover:border-sermail-lime-border shadow-2xs group"
+          className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer bg-white text-sermail-green hover:bg-sermail-lime-light border border-lime-400 shadow-2xs group"
           title={t.dashboard.chartForecastDesc}
         >
           <span className="material-symbols-outlined text-base text-sermail-green">trending_up</span>
@@ -531,10 +531,10 @@ export default function DashboardView({
         <button
           type="button"
           onClick={() => handleSelecionarGrafico('kpi_rececoes')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer ${
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
             graficoAtivo === 'kpi_rececoes'
-              ? 'bg-sermail-green text-white shadow-sm border border-sermail-green-dark'
-              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 border border-slate-200/90 shadow-2xs font-semibold'
+              ? 'bg-sermail-green text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
           }`}
         >
           <span className={`material-symbols-outlined text-base ${graficoAtivo === 'kpi_rececoes' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>inventory_2</span>

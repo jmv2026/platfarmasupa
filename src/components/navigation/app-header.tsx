@@ -219,7 +219,7 @@ function HeaderBarUI({
                         setOptimisticTab(item.tab);
                       }
                     }}
-                    className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none transition-all ${
+                    className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none border border-lime-400 transition-all ${
                       isActive
                         ? 'bg-sermail-green text-white shadow-xs font-bold'
                         : 'text-slate-600 hover:text-sermail-green-dark hover:bg-slate-100/90 font-medium'
@@ -293,10 +293,10 @@ function HeaderBarUI({
                   type="button"
                   onClick={() => setLanguage(lang.code)}
                   title={`${lang.full} (${lang.label})`}
-                  className={`h-6 px-2.5 rounded-md text-[11px] font-bold inline-flex items-center justify-center transition-all cursor-pointer select-none ${
+                  className={`h-6 px-2.5 rounded-md text-[11px] font-bold inline-flex items-center justify-center border border-lime-400 transition-all cursor-pointer select-none ${
                     isActive
                       ? 'bg-sermail-green text-white shadow-xs scale-105'
-                      : 'bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200'
+                      : 'bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <span className="tracking-wide">{lang.label}</span>
