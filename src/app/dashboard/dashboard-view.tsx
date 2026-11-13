@@ -564,6 +564,32 @@ export default function DashboardView({
           <span>{t.dashboard.chartTop10Title}</span>
         </button>
 
+        <button
+          type="button"
+          onClick={() => handleSelecionarGrafico('kpi_rececoes')}
+          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
+            graficoAtivo === 'kpi_rececoes'
+              ? 'bg-sermail-green text-white shadow-sm'
+              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
+          }`}
+        >
+          <span className={`material-symbols-outlined text-base ${graficoAtivo === 'kpi_rececoes' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>inventory_2</span>
+          <span>KPI Receções</span>
+        </button>
+
+        <Link
+          href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
+          prefetch={true}
+          className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer bg-white text-sermail-green hover:bg-sermail-lime-light border border-lime-400 shadow-2xs group"
+          title={t.dashboard.chartForecastDesc}
+        >
+          <span className="material-symbols-outlined text-base text-sermail-green">trending_up</span>
+          <span>{t.dashboard.chartForecastTitle}</span>
+          <span className="material-symbols-outlined text-xs text-slate-400 group-hover:text-sermail-green group-hover:translate-x-0.5 transition-all">
+            open_in_new
+          </span>
+        </Link>
+
         {showFaturacao && (
           <>
             <button
@@ -593,32 +619,6 @@ export default function DashboardView({
             </button>
           </>
         )}
-
-        <Link
-          href={selectedClientId !== 'todos' ? `/dashboard/previsao-stock?cliente=${encodeURIComponent(selectedClientId)}` : '/dashboard/previsao-stock'}
-          prefetch={true}
-          className="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer bg-white text-sermail-green hover:bg-sermail-lime-light border border-lime-400 shadow-2xs group"
-          title={t.dashboard.chartForecastDesc}
-        >
-          <span className="material-symbols-outlined text-base text-sermail-green">trending_up</span>
-          <span>{t.dashboard.chartForecastTitle}</span>
-          <span className="material-symbols-outlined text-xs text-slate-400 group-hover:text-sermail-green group-hover:translate-x-0.5 transition-all">
-            open_in_new
-          </span>
-        </Link>
-
-        <button
-          type="button"
-          onClick={() => handleSelecionarGrafico('kpi_rececoes')}
-          className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
-            graficoAtivo === 'kpi_rececoes'
-              ? 'bg-sermail-green text-white shadow-sm'
-              : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
-          }`}
-        >
-          <span className={`material-symbols-outlined text-base ${graficoAtivo === 'kpi_rececoes' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>inventory_2</span>
-          <span>KPI Receções</span>
-        </button>
       </div>
 
       {/* Container do Gráfico com Ref para Centralização Automática no Ecrã e transição instantânea de abas */}

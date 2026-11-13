@@ -416,7 +416,7 @@ export default function GraficoFaturacaoArtigo({
                 }}
                 className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                   periodo === opt.id
-                    ? 'bg-white text-emerald-950 shadow-xs font-bold'
+                    ? 'bg-lime-300 text-slate-950 shadow-xs border border-lime-400 font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >

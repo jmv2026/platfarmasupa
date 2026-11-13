@@ -1304,7 +1304,11 @@ export default function HistoricoPedidosView({
                     <select
                       value={faturaPeriod}
                       onChange={(e) => handleFaturaPeriodChange(e.target.value as DateFilterType)}
-                      className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
+                      className={`w-full h-9 px-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                        faturaPeriod !== 'todos'
+                          ? 'bg-lime-200/90 border border-lime-400 text-slate-950 font-bold shadow-2xs'
+                          : 'bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green'
+                      }`}
                     >
                       <option value="todos">Todo o Histórico</option>
                       <option value="hoje">Hoje</option>
@@ -1734,7 +1738,11 @@ export default function HistoricoPedidosView({
                     <select
                       value={tabArtigoPeriod}
                       onChange={(e) => handleTabArtigoPeriodChange(e.target.value as DateFilterType)}
-                      className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer"
+                      className={`w-full h-9 px-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                        tabArtigoPeriod !== 'todos'
+                          ? 'bg-lime-200/90 border border-lime-400 text-slate-950 font-bold shadow-2xs'
+                          : 'bg-slate-50 border border-slate-300 text-slate-900 focus:outline-none focus:ring-1 focus:ring-sermail-green'
+                      }`}
                     >
                       <option value="todos">Todo o Histórico</option>
                       <option value="hoje">Hoje</option>
@@ -2200,7 +2208,11 @@ export default function HistoricoPedidosView({
                                   <select
                                     value={selectedDateFilter}
                                     onChange={(e) => setSelectedDateFilter(e.target.value as DateFilterType)}
-                                    className="w-full px-3 py-2 bg-surface border border-outline-variant/40 rounded-xl text-xs font-medium focus:outline-none focus:ring-1 focus:ring-secondary cursor-pointer"
+                                    className={`w-full px-3 py-2 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                                      selectedDateFilter !== 'todos'
+                                        ? 'bg-lime-200/90 border border-lime-400 text-slate-950 font-bold shadow-2xs'
+                                        : 'bg-surface border border-outline-variant/40 text-on-surface focus:outline-none focus:ring-1 focus:ring-secondary'
+                                    }`}
                                   >
                                     <option value="todos">{t.historico.allPeriods}</option>
                                     <option value="hoje">{t.historico.periodToday}</option>

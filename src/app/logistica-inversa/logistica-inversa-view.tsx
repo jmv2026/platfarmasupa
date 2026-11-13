@@ -1475,7 +1475,11 @@ export default function LogisticaInversaView({
                 <select
                   value={histPeriod}
                   onChange={(e) => setHistPeriod(e.target.value as PeriodFilterType)}
-                  className="w-full h-9 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 cursor-pointer"
+                  className={`w-full h-9 px-3 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                    histPeriod !== 'todos'
+                      ? 'bg-lime-200/90 border border-lime-400 text-slate-950 font-bold shadow-2xs'
+                      : 'bg-slate-50 border border-slate-300 text-slate-900'
+                  }`}
                 >
                   <option value="todos">Todo o Período</option>
                   <option value="hoje">Hoje</option>
@@ -1761,7 +1765,11 @@ export default function LogisticaInversaView({
                   <select
                     value={recPeriod}
                     onChange={(e) => handleRecPeriodChange(e.target.value as PeriodFilterType)}
-                    className="w-full h-9 px-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium text-slate-900 cursor-pointer"
+                    className={`w-full h-9 px-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all ${
+                      recPeriod !== 'todos'
+                        ? 'bg-lime-200/90 border border-lime-400 text-slate-950 font-bold shadow-2xs'
+                        : 'bg-slate-50 border border-slate-300 text-slate-900'
+                    }`}
                   >
                     <option value="todos">Todo o Histórico</option>
                     <option value="hoje">Hoje</option>
