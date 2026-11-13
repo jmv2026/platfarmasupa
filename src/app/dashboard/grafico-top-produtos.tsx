@@ -64,7 +64,7 @@ export default function GraficoTopProdutos({
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
   const [topLimit, setTopLimit] = useState<TopLimit>('top10');
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);

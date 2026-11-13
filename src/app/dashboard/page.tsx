@@ -30,11 +30,12 @@ export default async function DashboardPage() {
   const fetchSaidas = () =>
     fetchAllRowsFast<any>((from, to, countMode) => {
       let q = supabase
-        .from('vw_saidas')
+        .from('vw_movimentos_detalhe')
         .select(
-          'id, cliente_id, sigla, artigo_cli, artigo_id, descricao, tipo_desc, quantidade, data_movimento, created_at, documento_ref',
+          'id, cliente_id, sigla, artigo_cli, artigo_id, descricao, quantidade, valor_unitario, valor_adicional, valor_abater, tipo_doc, data, data_movimento, created_at, documento_ref',
           countMode ? { count: countMode } : undefined
         )
+        .ilike('tipo_movimento', 'ss')
         .range(from, to);
       if (!isManagerOrAdmin && userClientId) {
         q = q.eq('cliente_id', userClientId);

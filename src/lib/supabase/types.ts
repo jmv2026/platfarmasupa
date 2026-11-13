@@ -81,6 +81,7 @@ export interface Cliente {
   cod_postal?: string | null;
   localidade?: string | null;
   cli_primavera?: string | null;
+  info?: string | null;
   ativo: boolean;
   created_at?: string;
   updated_at?: string;

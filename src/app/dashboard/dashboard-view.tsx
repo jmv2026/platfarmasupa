@@ -11,6 +11,7 @@ import type { DashboardEntradaESItem } from './grafico-kpi-rececoes';
 
 const GraficoTopProdutos = dynamic(() => import('./grafico-top-produtos'));
 const GraficoFaturacaoMensal = dynamic(() => import('./grafico-faturacao-mensal'));
+const GraficoFaturacaoArtigo = dynamic(() => import('./grafico-faturacao-artigo'));
 const GraficoKpiRececoes = dynamic(() => import('./grafico-kpi-rececoes'));
 
 export interface DashboardFaturacaoItem {
@@ -72,6 +73,11 @@ export interface DashboardSaidaItem {
   artigo_descricao?: string;
   tipo_desc?: string;
   quantidade: number;
+  valor_unitario?: number | string | null;
+  valor_adicional?: number | string | null;
+  valor_abater?: number | string | null;
+  tipo_doc?: string | null;
+  data?: string | null;
   data_movimento?: string | null;
   created_at?: string | null;
   documento_ref?: string | null;
@@ -99,18 +105,44 @@ export default function DashboardView({
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const router = useRouter();
   const [selectedClientId, setSelectedClientId] = useState<string>('todos');
-  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes'>('pedidos');
-  const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes'>>(() => new Set(['pedidos']));
+  const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao' | 'faturacao_artigo' | 'kpi_rececoes'>('pedidos');
+  const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao' | 'faturacao_artigo' | 'kpi_rececoes'>>(() => new Set(['pedidos']));
+  const [currentDateTime, setCurrentDateTime] = useState<string>('');
   const graficoContainerRef = useRef<HTMLDivElement>(null);
+
+  // Relógio com data e hora atualizados em tempo real para a janela de informação
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const locale = language === 'en' ? 'en-GB' : language === 'es' ? 'es-ES' : 'pt-PT';
+      const datePart = now.toLocaleDateString(locale, {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      });
+      const timePart = now.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const formattedDate = datePart.charAt(0).toUpperCase() + datePart.slice(1);
+      setCurrentDateTime(`${formattedDate} • ${timePart}`);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [language]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao' || tab === 'kpi_rececoes') {
+      if (tab === 'top10' || tab === 'pedidos' || tab === 'faturacao' || tab === 'faturacao_artigo' || tab === 'kpi_rececoes') {
         setGraficoAtivo(tab);
         setVisitedCharts((prev) => new Set([...prev, tab]));
       }
@@ -122,7 +154,7 @@ export default function DashboardView({
   }, []);
 
   // Posiciona a página para colocar o gráfico no centro do ecrã
-  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao' | 'kpi_rececoes') => {
+  const handleSelecionarGrafico = (tipo: 'pedidos' | 'top10' | 'faturacao' | 'faturacao_artigo' | 'kpi_rececoes') => {
     setGraficoAtivo(tipo);
     setVisitedCharts((prev) => {
       if (prev.has(tipo)) return prev;
@@ -308,35 +340,67 @@ export default function DashboardView({
         </div>
       </div>
 
-      {/* Pull-down de seleção de cliente para Administradores e Gestores */}
-      {isManagerOrAdmin && (
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-200/90 rounded-2xl px-5 py-3.5 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-50 text-sermail-green flex items-center justify-center shrink-0 border border-emerald-100">
-              <span className="material-symbols-outlined text-base">filter_alt</span>
+      {/* Barra de Informação (Banner com info ou fallback de Data/Hora) + Filtro por Cliente à extrema direita */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-2xl px-4 py-2.5 shadow-2xs min-h-[48px]">
+        {/* Espaço à esquerda: Apresenta o banner se info estiver preenchido, senão apresenta Data e Hora (ambos com fundo cor lima) */}
+        {effectiveClientObj?.info && effectiveClientObj.info.trim().length > 0 ? (
+          <div className="flex items-center gap-3 bg-gradient-to-r from-lime-200 via-lime-300/90 to-lime-200 border border-lime-400 rounded-xl px-3.5 py-2.5 text-slate-950 shadow-2xs flex-1 min-w-0 overflow-hidden relative">
+            <div className="w-8 h-8 rounded-lg bg-sermail-green-dark text-lime-300 flex items-center justify-center shrink-0 shadow-2xs z-10 border border-emerald-950/20">
+              <span className="material-symbols-outlined text-lg">campaign</span>
             </div>
-            <span className="text-xs font-bold text-slate-800">{t.dashboard.filterByClient}</span>
-            {selectedClientObj && (
-              <span className="badge-sermail-green">
-                [{selectedClientObj.sigla}] {selectedClientObj.name}
-              </span>
-            )}
+            <div className="flex-1 min-w-0 overflow-hidden relative flex items-center">
+              <div className="animate-marquee-seamless hover:[animation-play-state:paused] cursor-default flex items-center">
+                {[0, 1, 2, 3].map((copyIdx) => (
+                  <div
+                    key={copyIdx}
+                    className="flex items-center gap-8 pr-8 shrink-0 select-none"
+                    aria-hidden={copyIdx > 0 ? 'true' : undefined}
+                  >
+                    <span className="text-base sm:text-lg font-bold text-slate-950 tracking-tight">
+                      {effectiveClientObj.info}
+                    </span>
+                    <span className="text-emerald-800 text-xs font-black">•</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <select
-            id="dashboard-client-select"
-            value={selectedClientId}
-            onChange={(e) => setSelectedClientId(e.target.value)}
-            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100/80 text-slate-900 border border-slate-300/90 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-sermail-green cursor-pointer shadow-2xs min-w-[260px] transition-all"
-          >
-            <option value="todos">{t.dashboard.allClients}</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                [{c.sigla}] {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-3 bg-gradient-to-r from-lime-200 via-lime-300/90 to-lime-200 border border-lime-400 rounded-xl px-3.5 py-2 text-slate-950 shadow-2xs flex-1 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-sermail-green-dark text-lime-300 border border-emerald-950/20 flex items-center justify-center shrink-0 shadow-2xs">
+              <span className="material-symbols-outlined text-lg">schedule</span>
+            </div>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base sm:text-lg font-bold text-slate-950 tracking-tight font-headline">
+                {currentDateTime || 'A carregar data e hora...'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Janela Reduzida ao Mínimo Indispensável para Filtrar por Cliente (apenas Admin/Gestor) à extrema direita */}
+        {isManagerOrAdmin && (
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs shrink-0 self-start md:self-center ml-auto">
+            <span className="material-symbols-outlined text-sermail-green text-base">filter_alt</span>
+            <label htmlFor="dashboard-client-select" className="text-xs font-bold text-slate-700 whitespace-nowrap">
+              Filtrar:
+            </label>
+            <select
+              id="dashboard-client-select"
+              value={selectedClientId}
+              onChange={(e) => setSelectedClientId(e.target.value)}
+              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer shadow-2xs max-w-[200px] sm:max-w-[240px] transition-all truncate"
+            >
+              <option value="todos">{t.dashboard.allClients}</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  [{c.sigla}] {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
 
       {/* KPIs Grid (6 Indicadores superiores compactos a 2/3 da altura com elegância e alto contraste) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 items-stretch">
@@ -501,18 +565,33 @@ export default function DashboardView({
         </button>
 
         {showFaturacao && (
-          <button
-            type="button"
-            onClick={() => handleSelecionarGrafico('faturacao')}
-            className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
-              graficoAtivo === 'faturacao'
-                ? 'bg-sermail-green text-white shadow-sm'
-                : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
-            }`}
-          >
-            <span className={`material-symbols-outlined text-base ${graficoAtivo === 'faturacao' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>euro_symbol</span>
-            <span>Faturação Mensal</span>
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => handleSelecionarGrafico('faturacao')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
+                graficoAtivo === 'faturacao'
+                  ? 'bg-sermail-green text-white shadow-sm'
+                  : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-base ${graficoAtivo === 'faturacao' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>euro_symbol</span>
+              <span>Faturação Mensal</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSelecionarGrafico('faturacao_artigo')}
+              className={`px-4 py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center gap-2 border border-lime-400 transition-all cursor-pointer ${
+                graficoAtivo === 'faturacao_artigo'
+                  ? 'bg-sermail-green text-white shadow-sm'
+                  : 'bg-white text-slate-700 hover:text-sermail-green-dark hover:bg-slate-50 shadow-2xs font-semibold'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-base ${graficoAtivo === 'faturacao_artigo' ? 'text-sermail-lime-border' : 'text-slate-400'}`}>category</span>
+              <span>Faturação Artigo</span>
+            </button>
+          </>
         )}
 
         <Link
@@ -577,6 +656,15 @@ export default function DashboardView({
           <div className={graficoAtivo === 'faturacao' ? 'block' : 'hidden'}>
             <GraficoFaturacaoMensal
               faturacao={filteredFaturacao}
+              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+            />
+          </div>
+        )}
+
+        {showFaturacao && visitedCharts.has('faturacao_artigo') && (
+          <div className={graficoAtivo === 'faturacao_artigo' ? 'block' : 'hidden'}>
+            <GraficoFaturacaoArtigo
+              saidas={filteredSaidas}
               clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
             />
           </div>

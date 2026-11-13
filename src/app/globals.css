@@ -120,3 +120,25 @@ label[class*="rounded"][class*="cursor-pointer"] {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Letreiro em movimento contínuo ao longo da janela (Seamless Infinite Marquee) */
+@keyframes sermailMarqueeSeamless {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-seamless {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: sermailMarqueeSeamless 28s linear infinite;
+}
+
+.animate-marquee-seamless:hover {
+  animation-play-state: paused;
+}
+

@@ -93,24 +93,33 @@ export default function HistoricoPedidosView({
   const [selectedStatus, setSelectedStatus] = useState<string>('todos');
   const [selectedTipoMov, setSelectedTipoMov] = useState<string>('todos');
   const [selectedDestino, setSelectedDestino] = useState<string>('todos');
-  const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterType>('todos');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<DateFilterType>('este_mes');
   const [selectedModalPedido, setSelectedModalPedido] = useState<PedidoComLinhas | null>(null);
   const [viewMode, setViewMode] = useState<ViewModeType>('tabela');
+
+  // Helpers para datas padrão do Mês Atual
+  const getInitialFirstDayMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+  const getInitialToday = () => {
+    return new Date().toISOString().split('T')[0];
+  };
 
   // Estados específicos da aba "Listagem por Artigo"
   const [artigoSearchQuery, setArtigoSearchQuery] = useState<string>('');
   const [tabArtigoSelected, setTabArtigoSelected] = useState<string>('todos');
-  const [tabArtigoPeriod, setTabArtigoPeriod] = useState<DateFilterType>('todos');
-  const [tabArtigoDateFrom, setTabArtigoDateFrom] = useState<string>('');
-  const [tabArtigoDateTo, setTabArtigoDateTo] = useState<string>('');
+  const [tabArtigoPeriod, setTabArtigoPeriod] = useState<DateFilterType>('este_mes');
+  const [tabArtigoDateFrom, setTabArtigoDateFrom] = useState<string>(getInitialFirstDayMonth);
+  const [tabArtigoDateTo, setTabArtigoDateTo] = useState<string>(getInitialToday);
   const [tabArtigoTipoMov, setTabArtigoTipoMov] = useState<string>('todos');
 
   // Estados específicos da aba "Faturação" (Apenas Clientes CF)
   const [faturaSearchQuery, setFaturaSearchQuery] = useState<string>('');
   const [faturaTipoDoc, setFaturaTipoDoc] = useState<string>('todos');
-  const [faturaPeriod, setFaturaPeriod] = useState<DateFilterType>('todos');
-  const [faturaDateFrom, setFaturaDateFrom] = useState<string>('');
-  const [faturaDateTo, setFaturaDateTo] = useState<string>('');
+  const [faturaPeriod, setFaturaPeriod] = useState<DateFilterType>('este_mes');
+  const [faturaDateFrom, setFaturaDateFrom] = useState<string>(getInitialFirstDayMonth);
+  const [faturaDateTo, setFaturaDateTo] = useState<string>(getInitialToday);
   const [selectedModalFatura, setSelectedModalFatura] = useState<HistoricoFaturaItem | null>(null);
 
   const isManagerOrAdmin =

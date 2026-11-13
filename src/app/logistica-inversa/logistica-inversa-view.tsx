@@ -103,6 +103,15 @@ export default function LogisticaInversaView({
   const [linhasRecolha, setLinhasRecolha] = useState<NovaLinhaRecolhaInput[]>([]);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
+  // Helpers para datas padrão do Mês Atual
+  const getInitialFirstDayMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+  const getInitialToday = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
   // ============================================================================
   // ESTADOS DA ABA 2: HISTÓRICO DE PEDIDOS DE RECOLHA
   // ============================================================================
@@ -110,7 +119,7 @@ export default function LogisticaInversaView({
   const [histStatus, setHistStatus] = useState<string>('todos');
   const [histMotivo, setHistMotivo] = useState<string>('todos');
   const [histOrigem, setHistOrigem] = useState<string>('todos');
-  const [histPeriod, setHistPeriod] = useState<PeriodFilterType>('todos');
+  const [histPeriod, setHistPeriod] = useState<PeriodFilterType>('este_mes');
   const [histSearch, setHistSearch] = useState<string>('');
   const [selectedModalRecolha, setSelectedModalRecolha] =
     useState<PedidoRecolhaComLinhas | null>(null);
@@ -122,9 +131,9 @@ export default function LogisticaInversaView({
   const [recClientId, setRecClientId] = useState<string>('todos');
   const [recArtigoSearch, setRecArtigoSearch] = useState<string>('');
   const [recArtigoSelected, setRecArtigoSelected] = useState<string>('todos');
-  const [recPeriod, setRecPeriod] = useState<PeriodFilterType>('todos');
-  const [recDateFrom, setRecDateFrom] = useState<string>('');
-  const [recDateTo, setRecDateTo] = useState<string>('');
+  const [recPeriod, setRecPeriod] = useState<PeriodFilterType>('este_mes');
+  const [recDateFrom, setRecDateFrom] = useState<string>(getInitialFirstDayMonth);
+  const [recDateTo, setRecDateTo] = useState<string>(getInitialToday);
   const [recDocLoteSearch, setRecDocLoteSearch] = useState<string>('');
 
   // ============================================================================

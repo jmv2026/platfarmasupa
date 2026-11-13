@@ -79,7 +79,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     return faturacao.some((f) => (Number(f.total_merc) || 0) > 0);
   }, [faturacao]);
 
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('barras');
   const [tipoMetrica, setTipoMetrica] = useState<TipoMetrica>(hasMonetaryData ? 'faturacao' : 'unidades');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
