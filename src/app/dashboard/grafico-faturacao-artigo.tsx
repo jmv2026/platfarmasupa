@@ -396,7 +396,7 @@ export default function GraficoFaturacaoArtigo({
           </div>
 
           {/* Seletor de Período Temporal (Idêntico ao Gráfico Faturação Mensal) */}
-          <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs gap-1">
+          <div className="inline-flex flex-wrap items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs gap-1">
             {(
               [
                 { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
@@ -540,10 +540,10 @@ export default function GraficoFaturacaoArtigo({
           className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-start"
         >
           {artigosList.length > 0 ? (
-            <div className="w-full max-h-[500px] overflow-y-auto overflow-x-auto custom-scrollbar">
+            <div className="w-full max-h-[500px] overflow-y-auto overflow-x-auto custom-scrollbar" tabIndex={0} role="region" aria-label="Gráfico de Faturação por Artigo">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                className="w-full h-auto min-w-[620px] select-none"
+                className="w-full h-auto min-w-[420px] md:min-w-0 select-none"
               >
                 <defs>
                   <linearGradient id="barGradHorizLiq" x1="0" y1="0" x2="1" y2="0">

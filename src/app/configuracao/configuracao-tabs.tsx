@@ -557,11 +557,11 @@ export default function ConfiguracaoTabs({
   const isClientRole = userRole === 'user1' || userRole === 'user2' || userRole === 'user3';
 
   return (
-    <main className="w-full px-4 sm:px-6 py-6 space-y-6">
+    <main className="w-full px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Banner Topo */}
-      <div className="h-[50px] bg-primary-container text-on-primary rounded-xl px-5 flex items-center shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex items-center gap-[2cm] w-full min-w-0">
-          <h1 className="text-base sm:text-lg font-bold font-headline leading-none whitespace-nowrap text-white shrink-0">
+      <div className="min-h-12 py-2 bg-primary-container text-on-primary rounded-xl px-4 sm:px-5 flex items-center shadow-xs relative overflow-hidden">
+        <div className="relative z-10 flex flex-wrap items-center gap-2 sm:gap-6 lg:gap-8 w-full min-w-0">
+          <h1 className="text-base sm:text-lg font-bold font-headline leading-tight sm:whitespace-nowrap text-white shrink-0">
             {t.configuracao.bannerTitle}
           </h1>
           <p className="text-xs sm:text-sm text-lime-300 font-medium truncate hidden sm:block">
@@ -572,7 +572,7 @@ export default function ConfiguracaoTabs({
 
       <div className="space-y-6">
         {/* Abas de Navegação */}
-        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-2 shadow-sm flex flex-wrap sm:flex-nowrap items-center gap-2">
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-2 shadow-sm flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => {

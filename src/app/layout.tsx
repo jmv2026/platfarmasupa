@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/context";
@@ -24,6 +24,12 @@ export const metadata: Metadata = {
   description: "Plataforma Farma - Sermail, Logística Integrada Lda.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -41,7 +47,7 @@ export default async function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>
-      <body className="bg-surface text-on-surface min-h-screen antialiased">
+      <body className="bg-surface text-on-surface min-h-dvh antialiased">
         <Suspense fallback={null}>
           <NavProgressBar />
         </Suspense>

@@ -1180,10 +1180,10 @@ export default function GraficoPrevisaoStock({
         </div>
 
         {dadosPrevisao.length > 0 ? (
-          <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto" tabIndex={0} role="region" aria-label="Gráfico de Previsão de Stock">
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[550px] max-h-[330px] select-none"
+              className="w-full h-auto min-w-[380px] md:min-w-0 max-h-[330px] select-none"
             >
               <defs>
                 <linearGradient id="areaStockPrevisao" x1="0" y1="0" x2="0" y2="1">

@@ -1053,18 +1053,18 @@ export default function HistoricoPedidosView({
     selectedClientId !== 'todos';
 
   return (
-    <main className="w-full px-4 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-5">
+    <main className="w-full px-3 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-5">
       {/* Linha Topo: Janela do Título (1/2 do comprimento) + Botões de Seleção de Aba à direita */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        {/* Banner Topo Sermail (1/2 do comprimento em ecrãs largos, 48px / h-12) */}
-        <div className="w-full lg:w-1/2 bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-xl px-4 sm:px-6 h-12 flex items-center shadow-sm relative overflow-hidden border border-emerald-950/30">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        {/* Banner Topo Sermail */}
+        <div className="w-full xl:w-1/2 bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-xl px-4 sm:px-6 min-h-12 py-2 flex items-center shadow-sm relative overflow-hidden border border-emerald-950/30">
           <div className="relative z-10 flex items-center justify-between gap-3 w-full">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
                 <span className="material-symbols-outlined text-base">receipt_long</span>
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 min-w-0">
-                <h1 className="text-sm sm:text-base font-bold font-headline leading-none text-white whitespace-nowrap shrink-0">
+                <h1 className="text-sm sm:text-base font-bold font-headline leading-tight text-white sm:whitespace-nowrap shrink-0">
                   {t.historico.bannerTitle}
                 </h1>
                 <p className="text-xs sm:text-sm text-lime-300/90 font-medium leading-normal truncate">
@@ -1076,7 +1076,7 @@ export default function HistoricoPedidosView({
         </div>
 
         {/* Botões de Seleção de Aba à Direita da Janela do Título */}
-        <div className="bg-white border border-lime-400 rounded-xl p-1 h-12 shadow-2xs flex items-center gap-1.5 shrink-0 self-start lg:self-auto">
+        <div className="bg-white border border-lime-400 rounded-xl p-1 min-h-12 shadow-2xs flex flex-wrap items-center gap-1.5 shrink-0 self-start xl:self-auto w-full xl:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab('movimentos')}

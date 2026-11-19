@@ -401,10 +401,10 @@ export default function GraficoKpiRececoes({
             </span>
           </div>
 
-          <div className="w-full overflow-x-auto flex items-center justify-center">
+          <div className="w-full overflow-x-auto flex items-center justify-center" tabIndex={0} role="region" aria-label="Gráfico KPI Receções">
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[560px] select-none"
+              className="w-full h-auto min-w-[380px] md:min-w-0 select-none"
             >
               <defs>
                 <linearGradient id="barGradientKpiRec" x1="0" y1="0" x2="0" y2="1">

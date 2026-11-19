@@ -325,7 +325,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName, onSelectKpiR
           </div>
 
           {/* Seletor de Período */}
-          <div className="inline-flex items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs">
+          <div className="inline-flex flex-wrap items-center bg-surface-container-low p-1 rounded-xl border border-outline-variant/30 shadow-2xs gap-0.5">
             {(
               [
                 { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
@@ -473,10 +473,10 @@ export default function GraficoPedidosMensal({ pedidos, clientName, onSelectKpiR
           ref={containerRef}
           className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
         >
-          <div className="w-full overflow-x-auto flex items-center justify-center">
+          <div className="w-full overflow-x-auto flex items-center justify-center" tabIndex={0} role="region" aria-label="Gráfico de Evolução Mensal de Pedidos">
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-auto min-w-[500px] select-none"
+              className="w-full h-auto min-w-[360px] md:min-w-0 select-none"
             >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">

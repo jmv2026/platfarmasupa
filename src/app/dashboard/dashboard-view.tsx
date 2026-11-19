@@ -320,16 +320,16 @@ export default function DashboardView({
     : effectiveClientObj?.tipo_cliente === 'CF';
 
   return (
-    <main className="w-full px-4 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-6">
-      {/* Welcome Banner Sermail (Reduzido para 2/3 da altura: 48px / h-12) */}
-      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-xl px-4 sm:px-6 h-12 flex items-center shadow-sm relative overflow-hidden border border-emerald-950/30">
+    <main className="w-full px-3 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-6">
+      {/* Welcome Banner Sermail */}
+      <div className="bg-gradient-to-r from-sermail-green-dark via-sermail-green to-[#005a46] text-white rounded-xl px-4 sm:px-6 min-h-12 py-2 flex items-center shadow-sm relative overflow-hidden border border-emerald-950/30">
         <div className="relative z-10 flex items-center justify-between gap-3 w-full">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center text-sermail-lime-border shrink-0 border border-white/10">
               <span className="material-symbols-outlined text-base">analytics</span>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-[2cm] min-w-0">
-              <h1 className="text-sm sm:text-base font-bold font-headline leading-none text-white whitespace-nowrap shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 lg:gap-8 min-w-0">
+              <h1 className="text-sm sm:text-base font-bold font-headline leading-tight text-white sm:whitespace-nowrap shrink-0">
                 {t.dashboard.bannerTitle}
               </h1>
               <p className="text-xs sm:text-sm text-lime-300/90 font-medium leading-normal truncate">
@@ -341,7 +341,7 @@ export default function DashboardView({
       </div>
 
       {/* Barra de Informação (Banner com info ou fallback de Data/Hora) + Filtro por Cliente à extrema direita */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-2xl px-4 py-2.5 shadow-2xs min-h-[48px]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-2xl px-3 sm:px-4 py-2.5 shadow-2xs min-h-[48px]">
         {/* Espaço à esquerda: Apresenta o banner se info estiver preenchido, senão apresenta Data e Hora (ambos com fundo cor lima) */}
         {effectiveClientObj?.info && effectiveClientObj.info.trim().length > 0 ? (
           <div className="flex items-center gap-3 bg-gradient-to-r from-lime-200 via-lime-300/90 to-lime-200 border border-lime-400 rounded-xl px-3.5 py-2.5 text-slate-950 shadow-2xs flex-1 min-w-0 overflow-hidden relative">
@@ -356,7 +356,7 @@ export default function DashboardView({
                     className="flex items-center gap-8 pr-8 shrink-0 select-none"
                     aria-hidden={copyIdx > 0 ? 'true' : undefined}
                   >
-                    <span className="text-base sm:text-lg font-bold text-slate-950 tracking-tight">
+                    <span className="text-sm sm:text-base lg:text-lg font-bold text-slate-950 tracking-tight">
                       {effectiveClientObj.info}
                     </span>
                     <span className="text-emerald-800 text-xs font-black">•</span>
@@ -371,7 +371,7 @@ export default function DashboardView({
               <span className="material-symbols-outlined text-lg">schedule</span>
             </div>
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base sm:text-lg font-bold text-slate-950 tracking-tight font-headline">
+              <span className="text-sm sm:text-base lg:text-lg font-bold text-slate-950 tracking-tight font-headline truncate">
                 {currentDateTime || 'A carregar data e hora...'}
               </span>
             </div>
@@ -380,16 +380,18 @@ export default function DashboardView({
 
         {/* Janela Reduzida ao Mínimo Indispensável para Filtrar por Cliente (apenas Admin/Gestor) à extrema direita */}
         {isManagerOrAdmin && (
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs shrink-0 self-start md:self-center ml-auto">
-            <span className="material-symbols-outlined text-sermail-green text-base">filter_alt</span>
-            <label htmlFor="dashboard-client-select" className="text-xs font-bold text-slate-700 whitespace-nowrap">
-              Filtrar:
-            </label>
+          <div className="flex items-center justify-between md:justify-start gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs shrink-0 w-full md:w-auto md:ml-auto">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="material-symbols-outlined text-sermail-green text-base">filter_alt</span>
+              <label htmlFor="dashboard-client-select" className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                Filtrar:
+              </label>
+            </div>
             <select
               id="dashboard-client-select"
               value={selectedClientId}
               onChange={(e) => setSelectedClientId(e.target.value)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer shadow-2xs max-w-[200px] sm:max-w-[240px] transition-all truncate"
+              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer shadow-2xs w-full sm:w-auto max-w-full sm:max-w-[240px] transition-all truncate"
             >
               <option value="todos">{t.dashboard.allClients}</option>
               {clients.map((c) => (

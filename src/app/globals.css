@@ -7,10 +7,15 @@
   --font-manrope: 'Manrope', sans-serif;
 }
 
+html {
+  scroll-padding-top: 6rem;
+}
+
 body {
   font-family: var(--font-inter), sans-serif;
   color: #0f172a;
   background-color: #f8fafc;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -20,6 +25,25 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-manrope), sans-serif;
   letter-spacing: -0.02em;
   color: #00382b;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+:where(a, code) {
+  overflow-wrap: anywhere;
+}
+
+img, video {
+  max-inline-size: 100%;
+  block-size: auto;
+}
+
+@media (pointer: coarse) {
+  :where(button, select, input:not([type="checkbox"], [type="radio"]), [role="button"], nav a) {
+    min-block-size: 44px;
+  }
 }
 
 .glass-panel {

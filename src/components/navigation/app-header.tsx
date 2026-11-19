@@ -58,13 +58,15 @@ function HeaderBarUI({
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
   const [optimisticTab, setOptimisticTab] = useState<NavTab | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [prefetchedRoutes, setPrefetchedRoutes] = useState<Set<string>>(() => new Set());
 
   const officialTab = activeTab || resolveTabFromPathname(pathname);
 
-  // Limpa o estado otimista assim que o pathname oficial alcança o destino
+  // Limpa o estado otimista e fecha o menu móvel assim que o pathname oficial alcança o destino
   useEffect(() => {
     setOptimisticTab(null);
+    setMobileMenuOpen(false);
   }, [pathname]);
 
   // Ao iniciar a sessão / aplicação, aplicar o idioma predefinido do utilizador (tabela public.users.idioma)
@@ -179,28 +181,28 @@ function HeaderBarUI({
   return (
     <header className="bg-white border-b border-slate-200/80 shadow-[0_1px_3px_0_rgba(0,40,30,0.03)] sticky top-0 z-30 transition-all">
       {/* Top Menu Row */}
-      <div className="w-full px-4 sm:px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
+      <div className="w-full px-3 sm:px-6 min-h-14 sm:min-h-16 py-2 xl:py-1.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 sm:gap-5 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <img
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnkcXW31nD71g-vuvCogM_z_BQZYp3SeYlcPR9lObd0zi9HRBQLH095qBoZinA-Ox1WGs2p4GnbxdG6x_SyJacxhAEC8ePoOTFdVI_u8bi5Jz8urQ-1CGoQ-GLBrcYgguObeMYGS3nk6bnr3sz5sBFS2jgvNJ4q2dD3yvulEH__TQ89del8tYF83X-KLnVQ8LmQORLqrmMFqwy3hANJ47Ndo2MfkhLHNWlMpcIv_xjQCfIXFJ6ZrBmF-2FQOqHQLzu"
               alt="Sermail Logo"
-              className="h-9 max-w-[140px] object-contain"
+              className="h-8 sm:h-9 max-w-[120px] sm:max-w-[140px] object-contain"
             />
             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
             <div className="hidden sm:flex items-center gap-2">
-              <span className="font-headline font-bold text-sermail-green-dark text-sm tracking-tight">
+              <span className="font-headline font-bold text-sermail-green-dark text-sm tracking-tight whitespace-nowrap">
                 {t.nav.plataformaFarma}
               </span>
               <span
-                className="w-2 h-2 rounded-full bg-sermail-lime-vibrant animate-pulse"
+                className="w-2 h-2 rounded-full bg-sermail-lime-vibrant animate-pulse shrink-0"
                 title="Sistema Online"
               ></span>
             </div>
           </div>
 
-          {/* Navigation Links com feedback visual instantâneo e prefetch por intenção */}
-          <nav className="flex items-center gap-1.5" aria-label="Menu Principal">
+          {/* Navigation Links (Desktop >= 1280px, com wrap fluido) */}
+          <nav className="hidden xl:flex items-center gap-1.5 flex-wrap" aria-label="Menu Principal">
             {navItems
               .filter((item) => item.visible)
               .map((item) => {
@@ -219,7 +221,7 @@ function HeaderBarUI({
                         setOptimisticTab(item.tab);
                       }
                     }}
-                    className={`h-8 px-3.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 leading-none border border-lime-400 transition-all ${
+                    className={`h-8 px-3 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 leading-none border border-lime-400 transition-all whitespace-nowrap ${
                       isActive
                         ? 'bg-sermail-green text-white shadow-xs font-bold'
                         : 'text-slate-600 hover:text-sermail-green-dark hover:bg-slate-100/90 font-medium'
@@ -235,6 +237,7 @@ function HeaderBarUI({
                         className={`material-symbols-outlined text-sm ${
                           isActive ? 'text-sermail-lime-border' : 'text-slate-400'
                         }`}
+                        aria-hidden="true"
                       >
                         {item.icon}
                       </span>
@@ -246,23 +249,102 @@ function HeaderBarUI({
           </nav>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-slate-900 leading-tight">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="text-right hidden sm:block max-w-[160px] truncate">
+            <p className="text-xs font-semibold text-slate-900 leading-tight truncate">
               {userProfile?.full_name || userEmail}
             </p>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
               {userProfile?.empresa || 'Sermail'}
             </p>
           </div>
 
           <SignOutButton />
+
+          {/* Botão Menu Mobile / Janelas Estreitas (< 1280px) */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-nav-drawer"
+            aria-label={mobileMenuOpen ? 'Fechar Menu Principal' : 'Abrir Menu Principal'}
+            className="xl:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg border border-lime-400 bg-slate-50 hover:bg-slate-100 text-sermail-green-dark transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-xl" aria-hidden="true">
+              {mobileMenuOpen ? 'close' : 'menu'}
+            </span>
+          </button>
         </div>
       </div>
 
+      {/* Menu Desdobrável Responsivo para Mobile, Tablet e Janelas Estreitas */}
+      {mobileMenuOpen && (
+        <div
+          id="mobile-nav-drawer"
+          className="xl:hidden border-t border-slate-200/80 bg-white px-3 sm:px-6 py-3 shadow-inner"
+        >
+          <div className="sm:hidden pb-2.5 mb-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-900 truncate">
+                {userProfile?.full_name || userEmail}
+              </p>
+              <p className="text-[11px] text-slate-500 truncate">
+                {userProfile?.empresa || 'Sermail'}
+              </p>
+            </div>
+          </div>
+
+          <nav className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2" aria-label="Menu Principal Responsivo">
+            {navItems
+              .filter((item) => item.visible)
+              .map((item) => {
+                const isActive = currentTab === item.tab;
+                const isLoadingThisTab = isTransitioning && optimisticTab === item.tab;
+                return (
+                  <Link
+                    key={`mobile-${item.tab}`}
+                    href={item.href}
+                    prefetch="auto"
+                    onMouseEnter={() => handleIntentPrefetch(item.href)}
+                    onTouchStart={() => handleIntentPrefetch(item.href)}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      if (officialTab !== item.tab) {
+                        setOptimisticTab(item.tab);
+                      }
+                    }}
+                    className={`min-h-10 px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2.5 border border-lime-400 transition-all ${
+                      isActive
+                        ? 'bg-sermail-green text-white shadow-xs font-bold'
+                        : 'bg-slate-50/70 text-slate-700 hover:text-sermail-green-dark hover:bg-slate-100'
+                    }`}
+                  >
+                    {isLoadingThisTab ? (
+                      <span
+                        className="w-3.5 h-3.5 border-2 border-sermail-lime-border border-t-transparent rounded-full animate-spin shrink-0"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className={`material-symbols-outlined text-base ${
+                          isActive ? 'text-sermail-lime-border' : 'text-slate-400'
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {item.icon}
+                      </span>
+                    )}
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+          </nav>
+        </div>
+      )}
+
       {/* Sub-bar abaixo do menu de topo com os 3 botões de idioma */}
-      <div className="bg-slate-50/90 border-t border-slate-200/60 px-4 sm:px-6 py-1.5 transition-colors">
-        <div className="w-full flex items-center justify-between gap-3">
+      <div className="bg-slate-50/90 border-t border-slate-200/60 px-3 sm:px-6 py-1.5 transition-colors">
+        <div className="w-full flex flex-wrap items-center justify-between gap-2">
           {/* Indicador de navegação contextual */}
           <div className="flex items-center gap-2 text-xs text-slate-600">
             <span className="material-symbols-outlined text-xs text-sermail-green">domain</span>

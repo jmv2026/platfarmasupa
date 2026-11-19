@@ -47,7 +47,7 @@ function extrairAnoMes(dateStr: string | null | undefined): { year: number; mont
   return { year: d.getFullYear(), month: d.getMonth() };
 }
 
-function BlinkingHint({ isInspecting }: { isInspecting: boolean }) {
+function BlinkingHint({ isInspecting, isAnual }: { isInspecting: boolean; isAnual?: boolean }) {
   const [isBold, setIsBold] = useState(false);
 
   useEffect(() => {
@@ -64,7 +64,9 @@ function BlinkingHint({ isInspecting }: { isInspecting: boolean }) {
       }`}
     >
       {isInspecting
-        ? 'A inspecionar mês apontado'
+        ? isAnual
+          ? 'A inspecionar ano apontado'
+          : 'A inspecionar mês apontado'
         : 'Passe o cursor sobre as colunas do gráfico'}
     </p>
   );
@@ -129,7 +131,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
 
     todosAnosDisponiveis.add(currentYear);
 
-    // Determina o intervalo de meses a gerar baseado no filtro selecionado
+    // Determina o intervalo de meses a gerar baseado no filtro selecionado (exceto 'todos' que agrega por ano)
     const mesesParaGerar: { year: number; month: number }[] = [];
 
     if (periodo === 'mes-atual') {
@@ -153,68 +155,121 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
       for (let m = 0; m <= 11; m++) {
         mesesParaGerar.push({ year: currentYear, month: m });
       }
-    } else {
-      // 'todos'
-      const anosOrdenados = Array.from(todosAnosDisponiveis).sort((a, b) => a - b);
-      const minAno = anosOrdenados[0] || currentYear;
-      const maxAno = currentYear;
-
-      for (let y = minAno; y <= maxAno; y++) {
-        const maxM = y === currentYear ? currentMonth : 11;
-        for (let m = 0; m <= maxM; m++) {
-          mesesParaGerar.push({ year: y, month: m });
-        }
-      }
     }
 
     const monthsNames = t.dashboard.months;
     const monthsShort = t.dashboard.monthsShort;
 
-    // Cria os objetos MesData com cálculo de variação
     let prevVal: number | null = null;
-    const resultado: MesData[] = mesesParaGerar.map(({ year, month }) => {
-      const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const mesData = contagemPorMes[key] || { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0, liquido: 0 };
-      const total_quantidade = mesData.quantidade;
-      const total_docs = mesData.docs;
-      const total_merc = mesData.merc;
-      const total_iva = mesData.iva;
-      const total_desc = mesData.desc;
-      // Faturação Líquida = mesData.liquido ou (total_merc - total_iva - total_desc)
-      const total_liquido = contagemPorMes[key] ? mesData.liquido : (total_merc - total_iva - total_desc);
+    let resultado: MesData[] = [];
 
-      const mShort = monthsShort[month] || String(month + 1);
-      const mFull = monthsNames[month] || String(month + 1);
-      const label = `${mShort} '${String(year).slice(-2)}`;
-      const labelCompleto = language === 'pt' ? `${mFull} de ${year}` : `${mFull} ${year}`;
+    if (periodo === 'todos') {
+      // Quando for selecionado o filtro 'todos', a faturação é apresentada por ano
+      const anosOrdenados = Array.from(todosAnosDisponiveis).sort((a, b) => a - b);
+      const minAno = anosOrdenados[0] || currentYear;
+      const maxAno = currentYear;
 
-      const valorComparacao = tipoMetrica === 'unidades' ? total_quantidade : total_liquido;
-
-      let diffAnterior: number | null = null;
-      if (prevVal !== null) {
-        if (prevVal === 0) {
-          diffAnterior = valorComparacao > 0 ? 100 : 0;
-        } else {
-          diffAnterior = Math.round(((valorComparacao - prevVal) / prevVal) * 100);
-        }
+      const anosParaGerar: number[] = [];
+      for (let y = minAno; y <= maxAno; y++) {
+        anosParaGerar.push(y);
       }
-      prevVal = valorComparacao;
 
-      return {
-        key,
-        year,
-        month,
-        label,
-        labelCompleto,
-        total_quantidade,
-        total_docs,
-        total_merc,
-        total_iva,
-        total_desc,
-        total_liquido,
-        diffAnterior,
-      };
-    });
+      resultado = anosParaGerar.map((year) => {
+        let total_quantidade = 0;
+        let total_docs = 0;
+        let total_merc = 0;
+        let total_iva = 0;
+        let total_desc = 0;
+        let total_liquido = 0;
+
+        for (let m = 0; m <= 11; m++) {
+          const key = `${year}-${String(m + 1).padStart(2, '0')}`;
+          const mesData = contagemPorMes[key];
+          if (mesData) {
+            total_quantidade += mesData.quantidade;
+            total_docs += mesData.docs;
+            total_merc += mesData.merc;
+            total_iva += mesData.iva;
+            total_desc += mesData.desc;
+            total_liquido += mesData.liquido;
+          }
+        }
+
+        const label = String(year);
+        const labelCompleto = language === 'pt' ? `Ano ${year}` : `Year ${year}`;
+        const valorComparacao = tipoMetrica === 'unidades' ? total_quantidade : total_liquido;
+
+        let diffAnterior: number | null = null;
+        if (prevVal !== null) {
+          if (prevVal === 0) {
+            diffAnterior = valorComparacao > 0 ? 100 : 0;
+          } else {
+            diffAnterior = Math.round(((valorComparacao - prevVal) / prevVal) * 100);
+          }
+        }
+        prevVal = valorComparacao;
+
+        return {
+          key: String(year),
+          year,
+          month: 0,
+          label,
+          labelCompleto,
+          total_quantidade,
+          total_docs,
+          total_merc,
+          total_iva,
+          total_desc,
+          total_liquido,
+          diffAnterior,
+        };
+      });
+    } else {
+      // Filtros mensais (mes-atual, 3m, 6m, 12m, ano-atual)
+      resultado = mesesParaGerar.map(({ year, month }) => {
+        const key = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const mesData = contagemPorMes[key] || { quantidade: 0, docs: 0, merc: 0, iva: 0, desc: 0, liquido: 0 };
+        const total_quantidade = mesData.quantidade;
+        const total_docs = mesData.docs;
+        const total_merc = mesData.merc;
+        const total_iva = mesData.iva;
+        const total_desc = mesData.desc;
+        // Faturação Líquida = mesData.liquido ou (total_merc - total_iva - total_desc)
+        const total_liquido = contagemPorMes[key] ? mesData.liquido : (total_merc - total_iva - total_desc);
+
+        const mShort = monthsShort[month] || String(month + 1);
+        const mFull = monthsNames[month] || String(month + 1);
+        const label = `${mShort} '${String(year).slice(-2)}`;
+        const labelCompleto = language === 'pt' ? `${mFull} de ${year}` : `${mFull} ${year}`;
+
+        const valorComparacao = tipoMetrica === 'unidades' ? total_quantidade : total_liquido;
+
+        let diffAnterior: number | null = null;
+        if (prevVal !== null) {
+          if (prevVal === 0) {
+            diffAnterior = valorComparacao > 0 ? 100 : 0;
+          } else {
+            diffAnterior = Math.round(((valorComparacao - prevVal) / prevVal) * 100);
+          }
+        }
+        prevVal = valorComparacao;
+
+        return {
+          key,
+          year,
+          month,
+          label,
+          labelCompleto,
+          total_quantidade,
+          total_docs,
+          total_merc,
+          total_iva,
+          total_desc,
+          total_liquido,
+          diffAnterior,
+        };
+      });
+    }
 
     // Estatísticas resumidas do período
     const totalLiquidoPeriodo = resultado.reduce((acc, curr) => acc + curr.total_liquido, 0);
@@ -311,10 +366,17 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     const numPoints = dadosMensais.length;
     if (numPoints === 0) return [];
 
+    // Margem lateral dinâmica: quando há poucos pontos (ex: até 6 anos ou meses),
+    // evita que a primeira coluna encoste no eixo Y e a última coluna corte na margem direita
+    const xOffset = numPoints <= 6 ? Math.min(chartWidth / (numPoints + 1), 60) : 0;
+    const availableWidth = chartWidth - xOffset * 2;
+
     return dadosMensais.map((d, index) => {
       const x =
         numPoints === 1
           ? padding.left + chartWidth / 2
+          : xOffset > 0
+          ? padding.left + xOffset + (index / (numPoints - 1)) * availableWidth
           : padding.left + (index / (numPoints - 1)) * chartWidth;
       const valorGrafico = tipoMetrica === 'unidades' ? d.total_quantidade : d.total_liquido;
       const y = padding.top + chartHeight - (valorGrafico / yMax) * chartHeight;
@@ -398,7 +460,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg sm:text-xl font-bold font-headline text-on-surface">
-                Evolução Mensal de Faturação
+                {periodo === 'todos' ? 'Evolução Anual de Faturação' : 'Evolução Mensal de Faturação'}
               </h2>
               {clientName && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100/80 text-emerald-900 border border-emerald-200">
@@ -407,7 +469,9 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               )}
             </div>
             <p className="text-xs text-on-surface-variant/80 mt-0.5">
-              Comparativo de Faturação Líquida (Mercadoria − IVA − Descontos) e Total de Descontos por mês
+              {periodo === 'todos'
+                ? 'Comparativo de Faturação Líquida (Mercadoria − IVA − Descontos) e Total de Descontos por ano'
+                : 'Comparativo de Faturação Líquida (Mercadoria − IVA − Descontos) e Total de Descontos por mês'}
             </p>
           </div>
         </div>
@@ -452,7 +516,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           </div>
 
           {/* Seletor de Período */}
-          <div className="inline-flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs">
+          <div className="inline-flex flex-wrap items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200 shadow-2xs gap-0.5">
             {(
               [
                 { id: 'mes-atual', label: t.dashboard.periodCurrentMonth },
@@ -569,11 +633,11 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
             </div>
           </div>
 
-          {/* 3. Média Mensal */}
+          {/* 3. Média Mensal / Anual */}
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-emerald-50/90 to-teal-50/50 border border-emerald-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                Média Mensal
+                {periodo === 'todos' ? 'Média Anual' : 'Média Mensal'}
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-200/50 shrink-0 mt-0.5"></span>
             </div>
@@ -585,20 +649,20 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                     : `${Math.round(estatisticas.mediaUnidades).toLocaleString(locale)} un`}
                 </span>
                 <span className="text-[10px] sm:text-xs font-medium text-emerald-800">
-                  /{language === 'en' ? 'mo' : 'mês'}
+                  /{periodo === 'todos' ? (language === 'en' ? 'yr' : 'ano') : (language === 'en' ? 'mo' : 'mês')}
                 </span>
               </div>
               <span className="text-[10px] text-emerald-700/90 font-medium leading-tight whitespace-normal">
-                {dadosMensais.length} meses analisados
+                {dadosMensais.length} {periodo === 'todos' ? (dadosMensais.length === 1 ? 'ano analisado' : 'anos analisados') : (dadosMensais.length === 1 ? 'mês analisado' : 'meses analisados')}
               </span>
             </div>
           </div>
 
-          {/* 4. Mês Mais Recente & Tendência */}
+          {/* 4. Mês / Ano Mais Recente & Tendência */}
           <div className="min-h-[75px] p-2.5 sm:px-3.5 sm:py-2.5 rounded-xl bg-gradient-to-br from-teal-50/90 to-emerald-50/60 border border-teal-200/70 shadow-2xs flex flex-col justify-between">
             <div className="flex items-start justify-between gap-1">
               <span className="text-[10px] sm:text-[11px] font-bold text-teal-900/80 uppercase tracking-wide leading-snug whitespace-normal">
-                Mês Mais Recente
+                {periodo === 'todos' ? 'Ano Mais Recente' : 'Mês Mais Recente'}
               </span>
               <span
                 className={`px-1.5 py-0.5 rounded text-[9px] font-bold leading-none shrink-0 ${estatisticas.variacaoUltimoMes > 0
@@ -622,7 +686,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 </span>
               </div>
               <span className="text-[10px] text-teal-800 font-medium leading-tight whitespace-normal">
-                vs. mês anterior
+                {periodo === 'todos' ? 'vs. ano anterior' : 'vs. mês anterior'}
               </span>
             </div>
           </div>
@@ -633,10 +697,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
           ref={containerRef}
           className="flex-1 min-w-0 relative bg-gradient-to-b from-white via-emerald-50/20 to-lime-50/30 rounded-xl p-2.5 sm:p-3.5 border border-emerald-100/80 shadow-inner overflow-hidden flex flex-col justify-center"
         >
-            <div className="w-full overflow-x-auto flex items-center justify-center">
+            <div className="w-full overflow-x-auto flex items-center justify-center" tabIndex={0} role="region" aria-label="Gráfico de Evolução de Faturação">
               <svg
                 viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-                className="w-full h-auto min-w-[500px] select-none"
+                className="w-full h-auto min-w-[360px] md:min-w-0 select-none"
               >
             <defs>
               <linearGradient id="areaGradientVerdeLima" x1="0" y1="0" x2="0" y2="1">
@@ -709,12 +773,14 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
               points.map((p, i) => {
                 const isHovered = hoveredIndex === i;
 
-                const slotWidth = Math.min(chartWidth / points.length, 64);
+                const isFewPoints = points.length <= 6;
+                const slotWidth = Math.min(chartWidth / points.length, isFewPoints ? 96 : 64);
                 const hasTwoBars = tipoMetrica === 'faturacao';
-                const spacing = 3;
+                const spacing = isFewPoints ? 5 : 3;
+                const maxBarW = isFewPoints ? (hasTwoBars ? 28 : 44) : (hasTwoBars ? 16 : 26);
                 const barW = hasTwoBars
-                  ? Math.max(Math.min((slotWidth - 10) / 2, 16), 6)
-                  : Math.max(Math.min(slotWidth * 0.65, 26), 8);
+                  ? Math.max(Math.min((slotWidth - (isFewPoints ? 14 : 10)) / 2, maxBarW), 6)
+                  : Math.max(Math.min(slotWidth * 0.65, maxBarW), 8);
 
                 // Coluna 1: Total Líquido (Mercadoria - IVA - Descontos) ou Unidades
                 const val1 = tipoMetrica === 'unidades' ? p.data.total_quantidade : p.data.total_liquido;
@@ -931,10 +997,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 <div className="flex items-center justify-between gap-2 border-b border-white/15 pb-2 mb-2.5">
                   <div className="flex flex-col min-w-0">
                     <span className="font-bold text-base text-lime-300 truncate leading-tight">
-                      {t.dashboard.months[displayItem.month] || String(displayItem.month + 1)}
+                      {periodo === 'todos'
+                        ? `Ano ${displayItem.year}`
+                        : (t.dashboard.months[displayItem.month] || String(displayItem.month + 1))}
                     </span>
                     <span className="text-xs font-semibold text-lime-300 leading-tight mt-0.5">
-                      {displayItem.year}
+                      {periodo === 'todos' ? 'Total Anual' : displayItem.year}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -1021,16 +1089,20 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                 </div>
               </div>
 
-              {/* Secção Inferior: Documentos e vs. Mês Anterior (Fontes aumentadas em 2 tamanhos) */}
+              {/* Secção Inferior: Documentos e vs. Mês/Ano Anterior (Fontes aumentadas em 2 tamanhos) */}
               <div className="pt-2 border-t border-white/15 mt-2 space-y-1">
                 <div className="flex items-center justify-between gap-2 text-sm text-slate-200">
                   <span>Documentos: <strong className="text-white text-base ml-1">{displayItem.total_docs}</strong></span>
-                  <span className="text-slate-400 text-xs font-medium">Faturação Mensal</span>
+                  <span className="text-slate-400 text-xs font-medium">
+                    {periodo === 'todos' ? 'Faturação Anual' : 'Faturação Mensal'}
+                  </span>
                 </div>
 
                 {displayItem.diffAnterior !== null && (
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10 text-sm">
-                    <span className="text-slate-300">vs. Mês Anterior:</span>
+                    <span className="text-slate-300">
+                      {periodo === 'todos' ? 'vs. Ano Anterior:' : 'vs. Mês Anterior:'}
+                    </span>
                     <span
                       className={`font-bold text-sm sm:text-base flex items-center gap-0.5 ${
                         displayItem.diffAnterior > 0
@@ -1047,7 +1119,7 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
                   </div>
                 )}
 
-                <BlinkingHint isInspecting={isInspecting} />
+                <BlinkingHint isInspecting={isInspecting} isAnual={periodo === 'todos'} />
               </div>
             </div>
           );
