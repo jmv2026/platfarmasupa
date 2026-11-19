@@ -46,7 +46,7 @@ export default async function RootLayout({
         .eq("chave", "tempo_inatividade_minutos")
         .maybeSingle();
       const parsed = Number(cfg?.valor);
-      if (Number.isFinite(parsed) && parsed >= 3) {
+      if (Number.isFinite(parsed) && parsed >= 1) {
         inactivityMinutes = Math.round(parsed);
       }
     } catch {

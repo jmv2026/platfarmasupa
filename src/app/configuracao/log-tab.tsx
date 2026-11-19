@@ -48,7 +48,18 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
   const [filterPeriod, setFilterPeriod] = useState<DateFilterPeriod>('todos');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'data' | 'hora'>('data');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleSortColumn = (col: 'data' | 'hora') => {
+    if (sortBy === col) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(col);
+      setSortDirection('desc');
+    }
+  };
 
   const getLogDateStr = (item: LogItem): string => {
     if (item.data) {
@@ -61,6 +72,19 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
       const d = new Date(item.created_at);
       if (!isNaN(d.getTime())) {
         return d.toISOString().split('T')[0];
+      }
+    }
+    return '';
+  };
+
+  const getLogHoraStr = (item: LogItem): string => {
+    if (item.hora) {
+      return String(item.hora).trim().slice(0, 8);
+    }
+    if (item.created_at) {
+      const d = new Date(item.created_at);
+      if (!isNaN(d.getTime())) {
+        return d.toTimeString().slice(0, 8);
       }
     }
     return '';
@@ -126,9 +150,9 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
     }
   };
 
-  // Filtragem dos registos
+  // Filtragem e ordenação dos registos
   const filteredLogs = useMemo(() => {
-    return logs.filter((item) => {
+    const filtered = logs.filter((item) => {
       // 1. Filtro por Nome
       if (filterNome !== 'todos') {
         if ((item.nome || '').trim().toLowerCase() !== filterNome.toLowerCase()) {
@@ -161,7 +185,27 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
 
       return true;
     });
-  }, [logs, filterNome, filterRole, filterSigla, dateFrom, dateTo]);
+
+    const factor = sortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'data') {
+        const da = getLogDateStr(a);
+        const db = getLogDateStr(b);
+        if (da !== db) return da.localeCompare(db) * factor;
+        const ha = getLogHoraStr(a);
+        const hb = getLogHoraStr(b);
+        if (ha !== hb) return ha.localeCompare(hb) * factor;
+        return (a.created_at || '').localeCompare(b.created_at || '') * factor;
+      } else {
+        const ha = getLogHoraStr(a);
+        const hb = getLogHoraStr(b);
+        if (ha !== hb) return ha.localeCompare(hb) * factor;
+        const da = getLogDateStr(a);
+        const db = getLogDateStr(b);
+        return da.localeCompare(db) * factor;
+      }
+    });
+  }, [logs, filterNome, filterRole, filterSigla, dateFrom, dateTo, sortBy, sortDirection]);
 
   // Métricas rápidas
   const metrics = useMemo(() => {
@@ -294,8 +338,10 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
 
   const parsedInactivityNum = Number(inactivityInput);
   const isValidInactivity =
-    Number.isInteger(parsedInactivityNum) && parsedInactivityNum >= 3 && parsedInactivityNum <= 1440;
-  const warningAtMinutes = isValidInactivity ? parsedInactivityNum - 2 : Math.max(initialInactivityMinutes - 2, 1);
+    Number.isInteger(parsedInactivityNum) && parsedInactivityNum >= 1 && parsedInactivityNum <= 1440;
+  const warningAtMinutes = isValidInactivity
+    ? Math.max(parsedInactivityNum - 1, 0)
+    : Math.max(initialInactivityMinutes - 1, 0);
 
   const handleSaveInactivity = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,7 +350,7 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
     if (!isValidInactivity) {
       setInactivityFeedback({
         type: 'error',
-        message: 'Indique um valor inteiro entre 3 e 1440 minutos.',
+        message: 'Indique um valor inteiro entre 1 e 1440 minutos.',
       });
       return;
     }
@@ -329,7 +375,9 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
         }
         setInactivityFeedback({
           type: 'success',
-          message: `Tempo de inatividade atualizado para ${parsedInactivityNum} minutos (aviso aos ${parsedInactivityNum - 2} min).`,
+          message: `Tempo de inatividade atualizado para ${parsedInactivityNum} ${
+            parsedInactivityNum === 1 ? 'minuto' : 'minutos'
+          } (aviso aos ${Math.max(parsedInactivityNum - 1, 0)} min — 1 min antes).`,
         });
         router.refresh();
       } else {
@@ -365,7 +413,7 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
                 Controlo Automático de Inatividade
               </h2>
               <p className="text-xs text-on-surface-variant mt-0.5">
-                Define o tempo máximo sem atividade no browser antes de encerrar a sessão e registar <strong>LOGOUT</strong> automático. O utilizador recebe um aviso <strong>2 minutos antes</strong>.
+                Define o tempo máximo sem atividade no browser antes de encerrar a sessão e registar <strong>LOGOUT</strong> automático. O utilizador recebe um aviso <strong>1 minuto antes</strong>.
               </p>
             </div>
           </div>
@@ -378,7 +426,7 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
               <input
                 id="log-inactivity-minutes"
                 type="number"
-                min={3}
+                min={1}
                 max={1440}
                 step={1}
                 value={inactivityInput}
@@ -388,7 +436,7 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
             </div>
 
             <div className="px-3 py-1.5 rounded-xl bg-lime-100/90 border border-lime-400 text-xs font-semibold text-slate-900">
-              Aviso aos <strong>{warningAtMinutes} min</strong>
+              Aviso aos <strong>{warningAtMinutes} min</strong> (1 min antes)
             </div>
 
             <button
@@ -638,8 +686,50 @@ export default function LogTab({ logs, initialInactivityMinutes = 60 }: LogTabPr
             <table className="w-full text-left text-xs">
               <thead className="bg-surface-container/60 text-on-surface-variant font-semibold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-2.5 px-3 rounded-l-lg">Data</th>
-                  <th className="py-2.5 px-2.5">Hora</th>
+                  <th
+                    className="py-2.5 px-3 rounded-l-lg"
+                    aria-sort={sortBy === 'data' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSortColumn('data')}
+                      title="Ordenar por Data (Ascendente / Descendente)"
+                      className={`inline-flex items-center gap-1 font-semibold uppercase tracking-wider cursor-pointer transition-colors ${
+                        sortBy === 'data' ? 'text-sermail-green-dark font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      <span>Data</span>
+                      <span className="material-symbols-outlined text-sm leading-none" aria-hidden="true">
+                        {sortBy === 'data'
+                          ? sortDirection === 'asc'
+                            ? 'arrow_upward'
+                            : 'arrow_downward'
+                          : 'unfold_more'}
+                      </span>
+                    </button>
+                  </th>
+                  <th
+                    className="py-2.5 px-2.5"
+                    aria-sort={sortBy === 'hora' ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleSortColumn('hora')}
+                      title="Ordenar por Hora (Ascendente / Descendente)"
+                      className={`inline-flex items-center gap-1 font-semibold uppercase tracking-wider cursor-pointer transition-colors ${
+                        sortBy === 'hora' ? 'text-sermail-green-dark font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      <span>Hora</span>
+                      <span className="material-symbols-outlined text-sm leading-none" aria-hidden="true">
+                        {sortBy === 'hora'
+                          ? sortDirection === 'asc'
+                            ? 'arrow_upward'
+                            : 'arrow_downward'
+                          : 'unfold_more'}
+                      </span>
+                    </button>
+                  </th>
                   <th className="py-2.5 px-2.5 text-center">Evento</th>
                   <th className="py-2.5 px-3">Nome / Email</th>
                   <th className="py-2.5 px-2.5">Role</th>

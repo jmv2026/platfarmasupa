@@ -61,7 +61,7 @@ export default async function ConfiguracaoPage() {
   );
   const parsedInactivity = Number(inactivityConfigRow?.valor);
   const inactivityMinutes =
-    Number.isFinite(parsedInactivity) && parsedInactivity >= 3 ? Math.round(parsedInactivity) : 60;
+    Number.isFinite(parsedInactivity) && parsedInactivity >= 1 ? Math.round(parsedInactivity) : 60;
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;

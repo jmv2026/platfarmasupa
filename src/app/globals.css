@@ -166,3 +166,25 @@ label[class*="rounded"][class*="cursor-pointer"] {
   animation-play-state: paused;
 }
 
+/* Alerta intermitente na janela de contagem decrescente do aviso de inatividade */
+@keyframes sermailBlinkAlert {
+  0%, 100% {
+    background-color: #fef3c7;
+    border-color: #f59e0b;
+    color: #78350f;
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    background-color: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+    box-shadow: 0 0 18px 2px rgba(239, 68, 68, 0.35);
+    transform: scale(1.02);
+  }
+}
+
+.animate-blink-alert {
+  animation: sermailBlinkAlert 1s ease-in-out infinite;
+}
+

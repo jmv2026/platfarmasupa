@@ -1354,13 +1354,13 @@ export async function guardarConfiguracaoAction(chave: string, valor: string) {
     }
   }
 
-  // Validação específica para tempo de inatividade (mínimo 3 minutos para permitir aviso 2 minutos antes)
+  // Validação específica para tempo de inatividade (mínimo 1 minuto)
   if (cleanChave === 'tempo_inatividade_minutos') {
     const mins = Number(cleanValor);
-    if (!Number.isInteger(mins) || mins < 3 || mins > 1440) {
+    if (!Number.isInteger(mins) || mins < 1 || mins > 1440) {
       return {
         success: false,
-        error: 'O tempo de inatividade deve ser um número inteiro entre 3 e 1440 minutos.',
+        error: 'O tempo de inatividade deve ser um número inteiro entre 1 e 1440 minutos.',
       };
     }
   }

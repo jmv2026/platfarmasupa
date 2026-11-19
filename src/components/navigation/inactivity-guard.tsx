@@ -26,11 +26,11 @@ export default function InactivityGuard({
   const supabase = createClient();
 
   const normalizedInitial =
-    Number.isFinite(initialMinutes) && initialMinutes >= 3 ? Math.round(initialMinutes) : 60;
+    Number.isFinite(initialMinutes) && initialMinutes >= 1 ? Math.round(initialMinutes) : 60;
 
   const [inactivityMinutes, setInactivityMinutes] = useState<number>(normalizedInitial);
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(120);
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(60);
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
 
   const lastActivityRef = useRef<number>(Date.now());
@@ -41,7 +41,7 @@ export default function InactivityGuard({
   // Sincronizar quando a prop vinda do servidor mudar
   useEffect(() => {
     const next =
-      Number.isFinite(initialMinutes) && initialMinutes >= 3 ? Math.round(initialMinutes) : 60;
+      Number.isFinite(initialMinutes) && initialMinutes >= 1 ? Math.round(initialMinutes) : 60;
     setInactivityMinutes(next);
   }, [initialMinutes]);
 
@@ -125,7 +125,7 @@ export default function InactivityGuard({
     const handleConfigEvent = (ev: Event) => {
       const customEv = ev as CustomEvent<{ minutes?: number }>;
       const mins = Number(customEv.detail?.minutes);
-      if (Number.isFinite(mins) && mins >= 3) {
+      if (Number.isFinite(mins) && mins >= 1) {
         setInactivityMinutes(Math.round(mins));
         resetActivity();
       }
@@ -143,7 +143,7 @@ export default function InactivityGuard({
         }
       } else if (ev.key === INACTIVITY_MINUTES_STORAGE_KEY && ev.newValue) {
         const mins = Number(ev.newValue);
-        if (Number.isFinite(mins) && mins >= 3) {
+        if (Number.isFinite(mins) && mins >= 1) {
           setInactivityMinutes(Math.round(mins));
           resetActivity();
         }
@@ -219,8 +219,8 @@ export default function InactivityGuard({
       if (isLoggingOutRef.current) return;
 
       const timeoutMs = inactivityMinutes * 60 * 1000;
-      const warningLeadMs = 2 * 60 * 1000; // Aviso 2 minutos antes
-      const warningMs = Math.max(timeoutMs - warningLeadMs, 60 * 1000);
+      const warningLeadMs = 1 * 60 * 1000; // Aviso sempre apresentado 1 minuto antes de terminar o tempo
+      const warningMs = Math.max(timeoutMs - warningLeadMs, 0);
 
       // Sincronizar com possível atividade mais recente de outro separador
       try {
@@ -300,7 +300,7 @@ export default function InactivityGuard({
             Não foi detetada atividade nos últimos minutos. Por motivos de segurança, a aplicação irá encerrar a sessão automaticamente dentro de:
           </p>
 
-          <div className="flex items-center justify-center py-3 px-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-950">
+          <div className="flex items-center justify-center py-3 px-4 rounded-xl bg-amber-100 border-2 border-amber-500 text-amber-950 animate-blink-alert">
             <span className="text-3xl sm:text-4xl font-extrabold font-mono tracking-wider">
               {minsDisplay}:{secsDisplay}
             </span>
