@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
@@ -16,6 +16,21 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reason') === 'inactivity') {
+        setErrorMessage(
+          language === 'en'
+            ? 'Your session was automatically closed due to inactivity. Please sign in again.'
+            : language === 'es'
+            ? 'Su sesión se cerró automáticamente por inactividad. Por favor, inicie sesión nuevamente.'
+            : 'A sua sessão foi encerrada automaticamente por inatividade. Por favor, inicie sessão novamente.'
+        );
+      }
+    }
+  }, [language]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

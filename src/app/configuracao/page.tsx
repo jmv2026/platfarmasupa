@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getAuthContext } from '@/lib/supabase/session';
 import AppHeader from '@/components/navigation/app-header';
 import ConfiguracaoTabs from './configuracao-tabs';
+import type { LogItem } from './log-tab';
 import { UserProfile, Client, Artigo, Armazem, Tempo } from '@/lib/supabase/types';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export default async function ConfiguracaoPage() {
     redirect('/dashboard?error=unauthorized');
   }
 
-  // Carregar dados de Utilizadores, Clientes, Artigos, Armazéns, Tempos, Tracking e Configurações em paralelo
+  // Carregar dados de Utilizadores, Clientes, Artigos, Armazéns, Tempos, Tracking, Configurações e Log em paralelo
   const [
     { data: usersList },
     { data: clientsList },
@@ -28,6 +29,7 @@ export default async function ConfiguracaoPage() {
     { data: temposList },
     { data: trackingListRaw },
     { data: configuracoesList },
+    { data: logsList },
   ] = await Promise.all([
     supabase.from('users').select('*').order('created_at', { ascending: false }),
     supabase.from('clientes').select('*').order('name'),
@@ -40,6 +42,11 @@ export default async function ConfiguracaoPage() {
       .order('created_at', { ascending: false })
       .limit(1000),
     supabase.from('configuracoes').select('*'),
+    supabase
+      .from('log')
+      .select('id, user_id, nome, email, role, cliente_id, cliente_sigla, empresa, tipo_movimento, data, hora, ip_address, user_agent, observacoes, created_at')
+      .order('created_at', { ascending: false })
+      .limit(2000),
   ]);
 
   const trackingList = trackingListRaw || [];
@@ -48,6 +55,13 @@ export default async function ConfiguracaoPage() {
     (c: any) => c.chave === 'email_template_pedidos_destinatarios'
   );
   const templateEmailRecipients = templateConfigRow?.valor || 'jccmmelo@gmail.com, joao.melo@sermail.pt';
+
+  const inactivityConfigRow = configuracoesList?.find(
+    (c: any) => c.chave === 'tempo_inatividade_minutos'
+  );
+  const parsedInactivity = Number(inactivityConfigRow?.valor);
+  const inactivityMinutes =
+    Number.isFinite(parsedInactivity) && parsedInactivity >= 3 ? Math.round(parsedInactivity) : 60;
 
   // Dados de Parametrização do Servidor de Email (.env.local)
   const resendApiKey = process.env.RESEND_API_KEY;
@@ -81,6 +95,8 @@ export default async function ConfiguracaoPage() {
         trackingData={(trackingList as any[]) || []}
         serverEmailConfig={serverEmailConfig}
         templateEmailRecipients={templateEmailRecipients}
+        logs={(logsList as LogItem[]) || []}
+        inactivityMinutes={inactivityMinutes}
       />
     </div>
   );

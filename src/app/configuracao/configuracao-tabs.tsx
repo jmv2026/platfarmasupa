@@ -19,6 +19,7 @@ import {
   TIPO_ARTIGO_ID_MAP,
 } from '@/lib/supabase/types';
 import type { MovimentoWithDetails } from './importacao-movimentos-tab';
+import type { LogItem } from './log-tab';
 import {
   criarUtilizadorAction,
   criarClienteAction,
@@ -35,6 +36,7 @@ const ImportacaoErpTab = dynamic(() => import('./importacao-erp-tab'));
 const ImportacaoArtigosCard = dynamic(() => import('./importacao-artigos-card'));
 const ImportacaoTransporteTab = dynamic(() => import('./importacao-transporte-tab'));
 const ImportacaoStockTab = dynamic(() => import('./importacao-stock-tab'));
+const LogTab = dynamic(() => import('./log-tab'));
 
 export interface ServerEmailConfig {
   fromEmail: string;
@@ -54,7 +56,8 @@ export type ConfigTab =
   | 'erp'
   | 'stocks'
   | 'email'
-  | 'transporte';
+  | 'transporte'
+  | 'log';
 
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
@@ -66,6 +69,8 @@ interface ConfiguracaoTabsProps {
   serverEmailConfig?: ServerEmailConfig;
   trackingData?: any[];
   templateEmailRecipients?: string;
+  logs?: LogItem[];
+  inactivityMinutes?: number;
 }
 
 export default function ConfiguracaoTabs({
@@ -78,6 +83,8 @@ export default function ConfiguracaoTabs({
   serverEmailConfig,
   trackingData = [],
   templateEmailRecipients = '',
+  logs = [],
+  inactivityMinutes = 60,
 }: ConfiguracaoTabsProps) {
   const router = useRouter();
   const { t, language } = useLanguage();
@@ -722,6 +729,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">mail</span>
             {t.configuracao.tabEmail}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleSelectTab('log');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'log'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">history_edu</span>
+            Log
           </button>
         </div>
 
@@ -2517,6 +2539,15 @@ export default function ConfiguracaoTabs({
               </h3>
               <p className="text-sm text-on-surface-variant">Configurações de Lead Time serão disponibilizadas brevemente.</p>
             </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: LOG */}
+        {/* ========================================================================= */}
+        {visitedTabs.has('log') && (
+          <div className={activeTab === 'log' ? 'block space-y-6' : 'hidden'}>
+            <LogTab logs={logs} initialInactivityMinutes={inactivityMinutes} />
           </div>
         )}
 </main>

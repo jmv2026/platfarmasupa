@@ -35,7 +35,24 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { user, profile } = await getAuthContext();
+  const { supabase, user, profile } = await getAuthContext();
+
+  let inactivityMinutes = 60;
+  if (user) {
+    try {
+      const { data: cfg } = await supabase
+        .from("configuracoes")
+        .select("valor")
+        .eq("chave", "tempo_inatividade_minutos")
+        .maybeSingle();
+      const parsed = Number(cfg?.valor);
+      if (Number.isFinite(parsed) && parsed >= 3) {
+        inactivityMinutes = Math.round(parsed);
+      }
+    } catch {
+      // Fallback para 60 minutos
+    }
+  }
 
   return (
     <html lang="pt" className={`${inter.variable} ${manrope.variable}`}>
@@ -52,7 +69,11 @@ export default async function RootLayout({
           <NavProgressBar />
         </Suspense>
         <LanguageProvider>
-          <PersistentAppShell initialProfile={profile} initialEmail={user?.email}>
+          <PersistentAppShell
+            initialProfile={profile}
+            initialEmail={user?.email}
+            initialInactivityMinutes={inactivityMinutes}
+          >
             {children}
           </PersistentAppShell>
         </LanguageProvider>

@@ -1354,6 +1354,17 @@ export async function guardarConfiguracaoAction(chave: string, valor: string) {
     }
   }
 
+  // Validação específica para tempo de inatividade (mínimo 3 minutos para permitir aviso 2 minutos antes)
+  if (cleanChave === 'tempo_inatividade_minutos') {
+    const mins = Number(cleanValor);
+    if (!Number.isInteger(mins) || mins < 3 || mins > 1440) {
+      return {
+        success: false,
+        error: 'O tempo de inatividade deve ser um número inteiro entre 3 e 1440 minutos.',
+      };
+    }
+  }
+
   try {
     const { error } = await supabase
       .from('configuracoes')
@@ -1369,6 +1380,9 @@ export async function guardarConfiguracaoAction(chave: string, valor: string) {
     }
 
     revalidatePath('/configuracao');
+    if (cleanChave === 'tempo_inatividade_minutos') {
+      revalidatePath('/', 'layout');
+    }
     return { success: true, valor: cleanValor };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao guardar configuração.';

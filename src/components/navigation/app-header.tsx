@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { UserProfile } from '@/lib/supabase/types';
 import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
 import SignOutButton from '@/app/dashboard/sign-out-button';
+import InactivityGuard from './inactivity-guard';
 
 export type NavTab =
   | 'dashboard'
@@ -399,10 +400,12 @@ function HeaderBarUI({
 export function PersistentAppShell({
   initialProfile,
   initialEmail,
+  initialInactivityMinutes = 60,
   children,
 }: {
   initialProfile: UserProfile | null;
   initialEmail?: string;
+  initialInactivityMinutes?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -477,6 +480,13 @@ export function PersistentAppShell({
     >
       {!isLoginRoute && (
         <HeaderBarUI userProfile={userProfile} userEmail={userEmail} />
+      )}
+      {!isLoginRoute && (userProfile || userEmail) && (
+        <InactivityGuard
+          initialMinutes={initialInactivityMinutes}
+          userId={userProfile?.id}
+          enabled={!isLoginRoute}
+        />
       )}
       {children}
     </HeaderShellContext.Provider>
