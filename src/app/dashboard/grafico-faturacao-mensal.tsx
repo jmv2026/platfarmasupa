@@ -78,12 +78,12 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
 
   // Verifica se existe valor monetário na faturação
   const hasMonetaryData = useMemo(() => {
-    return faturacao.some((f) => (Number(f.total_merc) || 0) > 0);
+    return faturacao.some((f) => (Number(f.total_merc) || 0) > 0 || (Number(f.total_liquido) || 0) > 0);
   }, [faturacao]);
 
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('barras');
-  const [tipoMetrica, setTipoMetrica] = useState<TipoMetrica>(hasMonetaryData ? 'faturacao' : 'unidades');
+  const [tipoMetrica, setTipoMetrica] = useState<TipoMetrica>('faturacao');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [selectedMonthIndex, setSelectedMonthIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,8 +93,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
   }, [periodo]);
 
   useEffect(() => {
-    if (!hasMonetaryData && tipoMetrica === 'faturacao') {
-      setTipoMetrica('unidades');
+    if (hasMonetaryData && tipoMetrica === 'unidades') {
+      setTipoMetrica('faturacao');
     }
   }, [hasMonetaryData]);
 
@@ -111,7 +111,10 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     > = {};
     const todosAnosDisponiveis = new Set<number>();
 
-    faturacao.forEach((p) => {
+    // Encontra o mês e ano mais recente presente nos dados de faturação
+    let maxDataDate: { year: number; month: number } | null = null;
+
+    for (const p of faturacao) {
       const dataRaw = p.data;
       const parsed = extrairAnoMes(dataRaw);
       if (parsed) {
@@ -126,34 +129,51 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
         contagemPorMes[key].desc += Number(p.total_desc) || 0;
         contagemPorMes[key].liquido += Number(p.total_liquido) || 0;
         todosAnosDisponiveis.add(parsed.year);
-      }
-    });
 
-    todosAnosDisponiveis.add(currentYear);
+        if (
+          !maxDataDate ||
+          parsed.year > maxDataDate.year ||
+          (parsed.year === maxDataDate.year && parsed.month > maxDataDate.month)
+        ) {
+          maxDataDate = parsed;
+        }
+      }
+    }
+
+    // Se o ano atual do sistema não tiver dados ou for menor que o ano dos dados (ex: sistema em 2024 mas dados de 2026),
+    // ancoramos a linha temporal nos dados mais recentes para garantir que o utilizador nunca fica com gráfico vazio
+    let refYear = currentYear;
+    let refMonth = currentMonth;
+    if (maxDataDate && maxDataDate.year >= currentYear) {
+      refYear = maxDataDate.year;
+      refMonth = maxDataDate.month;
+    }
+
+    todosAnosDisponiveis.add(refYear);
 
     // Determina o intervalo de meses a gerar baseado no filtro selecionado (exceto 'todos' que agrega por ano)
     const mesesParaGerar: { year: number; month: number }[] = [];
 
     if (periodo === 'mes-atual') {
-      mesesParaGerar.push({ year: currentYear, month: currentMonth });
+      mesesParaGerar.push({ year: refYear, month: refMonth });
     } else if (periodo === '3m') {
       for (let i = 2; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === '6m') {
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === '12m') {
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === 'ano-atual') {
       for (let m = 0; m <= 11; m++) {
-        mesesParaGerar.push({ year: currentYear, month: m });
+        mesesParaGerar.push({ year: refYear, month: m });
       }
     }
 
@@ -166,8 +186,8 @@ export default function GraficoFaturacaoMensal({ faturacao, clientName }: Grafic
     if (periodo === 'todos') {
       // Quando for selecionado o filtro 'todos', a faturação é apresentada por ano
       const anosOrdenados = Array.from(todosAnosDisponiveis).sort((a, b) => a - b);
-      const minAno = anosOrdenados[0] || currentYear;
-      const maxAno = currentYear;
+      const minAno = anosOrdenados[0] || refYear;
+      const maxAno = Math.max(...anosOrdenados, refYear);
 
       const anosParaGerar: number[] = [];
       for (let y = minAno; y <= maxAno; y++) {

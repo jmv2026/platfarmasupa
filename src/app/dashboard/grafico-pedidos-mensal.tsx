@@ -46,7 +46,7 @@ export default function GraficoPedidosMensal({ pedidos, clientName, onSelectKpiR
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [tipoGrafico, setTipoGrafico] = useState<TipoVisualizacao>('combinado');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,51 +60,67 @@ export default function GraficoPedidosMensal({ pedidos, clientName, onSelectKpiR
     // Mapeia todas as contagens por "YYYY-MM"
     const contagemPorMes: Record<string, number> = {};
     const todosAnosDisponiveis = new Set<number>();
+    let maxDataDate: { year: number; month: number } | null = null;
 
-    pedidos.forEach((p) => {
+    for (const p of pedidos) {
       const dataRaw = p.data_pedido || p.created_at;
       const parsed = extrairAnoMes(dataRaw);
       if (parsed) {
         const key = `${parsed.year}-${String(parsed.month + 1).padStart(2, '0')}`;
         contagemPorMes[key] = (contagemPorMes[key] || 0) + 1;
         todosAnosDisponiveis.add(parsed.year);
-      }
-    });
 
-    todosAnosDisponiveis.add(currentYear);
+        if (
+          !maxDataDate ||
+          parsed.year > maxDataDate.year ||
+          (parsed.year === maxDataDate.year && parsed.month > maxDataDate.month)
+        ) {
+          maxDataDate = parsed;
+        }
+      }
+    }
+
+    let refYear = currentYear;
+    let refMonth = currentMonth;
+    if (maxDataDate && maxDataDate.year >= currentYear) {
+      refYear = maxDataDate.year;
+      refMonth = maxDataDate.month;
+    }
+
+    todosAnosDisponiveis.add(refYear);
 
     // Determina o intervalo de meses a gerar baseado no filtro selecionado
     const mesesParaGerar: { year: number; month: number }[] = [];
 
     if (periodo === 'mes-atual') {
-      mesesParaGerar.push({ year: currentYear, month: currentMonth });
+      mesesParaGerar.push({ year: refYear, month: refMonth });
     } else if (periodo === '3m') {
       for (let i = 2; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === '6m') {
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === '12m') {
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         mesesParaGerar.push({ year: d.getFullYear(), month: d.getMonth() });
       }
     } else if (periodo === 'ano-atual') {
       for (let m = 0; m <= 11; m++) {
-        mesesParaGerar.push({ year: currentYear, month: m });
+        mesesParaGerar.push({ year: refYear, month: m });
       }
     } else {
       // 'todos'
       const anosOrdenados = Array.from(todosAnosDisponiveis).sort((a, b) => a - b);
-      const minAno = anosOrdenados[0] || currentYear;
-      const maxAno = currentYear;
+      const minAno = anosOrdenados[0] || refYear;
+      const maxAno = Math.max(...anosOrdenados, refYear);
 
       for (let y = minAno; y <= maxAno; y++) {
-        const maxM = y === currentYear ? currentMonth : 11;
+        const maxM = y === refYear ? refMonth : 11;
         for (let m = 0; m <= maxM; m++) {
           mesesParaGerar.push({ year: y, month: m });
         }

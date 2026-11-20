@@ -309,7 +309,9 @@ export default function DashboardView({
 
   const effectiveClientObj = isManagerOrAdmin
     ? (selectedClientId === 'todos' ? null : clients.find(c => c.id === selectedClientId))
-    : clients.find(c => c.id === currentUserProfile?.cliente_id);
+    : (clients.find(c => c.id === currentUserProfile?.cliente_id) || clients[0] || null);
+
+  const clientForChart = isManagerOrAdmin ? selectedClientObj : (effectiveClientObj || clients[0] || null);
 
   const hasClientComFaturacao = useMemo(() => {
     return clients.some(c => c.tipo_cliente === 'CF');
@@ -317,7 +319,7 @@ export default function DashboardView({
 
   const showFaturacao = isManagerOrAdmin
     ? (selectedClientId === 'todos' ? hasClientComFaturacao : effectiveClientObj?.tipo_cliente === 'CF')
-    : effectiveClientObj?.tipo_cliente === 'CF';
+    : (effectiveClientObj?.tipo_cliente === 'CF' || hasClientComFaturacao);
 
   return (
     <main className="w-full px-3 sm:px-6 pt-1 pb-6 space-y-4 sm:space-y-6">
@@ -629,7 +631,7 @@ export default function DashboardView({
           <div className={graficoAtivo === 'pedidos' ? 'block' : 'hidden'}>
             <GraficoPedidosMensal
               pedidos={filteredPedidos}
-              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
               onSelectKpiRececoes={() => handleSelecionarGrafico('kpi_rececoes')}
             />
           </div>
@@ -639,7 +641,7 @@ export default function DashboardView({
           <div className={graficoAtivo === 'kpi_rececoes' ? 'block' : 'hidden'}>
             <GraficoKpiRececoes
               entradas={filteredEntradas}
-              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
             />
           </div>
         )}
@@ -648,7 +650,7 @@ export default function DashboardView({
           <div className={graficoAtivo === 'top10' ? 'block' : 'hidden'}>
             <GraficoTopProdutos
               saidas={filteredSaidas}
-              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
               onSelectProdutoPrevisao={handleSelecionarProdutoPrevisao}
             />
           </div>
@@ -658,7 +660,7 @@ export default function DashboardView({
           <div className={graficoAtivo === 'faturacao' ? 'block' : 'hidden'}>
             <GraficoFaturacaoMensal
               faturacao={filteredFaturacao}
-              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
             />
           </div>
         )}
@@ -667,7 +669,7 @@ export default function DashboardView({
           <div className={graficoAtivo === 'faturacao_artigo' ? 'block' : 'hidden'}>
             <GraficoFaturacaoArtigo
               saidas={filteredSaidas}
-              clientName={selectedClientObj ? `[${selectedClientObj.sigla}] ${selectedClientObj.name}` : null}
+              clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
             />
           </div>
         )}

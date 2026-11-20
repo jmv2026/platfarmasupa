@@ -53,7 +53,7 @@ export default function GraficoFaturacaoArtigo({
   const { t, language } = useLanguage();
   const locale = language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT';
 
-  const [periodo, setPeriodo] = useState<PeriodoFiltro>('mes-atual');
+  const [periodo, setPeriodo] = useState<PeriodoFiltro>('12m');
   const [topLimit, setTopLimit] = useState<TopLimit>('top10');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,28 +78,51 @@ export default function GraficoFaturacaoArtigo({
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
+    // Encontra o mês e ano mais recente presente nas saídas
+    let maxDataDate: { year: number; month: number } | null = null;
+    for (const s of saidas || []) {
+      const rawDate = s.data || s.data_movimento || s.created_at;
+      const parsed = extrairAnoMes(rawDate);
+      if (parsed) {
+        if (
+          !maxDataDate ||
+          parsed.year > maxDataDate.year ||
+          (parsed.year === maxDataDate.year && parsed.month > maxDataDate.month)
+        ) {
+          maxDataDate = parsed;
+        }
+      }
+    }
+
+    let refYear = currentYear;
+    let refMonth = currentMonth;
+    if (maxDataDate && maxDataDate.year >= currentYear) {
+      refYear = maxDataDate.year;
+      refMonth = maxDataDate.month;
+    }
+
     // Determinar o conjunto de meses (YYYY-MM) abrangidos pelo filtro temporal
     const allowedMonths = new Set<string>();
     if (periodo === 'mes-atual') {
-      allowedMonths.add(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+      allowedMonths.add(`${refYear}-${String(refMonth + 1).padStart(2, '0')}`);
     } else if (periodo === '3m') {
       for (let i = 2; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         allowedMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
       }
     } else if (periodo === '6m') {
       for (let i = 5; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         allowedMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
       }
     } else if (periodo === '12m') {
       for (let i = 11; i >= 0; i--) {
-        const d = new Date(currentYear, currentMonth - i, 1);
+        const d = new Date(refYear, refMonth - i, 1);
         allowedMonths.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
       }
     } else if (periodo === 'ano-atual') {
       for (let m = 0; m <= 11; m++) {
-        allowedMonths.add(`${currentYear}-${String(m + 1).padStart(2, '0')}`);
+        allowedMonths.add(`${refYear}-${String(m + 1).padStart(2, '0')}`);
       }
     }
 
