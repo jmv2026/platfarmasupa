@@ -69,9 +69,9 @@ export async function criarUtilizadorAction(input: {
     return { success: false, error: 'Preencha todos os campos obrigatórios do utilizador.' };
   }
 
-  const userPassword = input.password || '123456';
-  if (userPassword.length < 6) {
-    return { success: false, error: 'A password deve conter pelo menos 6 carateres.' };
+  const userPassword = input.password || 'Sermail@2026!';
+  if (userPassword.length < 8) {
+    return { success: false, error: 'A palavra-passe deve conter pelo menos 8 caracteres para garantir a segurança da conta.' };
   }
 
   try {
