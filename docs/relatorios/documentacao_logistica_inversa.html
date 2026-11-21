@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentação — Logística Inversa | PlatFarmaSupa</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Inter, system-ui, sans-serif;
+      background-color: #d1d5db !important;
+      color: #000000;
+      line-height: 1.6;
+      margin: 0;
+      padding: 32px 20px;
+    }
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+      background: #e5e7eb;
+      border-radius: 16px;
+      border: 1.5px solid #9ca3af;
+      padding: 32px 40px;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+    }
+    h1 {
+      color: #004d3b;
+      margin-top: 0;
+      font-size: 1.75rem;
+      border-bottom: 2px solid #10b981;
+      padding-bottom: 12px;
+    }
+    h2 {
+      color: #065f46;
+      margin-top: 28px;
+      font-size: 1.25rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th {
+      background: #ecfdf5;
+      color: #065f46;
+      font-weight: 700;
+    }
+    code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 0.88em;
+    }
+    .callout {
+      background: #ecfdf5;
+      border-left: 4px solid #059669;
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 18px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Documentação Funcional e Técnica — Módulo de Logística Inversa</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &bull; <strong>Rota:</strong> <code>/logistica-inversa</code></p>
+
+    <h2>1. Visão Geral</h2>
+    <p>
+      A página de <strong>Logística Inversa</strong> (<code>/logistica-inversa</code>) permite lançar pedidos de recolha, monitorizar o histórico de recolhas efetuadas e consultar todos os artigos rececionados cuja entrada (<code>ES</code> / <code>ET</code>) é feita no armazém com a terminação <code>04</code> (Devoluções) de cada cliente.
+    </p>
+
+    <h2>2. Arquitetura de Ficheiros</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ficheiro</th>
+          <th>Descrição Técnica</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/app/logistica-inversa/page.tsx</code></td>
+          <td>Server Component que valida a autenticação, aplica o isolamento multi-tenant e carrega em paralelo clientes, destinos, artigos, pedidos de recolha e entradas no armazém <code>*04</code>.</td>
+        </tr>
+        <tr>
+          <td><code>src/app/logistica-inversa/logistica-inversa-view.tsx</code></td>
+          <td>Client Component com 3 abas: Lançar Pedido de Recolha, Histórico de Recolhas e Artigos Rececionados (Arm. 04).</td>
+        </tr>
+        <tr>
+          <td><code>src/app/logistica-inversa/actions.ts</code></td>
+          <td>Server Actions para criação de pedidos de recolha (<code>criarPedidoRecolhaAction</code>) e atualização de estado operacional (<code>atualizarEstadoPedidoRecolhaAction</code>).</td>
+        </tr>
+        <tr>
+          <td><code>supabase/migrations/20261110143200_create_logistica_inversa_tables.sql</code></td>
+          <td>Tabelas <code>public.pedidos_recolha</code> e <code>public.pedido_recolha_linhas</code> com índices e políticas RLS.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Regra de Artigos Rececionados (Armazém 04)</h2>
+    <div class="callout">
+      <strong>Regra Operacional:</strong> Todos os artigos rececionados no processo de logística inversa correspondem aos movimentos de entrada (<code>ES</code> ou <code>ET</code>) registados em <code>public.movimentos_linhas</code> cujo armazém tem terminação <code>04</code> (ex.: <code>PLS04</code>, <code>CRD04</code>, <code>MDZ04</code>, <code>PNZ04</code>).
+    </div>
+
+    <h2>4. Estrutura das 3 Abas</h2>
+    <ul>
+      <li><strong>Aba 1 — Lançar Pedido de Recolha:</strong> Seleção do cliente proprietário (com indicação automática do armazém <code>[SIGLA]04</code>), local de recolha (a partir de <code>destinos</code> ou preenchimento manual), motivo da recolha, data pretendida e adição de linhas de artigos a recolher.</li>
+      <li><strong>Aba 2 — Histórico de Recolhas:</strong> 4 KPIs de monitorização, filtros por cliente, estado, motivo, local e período, modal de detalhe e atualização de estado (<em>Pendente</em>, <em>Recolha Agendada</em>, <em>Em Recolha</em>, <em>Recolhido</em>, <em>Rececionado (Arm. 04)</em>, <em>Cancelado</em>).</li>
+      <li><strong>Aba 3 — Artigos Rececionados (Arm. 04):</strong> Filtros por cliente, artigo, período temporal (<code>De</code> / <code>Até</code>) e documento/lote, janela de resumo com o total rececionado no período e exportação CSV.</li>
+    </ul>
+  </div>
+</body>
+</html>

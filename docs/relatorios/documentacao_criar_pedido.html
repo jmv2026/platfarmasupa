@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentação Funcional e Técnica — Módulo Criar Pedido</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      background-color: #d1d5db !important;
+      color: #000000 !important;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10mm 12mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .card {
+      background-color: #e5e7eb !important;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    svg, table, .formula, tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    h2, h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px 0; color: #000000; }
+    h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1.5px solid #4b5563; color: #000000; }
+    h3 { font-size: 13.5px; font-weight: 700; margin: 12px 0 6px 0; color: #000000; }
+    p { margin: 6px 0; color: #000000; }
+    ul, ol { margin: 6px 0; padding-left: 20px; color: #000000; }
+    li { margin-bottom: 4px; }
+    code {
+      background-color: #d1d5db !important;
+      border: 1px solid #6b7280;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: #000000;
+    }
+    .formula {
+      background-color: #d1d5db !important;
+      border: 1.5px solid #4b5563;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+      background-color: #e5e7eb !important;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 7px 9px;
+      text-align: left;
+      color: #000000;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d1d5db !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#d1d5db] text-black antialiased p-6 space-y-6">
+  <div class="card">
+    <h1>Documentação Funcional e Técnica — Módulo Criar Pedido</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &nbsp;|&nbsp; <strong>Rota:</strong> <code>/pedidos</code></p>
+    <p>O módulo <strong>Criar Pedido</strong> (<code>/pedidos</code>) é o ponto central de emissão de ordens de expedição e encomendas logísticas na plataforma PlatFarmaSupa. Permite registar pedidos de saída de armazém com seleção inteligente de lotes segundo a regra <strong>FEFO</strong> (<em>First Expired, First Out</em>), gestão integrada de destinos arquivados, reserva imediata de stock disponível no Armazém <code>01</code> (Venda) e disparo automático de notificações por e-mail com anexos Excel nativos (<code>.xlsx</code>).</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Arquitetura e Fluxo de Dados</h2>
+    <div style="width:100%;margin:8px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" width="100%" height="auto" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:10px;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="952" height="572" rx="12" fill="#d1d5db" stroke="#374151" stroke-width="2"/>
+        <text x="480" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#000000">Mapa de Arquitetura e Fluxo de Dados — Página Criar Pedido (/pedidos)</text>
+
+        <rect x="24" y="48" width="912" height="92" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="68" font-size="13" font-weight="700" fill="#000000">1. Fontes de Dados (Supabase PostgreSQL)</text>
+
+        <rect x="50" y="80" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="180" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">clientes (Ativos)</text>
+        <text x="180" y="118" text-anchor="middle" font-size="11" fill="#000000">Proprietários de produto</text>
+
+        <rect x="350" y="80" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">vw_stock_pedidos</text>
+        <text x="480" y="118" text-anchor="middle" font-size="11" fill="#000000">Armazém 01 (Venda &gt; 0)</text>
+
+        <rect x="650" y="80" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="780" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">destinos (Ativos)</text>
+        <text x="780" y="118" text-anchor="middle" font-size="11" fill="#000000">Moradas arquivadas ([SIGLA]-0001)</text>
+
+        <rect x="24" y="166" width="912" height="78" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="186" font-size="13" font-weight="700" fill="#000000">2. Next.js Server Component (/pedidos/page.tsx)</text>
+
+        <rect x="240" y="194" width="480" height="40" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="219" text-anchor="middle" font-size="12.5" font-weight="700" fill="#000000">PedidosPage (getAuthContext + Promise.all + Isolamento RBAC)</text>
+
+        <rect x="24" y="270" width="912" height="150" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="290" font-size="13" font-weight="700" fill="#000000">3. Interface Interativa (NovoPedidoForm - novo-pedido-form.tsx)</text>
+
+        <rect x="44" y="302" width="270" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="179" y="324" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">1. Dados do Pedido</text>
+        <text x="179" y="340" text-anchor="middle" font-size="11" fill="#000000">Cliente, Ref. Doc, Data Entrega</text>
+
+        <rect x="344" y="302" width="270" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="479" y="324" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">2. Destino / Destinatário</text>
+        <text x="479" y="340" text-anchor="middle" font-size="11" fill="#000000">Código Rápido, Lista ou Modal Novo</text>
+
+        <rect x="644" y="302" width="272" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="780" y="324" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">3. Editor Linhas (Motor FEFO)</text>
+        <text x="780" y="340" text-anchor="middle" font-size="11" fill="#000000">Sugestão automática de lote O(1)</text>
+
+        <rect x="140" y="366" width="680" height="42" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="391" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">4 &amp; 5. Tabela de Linhas Acumuladas + Observações + Flag Contabilizar Stock + Submeter</text>
+
+        <rect x="24" y="446" width="912" height="114" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="466" font-size="13" font-weight="700" fill="#000000">4. Server Actions (actions.ts), Base de Dados e Notificações Resend</text>
+
+        <rect x="44" y="480" width="270" height="64" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="179" y="504" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">pedidos + pedido_linhas</text>
+        <text x="179" y="521" text-anchor="middle" font-size="11" fill="#000000">Gravação PED-AAAA-XXXX</text>
+        <text x="179" y="536" text-anchor="middle" font-size="11" fill="#000000">(status = pendente)</text>
+
+        <rect x="344" y="480" width="270" height="64" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="479" y="504" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Reserva / Abate de Stock</text>
+        <text x="479" y="521" text-anchor="middle" font-size="11" fill="#000000">Dedução imediata Armazém 01</text>
+        <text x="479" y="536" text-anchor="middle" font-size="11" fill="#000000">(se stock = true)</text>
+
+        <rect x="644" y="480" width="272" height="64" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="780" y="504" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">E-mails Resend + ExcelJS</text>
+        <text x="780" y="521" text-anchor="middle" font-size="11" fill="#000000">Pedido_*.xlsx (Cliente)</text>
+        <text x="780" y="536" text-anchor="middle" font-size="11" fill="#000000">Template-Pedidos_*.xlsx (Admin)</text>
+
+        <line x1="180" y1="128" x2="360" y2="194" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="128" x2="480" y2="194" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="780" y1="128" x2="600" y2="194" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="360" y1="234" x2="179" y2="302" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="234" x2="479" y2="302" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="600" y1="234" x2="780" y2="302" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="179" y1="350" x2="320" y2="366" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="479" y1="350" x2="480" y2="366" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="780" y1="350" x2="640" y2="366" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <line x1="340" y1="408" x2="179" y2="480" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <line x1="480" y1="408" x2="479" y2="480" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <line x1="620" y1="408" x2="780" y2="480" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+
+    <h3>Arquitetura de Ficheiros</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Ficheiro</th>
+          <th>Função Principal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/app/pedidos/page.tsx</code></td>
+          <td><em>Server Component</em> da rota <code>/pedidos</code>; valida a sessão via <code>getAuthContext()</code>, aplica o isolamento multi-tenant (<code>userClientId</code>) e carrega em paralelo (<code>Promise.all</code>) <code>clientes</code>, <code>vw_stock_pedidos</code> e <code>destinos</code>.</td>
+        </tr>
+        <tr>
+          <td><code>src/app/pedidos/novo-pedido-form.tsx</code></td>
+          <td><em>Client Component</em> interativo do formulário de criação de pedidos: gere os dados do cabeçalho, pesquisa rápida de destinos por código, modal de criação de destino, motor de sugestão FEFO em O(1) e validação de quantidades por lote.</td>
+        </tr>
+        <tr>
+          <td><code>src/app/pedidos/actions.ts</code></td>
+          <td><em>Server Actions</em> <code>criarDestinoAction</code> e <code>criarPedidoAction</code>; executam validação RBAC no servidor, geram a numeração do pedido (<code>nr_pedido</code> e <code>sigla_pedido</code>), gravam em <code>pedidos</code> e <code>pedido_linhas</code>, invocam a RPC de stock e disparam e-mails transacionais.</td>
+        </tr>
+        <tr>
+          <td><code>src/lib/email.ts</code></td>
+          <td>Geração em memória dos ficheiros Excel (<code>Pedido_&lt;nr_pedido&gt;.xlsx</code> e <code>Template-Pedidos_&lt;nr_pedido&gt;.xlsx</code>) e envio assíncrono via API <strong>Resend</strong>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>2. Controlo de Acesso (RBAC) e Isolamento por Cliente</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Perfil</th>
+          <th>Seleção de Cliente Proprietário</th>
+          <th>Opção "Contabilizar em Stock"</th>
+          <th>Visibilidade de Stock e Destinos</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong><code>admin</code> / <code>gestor</code></strong></td>
+          <td>Seletor dropdown livre com todos os clientes ativos (<code>[SIGLA] Nome</code>).</td>
+          <td>Checkbox visível (ativa por defeito; permite criar pedidos que não abatem stock quando desmarcada).</td>
+          <td>Acesso ao stock de venda (<code>vw_stock_pedidos</code>) e destinos do cliente selecionado no formulário.</td>
+        </tr>
+        <tr>
+          <td><strong><code>user1</code> / <code>user2</code></strong></td>
+          <td>Campo bloqueado (<em>read-only</em>) fixado na empresa associada ao perfil (<code>profile.cliente_id</code>).</td>
+          <td>Sempre ativo (<code>stock = true</code> forçado no servidor em <code>criarPedidoAction</code>).</td>
+          <td>Filtrado ao nível da query SQL (<code>eq('cliente_id', userClientId)</code>) apenas para a sua empresa.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>3. Estrutura Funcional do Formulário (5 Secções)</h2>
+    <ul>
+      <li><strong>Secção 1 — Dados do Pedido:</strong> Cliente Proprietário (a mudança de cliente limpa destinatário e linhas para evitar cruzamento de referências), Referência do Documento (<code>ref_documento</code>) e Data de Entrega Pretendida (<code>data_entrega</code>).</li>
+      <li><strong>Secção 2 — Destino / Destinatário:</strong> Pesquisa rápida por código (ex.: <code>CRD-0001</code>, <code>CRD0001</code> ou número sequencial <code>1</code>), seleção por lista pull-down ou criação de novo destino via modal dedicado (<code>+ Novo Destino</code>) ou checkbox inline.</li>
+      <li><strong>Secção 3 — Adição de Linhas com Motor FEFO Inteligente:</strong> Os lotes de <code>vw_stock_pedidos</code> são indexados num <code>Map&lt;artigo_id, StockPedido[]&gt;</code> ordenados por validade ascendente. Ao escolher um artigo, seleciona automaticamente o primeiro lote da fila FEFO (<code>⭐ [FEFO]</code>) e limita a quantidade ao saldo disponível.</li>
+      <li><strong>Secção 4 — Tabela de Linhas e Acumulação Validada:</strong> Se o utilizador adicionar novamente o mesmo par <code>(artigo_id, lote)</code>, a quantidade é somada à linha existente validando que <code>Qtd_acumulada = Qtd_existente + Qtd_nova &lt;= Stock Disponível_lote</code>.</li>
+      <li><strong>Secção 5 — Observações, Flag de Stock e Submissão:</strong> Notas de entrega, checkbox <code>Contabilizar em Stock</code> (para <code>admin</code>/<code>gestor</code>) e botão Submeter com totalizador de unidades.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>4. Fluxo Transacional no Servidor (criarPedidoAction)</h2>
+    <ol>
+      <li><strong>Validação RBAC e Integridade:</strong> Confirma a sessão no Supabase Auth, força <code>targetClientId = profile.cliente_id</code> para não-administradores e valida campos obrigatórios e linhas.</li>
+      <li><strong>Geração de Identificadores do Pedido:</strong> <code>nr_pedido</code> no formato <code>PED-&lt;ANO&gt;-&lt;4 DÍGITOS&gt;</code> e <code>sigla_pedido</code> no formato <code>&lt;SIGLA_CLIENTE&gt;-&lt;nr_pedido&gt;</code>.</li>
+      <li><strong>Inserção do Cabeçalho (<code>public.pedidos</code>):</strong> Regista o pedido com <code>status = 'pendente'</code>, <code>tipo_movimento = 'SS'</code>, <code>doc_primavera = null</code> e <code>stock = finalStock</code>.</li>
+      <li><strong>Inserção das Linhas (<code>public.pedido_linhas</code>):</strong> Grava todas as linhas associadas ao <code>pedido.id</code>.</li>
+      <li><strong>Contabilização em Stock (<code>stock = true</code>):</strong> Deduz imediatamente as quantidades reservadas no Armazém 01 (Venda) e invoca a RPC <code>sincronizar_pedido_para_movimentos(p_pedido_id)</code>.</li>
+      <li><strong>Envio Paralelo de E-mails (<code>Promise.allSettled</code>) e Invalidação de Cache:</strong> Envia confirmação ao cliente (<code>Pedido_&lt;nr_pedido&gt;.xlsx</code>) e template técnico à administração (<code>Template-Pedidos_&lt;nr_pedido&gt;.xlsx</code>) via Resend, revalidando as rotas afetadas.</li>
+    </ol>
+  </div>
+</body>
+</html>

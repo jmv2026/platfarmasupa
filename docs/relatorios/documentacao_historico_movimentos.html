@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentação Funcional e Técnica — Módulo Histórico de Movimentos</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      background-color: #d1d5db !important;
+      color: #000000 !important;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10mm 12mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .card {
+      background-color: #e5e7eb !important;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    svg, table, .formula, tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    h2, h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px 0; color: #000000; }
+    h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1.5px solid #4b5563; color: #000000; }
+    h3 { font-size: 13.5px; font-weight: 700; margin: 12px 0 6px 0; color: #000000; }
+    p { margin: 6px 0; color: #000000; }
+    ul, ol { margin: 6px 0; padding-left: 20px; color: #000000; }
+    li { margin-bottom: 4px; }
+    code {
+      background-color: #d1d5db !important;
+      border: 1px solid #6b7280;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: #000000;
+    }
+    .formula {
+      background-color: #d1d5db !important;
+      border: 1.5px solid #4b5563;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+      background-color: #e5e7eb !important;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 7px 9px;
+      text-align: left;
+      color: #000000;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d1d5db !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#d1d5db] text-black antialiased p-6 space-y-6">
+  <div class="card">
+    <h1>Documentação Funcional e Técnica — Módulo Histórico de Movimentos</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &nbsp;|&nbsp; <strong>Rota:</strong> <code>/historico-pedidos</code> (Menu: <strong>Histórico Movimentos</strong>)</p>
+    <p>O módulo <strong>Histórico de Movimentos</strong> (<code>/historico-pedidos</code>) disponibiliza a consulta unificada de todas as operações logísticas de armazém e expedição na plataforma PlatFarmaSupa. Combina os pedidos ativos submetidos na plataforma (<code>public.pedidos</code>) e os movimentos físicos de entrada, transferência e saída (<code>public.movimentos</code> + <code>public.movimentos_linhas</code>), enriquecidos com o tracking da transportadora <strong>Torrestir</strong> (<code>VW_torrestir_last</code>) e visualização integrada de comprovativos de entrega digitalizados (TIFF ➔ PNG).</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Arquitetura e Fluxo de Dados</h2>
+    <div style="width:100%;margin:8px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" width="100%" height="auto" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:10px;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000"/>
+          </marker>
+        </defs>
+
+        <rect x="4" y="4" width="952" height="582" rx="12" fill="#d1d5db" stroke="#374151" stroke-width="2"/>
+        <text x="480" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#000000">Mapa de Arquitetura e Fluxo de Dados — Histórico de Movimentos (/historico-pedidos)</text>
+
+        <rect x="24" y="48" width="912" height="94" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="68" font-size="13" font-weight="700" fill="#000000">1. Fontes de Dados e Storage (Supabase PostgreSQL &amp; Storage)</text>
+
+        <rect x="38" y="80" width="210" height="50" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="143" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">pedidos + pedido_linhas</text>
+        <text x="143" y="118" text-anchor="middle" font-size="10.5" fill="#000000">Pedidos ativos (processado = false)</text>
+
+        <rect x="262" y="80" width="225" height="50" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="374" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">movimentos + movimentos_linhas</text>
+        <text x="374" y="118" text-anchor="middle" font-size="10.5" fill="#000000">Entradas (ES/ET) e Saídas (SS/ST)</text>
+
+        <rect x="501" y="80" width="205" height="50" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="603" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">VW_torrestir_last</text>
+        <text x="603" y="118" text-anchor="middle" font-size="10.5" fill="#000000">Estado Expedição + url_comprovativo</text>
+
+        <rect x="720" y="80" width="202" height="50" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="821" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Bucket comprovativos_ttir</text>
+        <text x="821" y="118" text-anchor="middle" font-size="10.5" fill="#000000">Ficheiros TIFF digitalizados</text>
+
+        <rect x="24" y="168" width="912" height="106" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="188" font-size="13" font-weight="700" fill="#000000">2. Next.js Server Component (/historico-pedidos/page.tsx)</text>
+
+        <rect x="44" y="200" width="275" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="181" y="222" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Promise.all + fetchAllRowsFast</text>
+        <text x="181" y="239" text-anchor="middle" font-size="10.5" fill="#000000">Isolamento RBAC (userClientId)</text>
+        <text x="181" y="252" text-anchor="middle" font-size="10.5" fill="#000000">Paginação paralela (2000 linhas/bloco)</text>
+
+        <rect x="342" y="200" width="275" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="479" y="222" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Agrupamento O(N) e Filtro Processados</text>
+        <text x="479" y="239" text-anchor="middle" font-size="10.5" fill="#000000">Agrupa movimentos por docRef + tipo</text>
+        <text x="479" y="252" text-anchor="middle" font-size="10.5" fill="#000000">Exclui processedOrderRefs (processado=true)</text>
+
+        <rect x="640" y="200" width="276" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="778" y="222" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Cruzamento Tracking O(1) (statusMap)</text>
+        <text x="778" y="239" text-anchor="middle" font-size="10.5" fill="#000000">Associa estado Torrestir por ref_ser</text>
+        <text x="778" y="252" text-anchor="middle" font-size="10.5" fill="#000000">Ordenação decrescente (_sortTs)</text>
+
+        <rect x="24" y="300" width="912" height="270" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="320" font-size="13" font-weight="700" fill="#000000">3. Interface Interativa (HistoricoPedidosView - historico-pedidos-view.tsx)</text>
+
+        <rect x="44" y="332" width="872" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="353" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Painel de Pesquisa Global + 5 Filtros Dropdown (Cliente, Movimento ES/ET/SS/ST, Estado, Artigo, Período)</text>
+        <text x="480" y="370" text-anchor="middle" font-size="11" fill="#000000">Contador de Movimentos e Totalizador de Unidades Filtradas</text>
+
+        <rect x="44" y="404" width="275" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="181" y="428" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Vista 1: Tabela Compacta</text>
+        <text x="181" y="446" text-anchor="middle" font-size="10.5" fill="#000000">12 Colunas + Atalho Detalhe e Comprovativo</text>
+
+        <rect x="342" y="404" width="275" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="479" y="428" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Vista 2: Cartões Detalhados</text>
+        <text x="479" y="446" text-anchor="middle" font-size="10.5" fill="#000000">Morada, Requisição e Tabela de Lotes</text>
+
+        <rect x="640" y="404" width="276" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="778" y="428" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Exportação CSV (UTF-8 BOM)</text>
+        <text x="778" y="446" text-anchor="middle" font-size="10.5" fill="#000000">18 Colunas ao nível da linha de lote</text>
+
+        <rect x="90" y="492" width="350" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="265" y="516" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Modal Detalhe do Documento</text>
+        <text x="265" y="534" text-anchor="middle" font-size="10.5" fill="#000000">Cabeçalho, Destino, Linhas e Total de Unidades</text>
+
+        <rect x="500" y="492" width="380" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="690" y="516" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Visualizador Comprovativo (UTIF TIFF ➔ PNG)</text>
+        <text x="690" y="534" text-anchor="middle" font-size="10.5" fill="#000000">Signed URL (60s) + Descodificação Canvas + Cache</text>
+
+        <line x1="143" y1="130" x2="160" y2="200" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="374" y1="130" x2="220" y2="200" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="603" y1="130" x2="260" y2="200" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="319" y1="229" x2="342" y2="229" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="617" y1="229" x2="640" y2="229" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="778" y1="258" x2="480" y2="332" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+        <line x1="260" y1="380" x2="181" y2="404" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="380" x2="479" y2="404" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="700" y1="380" x2="778" y2="404" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <line x1="181" y1="464" x2="240" y2="492" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="479" y1="464" x2="310" y2="492" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="181" y1="464" x2="620" y2="492" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="479" y1="464" x2="660" y2="492" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <path d="M 885 130 L 926 130 L 926 522 L 880 522" fill="none" stroke="#000000" stroke-width="2.2" stroke-dasharray="5,3" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+
+    <h3>Arquitetura de Ficheiros</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Ficheiro</th>
+          <th>Função Principal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/app/historico-pedidos/page.tsx</code></td>
+          <td><em>Server Component</em> da rota <code>/historico-pedidos</code>; autentica via <code>getAuthContext()</code>, aplica isolamento RBAC (<code>userClientId</code>), carrega em paralelo (<code>Promise.all</code> + <code>fetchAllRowsFast</code>) <code>clientes</code>, <code>pedidos</code>, <code>VW_torrestir_last</code> e <code>movimentos_linhas</code>, agrupa movimentos e cruza estados Torrestir em O(1).</td>
+        </tr>
+        <tr>
+          <td><code>src/app/historico-pedidos/historico-pedidos-view.tsx</code></td>
+          <td><em>Client Component</em> interativo: gere pesquisa global e 5 filtros dropdown, comuta entre Vista Tabela Compacta e Vista Detalhada em Cartões, exporta CSV e converte comprovativos TIFF para PNG via <code>utif</code>.</td>
+        </tr>
+        <tr>
+          <td><code>src/lib/supabase/pagination.ts</code></td>
+          <td>Utilitário <code>fetchAllRowsFast</code> para carregamento paginado paralelo em blocos de 2000 registos.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>2. Motor de Unificação de Dados no Servidor (page.tsx)</h2>
+    <div class="formula">Chave de Agrupamento de Movimentos = cliente_id + "_" + documento_ref + "_" + tipo_movimento</div>
+    <ol>
+      <li><strong>Isolamento Multi-Tenant (RBAC):</strong> Perfis <code>admin</code> e <code>gestor</code> visualizam todos os clientes; perfis <code>user1</code> e <code>user2</code> têm <code>pedidos</code> e <code>movimentos_linhas</code> estritamente filtrados pelo seu <code>userClientId</code>.</li>
+      <li><strong>Regra de Exclusão de Pedidos Processados (<code>processedOrderRefs</code>):</strong> Os pedidos com <code>processado = true</code> em <code>public.pedidos</code> (e os movimentos cujo <code>documento_ref</code> coincida com <code>nr_pedido</code>, <code>sigla_pedido</code> ou <code>doc_primavera</code> desses pedidos) são filtrados e ocultados.</li>
+      <li><strong>Classificação Automática por Tipo de Movimento:</strong> Linhas de <code>movimentos_linhas</code> agrupadas em documentos virtuais recebem o estado <code>Rececionado</code> (para <code>ES</code>), <code>Transfer</code> (para <code>ET</code> e <code>ST</code>) ou <code>Em Preparação</code> / estado da transportadora (para <code>SS</code>).</li>
+      <li><strong>Cruzamento Automático com Tracking Torrestir (<code>VW_torrestir_last</code>):</strong> A referência <code>ref_ser</code> normalizada é cruzada em O(1) com <code>statusMap</code>, atualizando o estado de expedição (ex.: <code>Entregue</code>, <code>Entregue PDA</code>) e associando o caminho <code>url_comprovativo</code>.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>3. Sistema de Pesquisa e 5 Filtros Combináveis</h2>
+    <ul>
+      <li><strong>Pesquisa Textual Global:</strong> Pesquisa simultaneamente no cabeçalho (<code>nr_pedido</code>, destinatário, morada, localidade, código postal, requisição/ref_documento, observações, cliente) e nas linhas (<code>artigo_cli</code>, <code>descricao</code> e <code>lote</code>).</li>
+      <li><strong>Filtro de Cliente:</strong> Seletor multi-cliente para <code>admin</code>/<code>gestor</code>; fixo na empresa do utilizador para clientes.</li>
+      <li><strong>Filtro de Movimento:</strong> <code>ES</code> (Entrada Stock), <code>ET</code> (Entrada Transf.), <code>SS</code> (Saída Stock), <code>ST</code> (Saída Transf.).</li>
+      <li><strong>Filtro de Estado:</strong> Lista dinâmica dos estados presentes nos documentos carregados.</li>
+      <li><strong>Filtro de Artigo:</strong> Lista dinâmica (<code>availableArtigos</code>) extraída das linhas do cliente selecionado (<code>Código - Descrição</code>).</li>
+      <li><strong>Filtro de Período:</strong> <code>Todos os períodos</code>, <code>Hoje</code>, <code>Últimos 7 dias</code>, <code>Últimos 30 dias</code> e <code>Este mês</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>4. Vistas, Visualizador de Comprovativos TIFF e Exportação CSV</h2>
+    <ul>
+      <li><strong>Alternador de Vista (<code>viewMode</code>):</strong> Comutação instantânea entre <strong>Vista Tabela Compacta</strong> (12 colunas + modal de detalhe ao clicar no nº do documento) e <strong>Vista Detalhada em Cartões</strong> (com morada e grelha completa de lotes visível em cada cartão).</li>
+      <li><strong>Visualizador de Comprovativos TIFF ➔ PNG (<code>handleViewComprovativo</code>):</strong> Para movimentos com estado <code>Entregue</code> / <code>Entregue PDA</code> e <code>url_comprovativo</code>, gera um <em>Signed URL</em> (60s) no bucket <code>comprovativos_ttir</code> do Supabase Storage, descarrega o ficheiro <code>.tiff</code> em <code>ArrayBuffer</code>, descodifica-o no browser via <code>utif</code> para um <code>&lt;canvas&gt;</code> HTML5, guarda em cache na sessão (<code>comprovativoCacheRef</code>) e permite transferir como <code>.png</code>.</li>
+      <li><strong>Exportação CSV (<code>UTF-8 com BOM</code>):</strong> Exporta todos os movimentos filtrados desdobrados ao nível da linha de artigo/lote (18 colunas) prontos para abertura no Microsoft Excel.</li>
+    </ul>
+  </div>
+</body>
+</html>

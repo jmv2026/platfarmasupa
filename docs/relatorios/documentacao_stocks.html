@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentação Funcional e Técnica — Módulo de Gestão de Stocks</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      background-color: #d1d5db !important;
+      color: #000000 !important;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10mm 12mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .card {
+      background-color: #e5e7eb !important;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    svg, table, .formula, tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    h2, h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px 0; color: #000000; }
+    h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1.5px solid #4b5563; color: #000000; }
+    h3 { font-size: 13.5px; font-weight: 700; margin: 12px 0 6px 0; color: #000000; }
+    p { margin: 6px 0; color: #000000; }
+    ul, ol { margin: 6px 0; padding-left: 20px; color: #000000; }
+    li { margin-bottom: 4px; }
+    code {
+      background-color: #d1d5db !important;
+      border: 1px solid #6b7280;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: #000000;
+    }
+    .formula {
+      background-color: #d1d5db !important;
+      border: 1.5px solid #4b5563;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 11.5px;
+      text-align: center;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+      background-color: #e5e7eb !important;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 7px 9px;
+      text-align: left;
+      color: #000000;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d1d5db !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#d1d5db] text-black antialiased p-6 space-y-6">
+  <div class="card">
+    <h1>Documentação Funcional e Técnica — Módulo de Gestão de Stocks</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &nbsp;|&nbsp; <strong>Rota:</strong> <code>/stocks</code></p>
+    <p>O módulo de <strong>Stocks</strong> (<code>/stocks</code>) centraliza o controlo físico, comercial e regulamentar do inventário farmacêutico e logístico na plataforma PlatFarmaSupa. Permite consultar em tempo real o stock disponível para venda (Armazém <code>01</code>), o stock consolidado em todos os estados de armazém, o resumo agregado por artigo, o controlo FEFO de validades parametrizado por cliente e as referências com rotura total (<strong>Stock 0</strong>).</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Arquitetura e Fluxo de Dados</h2>
+    <div style="width:100%;margin:8px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 590" width="100%" height="auto" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:10px;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="952" height="582" rx="12" fill="#d1d5db" stroke="#374151" stroke-width="2"/>
+        <text x="480" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#000000">Mapa de Arquitetura e Fluxo de Dados — Página Stocks (/stocks)</text>
+
+        <rect x="24" y="48" width="912" height="96" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="68" font-size="13" font-weight="700" fill="#000000">1. Tabelas Base (PostgreSQL)</text>
+
+        <rect x="40" y="80" width="206" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="143" y="100" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">stock (Base Consolidada ERP)</text>
+        <text x="143" y="117" text-anchor="middle" font-size="10.5" fill="#000000">Saldo + data_stock (timestamptz)</text>
+
+        <rect x="260" y="80" width="214" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="367" y="100" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">pedidos + pedido_linhas</text>
+        <text x="367" y="117" text-anchor="middle" font-size="10.5" fill="#000000">Abate ativos pendentes de ERP</text>
+
+        <rect x="488" y="80" width="214" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="595" y="100" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">movimentos (Verificação ERP)</text>
+        <text x="595" y="117" text-anchor="middle" font-size="10.5" fill="#000000">Exclui doc_primavera = documento_ref</text>
+
+        <rect x="716" y="80" width="204" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="818" y="100" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">artigos + armazens + tempos</text>
+        <text x="818" y="117" text-anchor="middle" font-size="10.5" fill="#000000">Catálogo, Conservação e Limiares</text>
+
+        <rect x="24" y="172" width="912" height="92" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="192" font-size="13" font-weight="700" fill="#000000">2. Views SQL de Contabilização de Stock (Supabase)</text>
+
+        <rect x="60" y="204" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="190" y="226" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">vw_stock_pedidos</text>
+        <text x="190" y="242" text-anchor="middle" font-size="11" fill="#000000">Armazém 01 (Venda Livre &gt; 0)</text>
+
+        <rect x="350" y="204" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="226" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">vw_stock_atual</text>
+        <text x="480" y="242" text-anchor="middle" font-size="11" fill="#000000">Stock Consolidado (Armazéns 01..10)</text>
+
+        <rect x="640" y="204" width="260" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="770" y="226" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">vw_stock_zero</text>
+        <text x="770" y="242" text-anchor="middle" font-size="11" fill="#000000">Artigos com Saldo Total &lt;= 0</text>
+
+        <rect x="24" y="292" width="912" height="86" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="312" font-size="13" font-weight="700" fill="#000000">3. Next.js Server Component &amp; Server Actions</text>
+
+        <rect x="120" y="322" width="330" height="46" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="285" y="344" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">/stocks (page.tsx - Promise.all + RBAC)</text>
+        <text x="285" y="360" text-anchor="middle" font-size="11" fill="#000000">Paginação determinística e isolamento por cliente</text>
+
+        <rect x="520" y="322" width="330" height="46" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="685" y="344" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">actions.ts (Editar / Apagar Linha Stock)</text>
+        <text x="685" y="360" text-anchor="middle" font-size="11" fill="#000000">Manutenção exclusiva para perfil Admin</text>
+
+        <rect x="24" y="404" width="912" height="168" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="424" font-size="13" font-weight="700" fill="#000000">4. Interface Interativa (StocksView - stocks-view.tsx)</text>
+
+        <rect x="160" y="434" width="640" height="42" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="459" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">4 KPIs Superiores + Pesquisa + Filtros (Auto-Switch Armazém) + Exportação CSV / Excel (.xlsx)</text>
+
+        <rect x="38" y="502" width="166" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="121" y="526" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Aba 1: Stock Venda</text>
+        <text x="121" y="543" text-anchor="middle" font-size="10.5" fill="#000000">Arm. 01 + Badge Tipo Artigo</text>
+
+        <rect x="216" y="502" width="166" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="299" y="526" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Aba 2: Consolidado</text>
+        <text x="299" y="543" text-anchor="middle" font-size="10.5" fill="#000000">Todos Armazéns + Admin</text>
+
+        <rect x="394" y="502" width="166" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="477" y="526" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Aba 3: Resumo Artigo</text>
+        <text x="477" y="543" text-anchor="middle" font-size="10.5" fill="#000000">Badge Tipo + Venda/Total</text>
+
+        <rect x="572" y="502" width="166" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="655" y="526" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Aba 4: Validades</text>
+        <text x="655" y="543" text-anchor="middle" font-size="10.5" fill="#000000">Controlo FEFO e Alertas</text>
+
+        <rect x="750" y="502" width="170" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="835" y="526" text-anchor="middle" font-size="11.5" font-weight="700" fill="#000000">Aba 5: Stock 0</text>
+        <text x="835" y="543" text-anchor="middle" font-size="10.5" fill="#000000">Rotura + Badge Tipo Artigo</text>
+
+        <line x1="143" y1="132" x2="190" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="143" y1="132" x2="450" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="367" y1="132" x2="480" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="595" y1="132" x2="500" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="818" y1="132" x2="520" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="818" y1="132" x2="770" y2="204" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="190" y1="252" x2="250" y2="322" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="252" x2="290" y2="322" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="770" y1="252" x2="340" y2="322" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="285" y1="368" x2="420" y2="434" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+        <line x1="300" y1="476" x2="121" y2="502" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="380" y1="476" x2="299" y2="502" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="476" x2="477" y2="502" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="580" y1="476" x2="655" y2="502" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="660" y1="476" x2="835" y2="502" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <path d="M 340 502 L 685 368" fill="none" stroke="#000000" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+
+    <h3>Arquitetura de Ficheiros</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Ficheiro</th>
+          <th>Função Principal</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/app/stocks/page.tsx</code></td>
+          <td><em>Server Component</em> da rota <code>/stocks</code>; autentica o utilizador via <code>getAuthContext()</code>, aplica o isolamento por cliente (<code>userClientId</code>) e carrega em paralelo (<code>Promise.all</code>) as views <code>vw_stock_atual</code> (com ordenação composta determinística <code>artigo_id</code>, <code>cliente_id</code>, <code>tipo_armazem</code>, <code>lote</code>), <code>vw_stock_zero</code>, <code>clientes</code> e <code>tempos</code>, derivando <code>stockPedidos</code> a partir dos registos do Armazém <code>01</code> com <code>stock &gt; 0</code>.</td>
+        </tr>
+        <tr>
+          <td><code>src/app/stocks/stocks-view.tsx</code></td>
+          <td><em>Client Component</em> principal de visualização, filtragem multi-critério (com comutação automática para <em>Stock Consolidado</em> ao filtrar armazéns <code>&lt;&gt; 01</code>), conversão uniforme de <code>tipo_artigo</code> via <code>ID_TIPO_ARTIGO_MAP</code> / <code>TIPO_ARTIGO_LABELS</code>, ordenação dinâmica por colunas (<code>Intl.Collator</code>), cálculo dos 4 KPIs de topo e exportação para CSV / Excel (<code>.xlsx</code>).</td>
+        </tr>
+        <tr>
+          <td><code>src/app/stocks/actions.ts</code></td>
+          <td><em>Server Actions</em> restritas ao perfil <code>admin</code> (<code>editarLinhaStockAction</code> e <code>apagarLinhaStockAction</code>) para manutenção direta de registos na tabela <code>public.stock</code>.</td>
+        </tr>
+        <tr>
+          <td><code>supabase/migrations/20261109201500_remove_movimentos_posteriores_from_stock_views.sql</code></td>
+          <td>Definição SQL atualizada das views <code>vw_stock_atual</code>, <code>vw_stock_pedidos</code> e <code>vw_stock_zero</code>, contabilizando exclusivamente <code>public.stock</code> menos pedidos pendentes de ERP.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>2. Motor de Contabilização de Stock (Regras de Negócio SQL)</h2>
+    <div class="formula">Stock Lote = Stock Base(public.stock) - Soma(Pedidos Ativos exceto doc_primavera = documento_ref)</div>
+    <ol>
+      <li><strong>Base Primária Consolidada de Stock (<code>public.stock</code> — CTE <code>stock_resolvido</code>)</strong>: Saldo físico consolidado por cliente, armazém (<code>tipo_armazem</code>), artigo e lote sincronizado a partir do ERP Primavera / MS Access (<code>sync_stock_from_access</code> ou importação manual), com <code>data_stock</code> do tipo <code>timestamp with time zone</code>. Como o snapshot da tabela <code>public.stock</code> já reflete as entradas e saídas processadas no ERP, não são somados movimentos históricos de <code>public.movimentos_linhas</code>, eliminando duplicações.</li>
+      <li><strong>Pedidos Efetuados Pendentes de ERP (<code>public.pedidos</code> + <code>public.pedido_linhas</code> — CTE <code>pedidos_pendentes_erp</code>)</strong>: Contabilizam-se no cálculo dos stocks (abatendo <code>-quantidade</code> no Armazém <code>01</code>) todos os pedidos efetuados com <code>stock = true</code> e <code>status &lt;&gt; 'cancelado'</code>, <strong>exceto</strong> aqueles em que o campo <code>doc_primavera</code> coincida com algum <code>documento_ref</code> na tabela <code>public.movimentos</code>, pois tal significa que o movimento já se encontra integrado no ERP.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>3. Indicadores Superiores (4 Cartões de KPI)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Indicador (KPI)</th>
+          <th>Regra de Negócio / Critério</th>
+          <th>Significado Operacional</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1</strong></td>
+          <td><strong>Stock Outros Armazéns</strong></td>
+          <td><code>Soma(stock)</code> onde <code>tipo_armazem &lt;&gt; '01'</code></td>
+          <td>Total de unidades fora do circuito comercial (Quarentena <code>05</code>, Devoluções <code>04</code>, Expirados <code>02</code>, Danificados <code>03</code>, Destruição <code>06</code>, Farmacoteca <code>07</code>, Validade <code>09</code>, MIA <code>10</code>).</td>
+        </tr>
+        <tr>
+          <td><strong>2</strong></td>
+          <td><strong>Alertas Validade DM</strong></td>
+          <td><code>artigo_id</code> distintos do tipo <code>DM</code> (<code>82</code>) com <code>dias &lt;= 0</code></td>
+          <td>Dispositivos médicos com lote já expirado em armazém.</td>
+        </tr>
+        <tr>
+          <td><strong>3</strong></td>
+          <td><strong>Alertas Validade DC e SA</strong></td>
+          <td><code>artigo_id</code> distintos dos tipos <code>DC</code> (<code>83</code>) ou <code>SA</code> (<code>84</code>) com <code>dias &lt;= 0</code></td>
+          <td>Dermocosméticos e suplementos alimentares expirados em armazém.</td>
+        </tr>
+        <tr>
+          <td><strong>4</strong></td>
+          <td><strong>Alertas Validade MH</strong></td>
+          <td><code>artigo_id</code> distintos do tipo <code>MH</code> (<code>80</code>) com <code>dias &lt; 180</code></td>
+          <td>Medicamentos humanos em janela regulamentar de risco de caducidade (inferior a 6 meses).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>4. Sistema de Pesquisa, As 5 Abas e Exportação</h2>
+    <h3>Filtros Multi-Critério</h3>
+    <ul>
+      <li><strong>Pesquisa Textual Rápida:</strong> Código do artigo, código cliente, descrição, lote, localização e cliente.</li>
+      <li><strong>Conservação (<code>tipo_armazenamento</code>):</strong> <code>TF</code> (Frio 2–8 ºC), <code>TC</code> (Controlada 15–25 ºC), <code>TA</code> (Ambiente).</li>
+      <li><strong>Tipo de Artigo (<code>tipo_artigo</code>):</strong> <code>MH</code>, <code>MV</code>, <code>DM</code>, <code>DC</code>, <code>SC</code>, <code>SA</code> (mapeando códigos <code>80</code>–<code>85</code> via <code>ID_TIPO_ARTIGO_MAP</code>).</li>
+      <li><strong>Tipo de Armazém (<code>tipo_armazem</code>):</strong> <code>01</code> (Venda) a <code>10</code> (MIA). Se selecionado um armazém diferente de <code>01</code> a partir das abas <em>Stock de Venda</em> ou <em>Artigos com Stock 0</em>, comuta automaticamente para a aba <em>Stock Consolidado</em>.</li>
+    </ul>
+
+    <h3>As 5 Abas de Consulta</h3>
+    <ul>
+      <li><strong>Aba 1 — Stock de Venda (<code>vw_stock_pedidos</code>):</strong> Lotes no Armazém <code>01</code> com saldo positivo (já líquido de pedidos sem correspondência de <code>doc_primavera</code> em <code>movimentos</code>), coluna <em>Tipo Artigo</em> com badge azul traduzido e destaque âmbar quando atingem o limiar da tabela <code>public.tempos</code> (<code>VAL_MH</code>, <code>VAL_MV</code>, <code>VAL_DM</code>, <code>VAL_DC</code>, <code>VAL_SA</code>).</li>
+      <li><strong>Aba 2 — Stock Consolidado (<code>vw_stock_atual</code>):</strong> Todos os lotes com saldo positivo distribuídos por todos os armazéns (<code>01</code> a <code>10</code>), incluindo ações de edição/remoção para <code>admin</code>.</li>
+      <li><strong>Aba 3 — Agrupado por Artigo:</strong> Agregação por referência com badge azul de <em>Tipo Artigo</em>, Stock Venda (<code>01</code>), Stock Outros (<code>&lt;&gt; 01</code>), Stock Total, N.º de Lotes e Primeira Validade (FEFO).</li>
+      <li><strong>Aba 4 — Controlo de Validades:</strong> Lista ordenada por FEFO com cálculo de dias restantes e estado regulamentar (Expirado, Bloqueado/Alerta ou Conforme).</li>
+      <li><strong>Aba 5 — Artigos com Stock 0 (<code>vw_stock_zero</code>):</strong> Referências sem saldo positivo em nenhum lote ou armazém, exibindo badge de <em>Tipo Artigo</em>, data do Último Movimento e Total de Registos.</li>
+    </ul>
+
+    <h3>Exportação de Dados (CSV e Excel <code>.xlsx</code>)</h3>
+    <ul>
+      <li><strong>CSV:</strong> Ficheiro <code>UTF-8 com BOM (\uFEFF)</code> para abertura direta no Excel.</li>
+      <li><strong>Excel (<code>.xlsx</code>):</strong> Folha de cálculo nativa gerada via <code>ExcelJS</code> com formatação institucional Sermail (<code>#1B4332</code>) e tradução da coluna <em>Tipo Artigo</em>.</li>
+    </ul>
+  </div>
+</body>
+</html>

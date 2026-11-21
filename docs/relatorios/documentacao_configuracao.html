@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentação Funcional e Técnica — Página Configuração (/configuracao)</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #d1d5db;
+      color: #000000;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13.5px;
+      line-height: 1.55;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 28px 32px;
+      background-color: #d1d5db;
+    }
+    .header-card, .section-card {
+      background-color: #e5e7eb;
+      border: 1.5px solid #9ca3af;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      color: #000000;
+    }
+    h2 {
+      margin: 0 0 12px 0;
+      font-size: 17px;
+      color: #000000;
+      border-bottom: 1.5px solid #9ca3af;
+      padding-bottom: 6px;
+    }
+    h3 {
+      margin: 14px 0 6px 0;
+      font-size: 14.5px;
+      color: #000000;
+    }
+    p, li {
+      color: #000000;
+      margin: 6px 0;
+    }
+    ul, ol {
+      margin: 6px 0 10px 20px;
+      padding: 0;
+    }
+    code {
+      background-color: #d1d5db;
+      border: 1px solid #9ca3af;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: Consolas, 'Courier New', monospace;
+      font-size: 12.5px;
+      color: #000000;
+    }
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .badge {
+      background-color: #d1d5db;
+      border: 1px solid #9ca3af;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background-color: #d1d5db;
+    }
+    th, td {
+      border: 1px solid #9ca3af;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+      color: #000000;
+      font-size: 12.5px;
+    }
+    th {
+      background-color: #c7cdd6;
+      font-weight: 700;
+    }
+    .svg-wrapper {
+      background-color: #d1d5db;
+      border: 1.5px solid #9ca3af;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-card">
+      <h1>Documentação Funcional e Técnica — Página Configuração (<code>/configuracao</code>)</h1>
+      <p><strong>Módulo:</strong> Consola Central de Administração, Dados Mestres, SLAs Farmacêuticos, Motores de Importação Batch e Servidor de Email.</p>
+      <div class="badge-row">
+        <span class="badge">Rota: /configuracao</span>
+        <span class="badge">SSR: force-dynamic</span>
+        <span class="badge">RBAC: Exclusivo Admin</span>
+        <span class="badge">11 Separadores (Lazy-Mounted)</span>
+        <span class="badge">Supabase Auth + Postgres + Storage + Resend</span>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h2>1. Diagrama de Arquitetura e Fluxo de Dados</h2>
+      <p>O diagrama seguinte ilustra o fluxo completo desde a validação RBAC e carregamento paralelo no Server Component até aos 11 separadores cliente e respetivas Server Actions.</p>
+      <div class="svg-wrapper">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 720" width="100%" height="100%" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000" />
+            </marker>
+          </defs>
+          <rect x="0" y="0" width="1120" height="720" fill="#d1d5db" />
+          <rect x="20" y="16" width="1080" height="54" rx="8" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5" />
+          <text x="560" y="38" text-anchor="middle" fill="#000000" font-size="16" font-weight="700">MAPA DE ARQUITETURA — CONSOLA DE CONFIGURAÇÃO &amp; ADMINISTRAÇÃO (/configuracao)</text>
+          <text x="560" y="57" text-anchor="middle" fill="#000000" font-size="12">Acesso Exclusivo Admin • 11 Separadores Lazy-Loaded • Gestão Master Data, SLAs, Importações Batch, SMTP/Resend e Storage</text>
+
+          <rect x="20" y="88" width="1080" height="128" rx="8" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5" />
+          <text x="36" y="110" fill="#000000" font-size="13" font-weight="700">1. CAMADA SERVIDOR (SSR) — src/app/configuracao/page.tsx (force-dynamic)</text>
+
+          <rect x="36" y="122" width="250" height="78" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="161" y="142" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Guard RBAC Estrito (Admin)</text>
+          <text x="161" y="160" text-anchor="middle" fill="#000000" font-size="11">getAuthenticatedUserWithProfile()</text>
+          <text x="161" y="176" text-anchor="middle" fill="#000000" font-size="11">role === 'admin' | admin@sermail.pt</text>
+          <text x="161" y="191" text-anchor="middle" fill="#000000" font-size="10">Redirect /dashboard?error=unauthorized</text>
+
+          <rect x="316" y="122" width="460" height="78" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="546" y="142" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Carregamento Paralelo (Promise.all — 7 Queries Supabase)</text>
+          <text x="546" y="160" text-anchor="middle" fill="#000000" font-size="11">1. public.users • 2. public.clientes • 3. public.artigos • 4. public.armazens</text>
+          <text x="546" y="176" text-anchor="middle" fill="#000000" font-size="11">5. public.tempos • 6. VW_torrestir_last (1000) • 7. public.configuracoes</text>
+          <text x="546" y="191" text-anchor="middle" fill="#000000" font-size="10">Chave lida no arranque: email_template_pedidos_destinatarios</text>
+
+          <rect x="806" y="122" width="278" height="78" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="945" y="142" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Diagnóstico Runtime (.env.local)</text>
+          <text x="945" y="160" text-anchor="middle" fill="#000000" font-size="11">RESEND_API_KEY (configurada/ausente)</text>
+          <text x="945" y="176" text-anchor="middle" fill="#000000" font-size="11">RESEND_FROM_EMAIL (remetente)</text>
+          <text x="945" y="191" text-anchor="middle" fill="#000000" font-size="10">RESEND_NOTIFICATION_EMAIL (fallback)</text>
+
+          <line x1="286" y1="161" x2="314" y2="161" stroke="#000000" stroke-width="1.6" marker-end="url(#arrow)" />
+          <line x1="776" y1="161" x2="804" y2="161" stroke="#000000" stroke-width="1.6" marker-end="url(#arrow)" />
+          <line x1="560" y1="216" x2="560" y2="242" stroke="#000000" stroke-width="1.8" marker-end="url(#arrow)" />
+
+          <rect x="20" y="244" width="1080" height="226" rx="8" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5" />
+          <text x="36" y="266" fill="#000000" font-size="13" font-weight="700">2. ORQUESTRADOR CLIENTE — src/app/configuracao/configuracao-tabs.tsx (11 Separadores + Lazy Mounting visitedTabs)</text>
+
+          <rect x="36" y="280" width="336" height="174" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="204" y="300" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">A. Identidade, Entidades &amp; SLAs</text>
+          <text x="48" y="322" fill="#000000" font-size="11">• [1] Utilizadores: Auth signUp + public.users (role, idioma)</text>
+          <text x="48" y="342" fill="#000000" font-size="11">• [2] Clientes: sigla &lt;= 4, tipo (SF/CF), cli_primavera, NIF</text>
+          <text x="48" y="362" fill="#000000" font-size="11">• [3] Artigos: CRUD manual + ImportacaoArtigosCard</text>
+          <text x="48" y="382" fill="#000000" font-size="11">• [4] Validades: Dias Aviso (VAL_*) e Bloqueio (EXP_*)</text>
+          <text x="48" y="402" fill="#000000" font-size="11">• [5] Lead Time: Tempos de entrega por cliente (tempos)</text>
+          <text x="48" y="426" fill="#000000" font-size="10">Modais dedicados de edição rápida por cliente e classe (MH/MV/DM/DC/SA)</text>
+
+          <rect x="392" y="280" width="356" height="174" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="570" y="300" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">B. Motores de Importação Batch (next/dynamic)</text>
+          <text x="404" y="322" fill="#000000" font-size="11">• [6] Movimentos: ImportacaoMovimentosTab (Faturas/WHS)</text>
+          <text x="404" y="342" fill="#000000" font-size="11">• [7] ERP: ImportacaoErpTab (parse-erp-file.ts Primavera)</text>
+          <text x="404" y="362" fill="#000000" font-size="11">• [8] Stocks: ImportacaoStockTab (batches de 500 linhas)</text>
+          <text x="404" y="382" fill="#000000" font-size="11">• [9] Transporte: ImportacaoTransporteTab (Torrestir)</text>
+          <text x="404" y="402" fill="#000000" font-size="11">• [11] Comprovativos: ImportacaoComprovativosTab (.tif)</text>
+          <text x="404" y="426" fill="#000000" font-size="10">Parsing client-side (xlsx/csv/txt) + envio faseado por Server Actions</text>
+
+          <rect x="768" y="280" width="316" height="174" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="926" y="300" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">C. Servidor de Email &amp; Parâmetros</text>
+          <text x="780" y="322" fill="#000000" font-size="11">• [10] Servidor de Email (Resend API):</text>
+          <text x="792" y="342" fill="#000000" font-size="11">- Estado das variáveis .env.local</text>
+          <text x="792" y="362" fill="#000000" font-size="11">- Destinatários do Template de Pedidos</text>
+          <text x="792" y="382" fill="#000000" font-size="11">- Teste de conectividade SMTP/Resend</text>
+          <text x="792" y="402" fill="#000000" font-size="11">- Simulação real do Template de Pedido</text>
+          <text x="780" y="426" fill="#000000" font-size="10">Persistência imediata em public.configuracoes (KV)</text>
+
+          <line x1="204" y1="470" x2="204" y2="500" stroke="#000000" stroke-width="1.8" marker-end="url(#arrow)" />
+          <line x1="570" y1="470" x2="570" y2="500" stroke="#000000" stroke-width="1.8" marker-end="url(#arrow)" />
+          <line x1="926" y1="470" x2="926" y2="500" stroke="#000000" stroke-width="1.8" marker-end="url(#arrow)" />
+
+          <rect x="20" y="502" width="1080" height="200" rx="8" fill="#e5e7eb" stroke="#9ca3af" stroke-width="1.5" />
+          <text x="36" y="524" fill="#000000" font-size="13" font-weight="700">3. CAMADA DE SERVER ACTIONS (src/app/configuracao/actions.ts) &amp; PERSISTÊNCIA SUPABASE</text>
+
+          <rect x="36" y="538" width="336" height="148" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="204" y="558" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Actions de Entidades &amp; SLAs</text>
+          <text x="48" y="578" fill="#000000" font-size="11">• criarUtilizadorAction / atualizarUtilizadorAction</text>
+          <text x="48" y="596" fill="#000000" font-size="11">• criarClienteAction (+ seed automático public.tempos)</text>
+          <text x="48" y="614" fill="#000000" font-size="11">• atualizarTemposClienteAction (VAL_* e EXP_*)</text>
+          <text x="48" y="632" fill="#000000" font-size="11">• criarArtigoAction / importarArtigosAction / limpar</text>
+          <text x="48" y="654" fill="#000000" font-size="10" font-weight="700">Tabelas: auth.users, public.users, clientes, artigos, tempos</text>
+          <text x="48" y="670" fill="#000000" font-size="10">Cache: invalidateUserProfileCache() + revalidatePath()</text>
+
+          <rect x="392" y="538" width="356" height="148" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="570" y="558" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Actions Operacionais, ERP, Stock &amp; Storage</text>
+          <text x="404" y="578" fill="#000000" font-size="11">• importarStockAction / limparStockAction (tabela stock)</text>
+          <text x="404" y="596" fill="#000000" font-size="11">• importarFaturasAction / importarMovimentosAction</text>
+          <text x="404" y="614" fill="#000000" font-size="11">• importarErpAction / importarTorrestirAction</text>
+          <text x="404" y="632" fill="#000000" font-size="11">• Upload Storage para bucket comprovativos_ttir (.tif)</text>
+          <text x="404" y="654" fill="#000000" font-size="10" font-weight="700">Tabelas: stock, movimentos, movimentos_linhas, faturas, torrestir</text>
+          <text x="404" y="670" fill="#000000" font-size="10">Storage Bucket: supabase.storage.from('comprovativos_ttir')</text>
+
+          <rect x="768" y="538" width="316" height="148" rx="6" fill="#d1d5db" stroke="#9ca3af" stroke-width="1.2" />
+          <text x="926" y="558" text-anchor="middle" fill="#000000" font-size="12" font-weight="700">Actions de Configuração &amp; Email</text>
+          <text x="780" y="578" fill="#000000" font-size="11">• guardarConfiguracaoAction(chave, valor)</text>
+          <text x="780" y="596" fill="#000000" font-size="11">• enviarEmailTesteConfigAction(emailDestino)</text>
+          <text x="780" y="614" fill="#000000" font-size="11">• enviarEmailTesteTemplateAction(destinatarios)</text>
+          <text x="780" y="632" fill="#000000" font-size="11">• Upsert atómico por primary key (chave)</text>
+          <text x="780" y="654" fill="#000000" font-size="10" font-weight="700">Tabela: public.configuracoes • API Externa: Resend</text>
+          <text x="780" y="670" fill="#000000" font-size="10">Revalidação: revalidatePath('/configuracao')</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h2>2. Carregamento no Servidor e Segurança RBAC (<code>src/app/configuracao/page.tsx</code>)</h2>
+      <ul>
+        <li><strong>Controlo de Acesso Estrito:</strong> Invoca <code>getAuthenticatedUserWithProfile()</code>. Se o utilizador não possuir <code>profile.role === 'admin'</code> (ou <code>user.email === 'admin@sermail.pt'</code>), é imediatamente redirecionado para <code>/dashboard?error=unauthorized</code>.</li>
+        <li><strong>Execução Paralela (<code>Promise.all</code>):</strong> Carrega num único ciclo assíncrono 7 fontes: <code>users</code>, <code>clientes</code>, <code>artigos</code>, <code>armazens</code>, <code>tempos</code>, <code>VW_torrestir_last</code> (limite de 1000 registos) e a chave <code>email_template_pedidos_destinatarios</code> em <code>public.configuracoes</code>.</li>
+        <li><strong>Diagnóstico Seguro de Variáveis de Ambiente:</strong> Inspeciona no servidor <code>RESEND_API_KEY</code>, <code>RESEND_FROM_EMAIL</code> e <code>RESEND_NOTIFICATION_EMAIL</code>, enviando ao cliente apenas flags booleanas e endereços remetentes em <code>emailEnvStatus</code>.</li>
+      </ul>
+    </div>
+
+    <div class="section-card">
+      <h2>3. Matriz dos 11 Separadores (<code>src/app/configuracao/configuracao-tabs.tsx</code>)</h2>
+      <p>Os separadores pesados recorrem a <code>next/dynamic</code> com <code>ssr: false</code> e montagem diferida controlada pelo estado <code>visitedTabs</code>:</p>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Separador</th>
+            <th>Componente / Motor</th>
+            <th>Responsabilidade Funcional e Regras</th>
+            <th>Tabelas / Recursos</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Utilizadores</strong></td>
+            <td><code>ConfiguracaoTabs</code> (nativo)</td>
+            <td>Registo em <code>auth.users</code> (<code>signUp</code>) + perfil em <code>public.users</code> (perfis <code>admin</code>, <code>gestor</code>, <code>user1</code>, <code>user2</code>, associação a <code>cliente_id</code>, idioma <code>PT/ES/EN</code> e estado <code>ativo</code>). Invalida a cache LRU de autenticação.</td>
+            <td><code>auth.users</code>, <code>public.users</code></td>
+          </tr>
+          <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Clientes</strong></td>
+            <td><code>ConfiguracaoTabs</code> (nativo)</td>
+            <td>Criação e edição de clientes depositantes: <code>sigla</code> (&lt;= 4 caracteres), <code>tipo_cliente</code> (<code>SF</code> Sem Faturação / <code>CF</code> Com Faturação), código Primavera, NIF e morada. Inicializa automaticamente os SLAs em <code>public.tempos</code>.</td>
+            <td><code>public.clientes</code>, <code>public.tempos</code></td>
+          </tr>
+          <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Artigos</strong></td>
+            <td><code>ImportacaoArtigosCard</code> + CRUD manual</td>
+            <td>Registo manual de artigos, limpeza global de catálogo e importação em lote (<code>.xlsx</code>, <code>.csv</code>, <code>.txt</code>) com mapeamento de classe farmacêutica e conservação.</td>
+            <td><code>public.artigos</code></td>
+          </tr>
+          <tr>
+            <td><strong>4</strong></td>
+            <td><strong>Validades</strong></td>
+            <td>Modal de SLAs FEFO</td>
+            <td>Parametrização por cliente e por tipologia (<strong>MH, MV, DM, DC, SA</strong>) dos dias de <strong>Aviso (<code>VAL_*</code>)</strong> e dias de <strong>Bloqueio (<code>EXP_*</code>)</strong> que governam os alertas em <code>/stocks</code> e <code>/pedidos/criar</code>.</td>
+            <td><code>public.tempos</code></td>
+          </tr>
+          <tr>
+            <td><strong>5</strong></td>
+            <td><strong>Lead Time</strong></td>
+            <td>Painel <code>tempo_entrega</code></td>
+            <td>Visualização e configuração dos tempos acordados de preparação e entrega logística por cliente depositante.</td>
+            <td><code>public.tempos</code></td>
+          </tr>
+          <tr>
+            <td><strong>6</strong></td>
+            <td><strong>Movimentos</strong></td>
+            <td><code>ImportacaoMovimentosTab</code></td>
+            <td>Importação assistida de movimentos de armazém e faturas em lote, alimentando cabeçalhos, linhas e faturação.</td>
+            <td><code>public.movimentos</code>, <code>movimentos_linhas</code>, <code>faturas</code></td>
+          </tr>
+          <tr>
+            <td><strong>7</strong></td>
+            <td><strong>ERP</strong></td>
+            <td><code>ImportacaoErpTab</code></td>
+            <td>Parsing especializado (<code>parse-erp-file.ts</code>) e integração de ficheiros exportados do ERP Primavera.</td>
+            <td><code>public.movimentos</code>, <code>public.faturas</code></td>
+          </tr>
+          <tr>
+            <td><strong>8</strong></td>
+            <td><strong>Stocks</strong></td>
+            <td><code>ImportacaoStockTab</code></td>
+            <td>Sincronização de fotografia de stock (<code>parse-stock-file.ts</code>) em lotes faseados de 500 linhas e limpeza de stock.</td>
+            <td><code>public.stock</code></td>
+          </tr>
+          <tr>
+            <td><strong>9</strong></td>
+            <td><strong>Transporte</strong></td>
+            <td><code>ImportacaoTransporteTab</code></td>
+            <td>Importação de ficheiros de tracking Torrestir (guias, portes, estados de entrega, volumes e incidências).</td>
+            <td><code>public.torrestir</code>, <code>VW_torrestir_last</code></td>
+          </tr>
+          <tr>
+            <td><strong>10</strong></td>
+            <td><strong>Servidor de Email</strong></td>
+            <td>Painel Resend &amp; Templates</td>
+            <td>Diagnóstico de variáveis <code>.env.local</code>, configuração dinâmica de <code>email_template_pedidos_destinatarios</code> e envio de emails de teste (simples e template de pedido).</td>
+            <td><code>public.configuracoes</code>, API <strong>Resend</strong></td>
+          </tr>
+          <tr>
+            <td><strong>11</strong></td>
+            <td><strong>Comprovativos</strong></td>
+            <td><code>ImportacaoComprovativosTab</code></td>
+            <td>Upload massivo e sincronização de comprovativos digitalizados (<code>.tif</code> / <code>.tiff</code>) para o bucket de Storage.</td>
+            <td>Bucket Storage <code>comprovativos_ttir</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section-card">
+      <h2>4. Server Actions Principais e Regras de Persistência (<code>src/app/configuracao/actions.ts</code>)</h2>
+      <ul>
+        <li><code>criarUtilizadorAction</code> / <code>atualizarUtilizadorAction</code>: Criam/atualizam o registo em <code>auth.users</code> e <code>public.users</code> e invocam <code>invalidateUserProfileCache(userId)</code> para que alterações de perfil ou cliente tenham efeito imediato.</li>
+        <li><code>criarClienteAction</code>: Além de inserir o cliente em <code>public.clientes</code>, executa um <em>seed</em> automático na tabela <code>public.tempos</code> com <code>VAL_* = 180</code> dias e <code>EXP_* = 60</code> dias para todas as classes (MH, MV, DM, DC, SA).</li>
+        <li><code>atualizarTemposClienteAction</code>: Atualiza os 10 limiares de validade em <code>public.tempos</code> e revalida <code>/configuracao</code>.</li>
+        <li><code>guardarConfiguracaoAction(chave, valor)</code>: Valida permissões de administrador e executa <code>upsert({ chave, valor, updated_at }, { onConflict: 'chave' })</code> na tabela Key-Value <code>public.configuracoes</code>.</li>
+        <li><code>enviarEmailTesteConfigAction</code> &amp; <code>enviarEmailTesteTemplateAction</code>: Testam em tempo real o transporte HTTP para <code>https://api.resend.com/emails</code> com o remetente configurado e a lista de destinatários do template de pedidos.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

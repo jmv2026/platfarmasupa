@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentação Funcional e Técnica — Dashboard e Previsão de Stock</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      background-color: #d1d5db !important;
+      color: #000000 !important;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10mm 12mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .card {
+      background-color: #e5e7eb !important;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    svg, table, .formula, tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    h2, h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px 0; color: #000000; }
+    h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1.5px solid #4b5563; color: #000000; }
+    h3 { font-size: 13.5px; font-weight: 700; margin: 12px 0 6px 0; color: #000000; }
+    p { margin: 6px 0; color: #000000; }
+    ul, ol { margin: 6px 0; padding-left: 20px; color: #000000; }
+    li { margin-bottom: 4px; }
+    code {
+      background-color: #d1d5db !important;
+      border: 1px solid #6b7280;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: #000000;
+    }
+    .formula {
+      background-color: #d1d5db !important;
+      border: 1.5px solid #4b5563;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+      background-color: #e5e7eb !important;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 7px 9px;
+      text-align: left;
+      color: #000000;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d1d5db !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#d1d5db] text-black antialiased p-6 space-y-6">
+  <div class="card">
+    <h1>Documentação Funcional e Técnica — Dashboard e Previsão de Stock</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &nbsp;|&nbsp; <strong>Rotas:</strong> <code>/dashboard</code> e <code>/dashboard/previsao-stock</code></p>
+    <p>Esta documentação descreve a arquitetura, fontes de dados, regras de negócio dos indicadores (KPIs), gráficos analíticos e o modelo matemático de <strong>Previsão de Stock e Ponto de Encomenda</strong> do módulo Dashboard.</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Arquitetura e Fluxo de Dados</h2>
+    <div style="width:100%;margin:8px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="100%" height="auto" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:10px;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="952" height="552" rx="12" fill="#d1d5db" stroke="#374151" stroke-width="2"/>
+        <text x="480" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#000000">Mapa de Arquitetura e Fluxo de Dados — Dashboard (/dashboard)</text>
+
+        <rect x="24" y="50" width="912" height="105" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="72" font-size="13" font-weight="700" fill="#000000">1. Base de Dados Supabase (PostgreSQL)</text>
+
+        <rect x="40" y="86" width="160" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="120" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">clientes</text>
+        <text x="120" y="127" text-anchor="middle" font-size="11" fill="#000000">(Clientes Ativos)</text>
+
+        <rect x="220" y="86" width="160" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="300" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">vw_stock_atual</text>
+        <text x="300" y="127" text-anchor="middle" font-size="11" fill="#000000">(Saldos e Lotes)</text>
+
+        <rect x="400" y="86" width="160" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">vw_pedidos</text>
+        <text x="480" y="127" text-anchor="middle" font-size="11" fill="#000000">(Histórico Pedidos)</text>
+
+        <rect x="580" y="86" width="160" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="660" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">vw_saidas</text>
+        <text x="660" y="127" text-anchor="middle" font-size="11" fill="#000000">(Saídas por Artigo)</text>
+
+        <rect x="760" y="86" width="160" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="840" y="110" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">vw_fact_mes</text>
+        <text x="840" y="127" text-anchor="middle" font-size="11" fill="#000000">(Faturação Mensal)</text>
+
+        <rect x="24" y="190" width="912" height="100" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="212" font-size="13" font-weight="700" fill="#000000">2. Next.js Server Components (Promise.all + Isolamento RBAC)</text>
+
+        <rect x="140" y="224" width="300" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="290" y="248" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">/dashboard (page.tsx)</text>
+        <text x="290" y="265" text-anchor="middle" font-size="11" fill="#000000">Carregamento paralelo das 4 views + clientes</text>
+
+        <rect x="520" y="224" width="320" height="52" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="680" y="248" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">/dashboard/previsao-stock (page.tsx)</text>
+        <text x="680" y="265" text-anchor="middle" font-size="11" fill="#000000">Carregamento dedicado de Stock + Pedidos</text>
+
+        <rect x="24" y="325" width="912" height="210" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+        <text x="40" y="347" font-size="13" font-weight="700" fill="#000000">3. Componentes Interativos (Client Components)</text>
+
+        <rect x="140" y="362" width="300" height="54" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="290" y="386" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">DashboardView (dashboard-view.tsx)</text>
+        <text x="290" y="404" text-anchor="middle" font-size="11" fill="#000000">6 KPIs de Topo + Filtro Global de Cliente + Abas</text>
+
+        <rect x="40" y="456" width="205" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="142" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">GraficoPedidosMensal</text>
+        <text x="142" y="500" text-anchor="middle" font-size="11" fill="#000000">Evolução Mensal e MoM (%)</text>
+
+        <rect x="265" y="456" width="215" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="372" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">GraficoTopProdutos</text>
+        <text x="372" y="500" text-anchor="middle" font-size="11" fill="#000000">Top 5 / 10 / 25 Saídas</text>
+
+        <rect x="500" y="456" width="205" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="602" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">GraficoFaturacaoMensal</text>
+        <text x="602" y="500" text-anchor="middle" font-size="11" fill="#000000">Faturação Líquida (€) e Un.</text>
+
+        <rect x="725" y="456" width="195" height="60" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="822" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">PrevisaoStockView</text>
+        <text x="822" y="500" text-anchor="middle" font-size="11" fill="#000000">Projeção e Ponto Encomenda</text>
+
+        <line x1="120" y1="138" x2="220" y2="224" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="300" y1="138" x2="290" y2="224" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="138" x2="330" y2="224" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="660" y1="138" x2="370" y2="224" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="840" y1="138" x2="410" y2="224" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="120" y1="138" x2="590" y2="224" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="300" y1="138" x2="650" y2="224" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="138" x2="680" y2="224" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <line x1="290" y1="276" x2="290" y2="362" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <line x1="220" y1="416" x2="142" y2="456" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="290" y1="416" x2="372" y2="456" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="380" y1="416" x2="602" y2="456" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+        <line x1="680" y1="276" x2="822" y2="456" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+        <path d="M 372 516 L 372 530 L 822 530 L 822 516" fill="none" stroke="#000000" stroke-width="2" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+
+    <h3>Ficheiros do Módulo</h3>
+    <ul>
+      <li><strong><code>src/app/dashboard/page.tsx</code></strong>: <em>Server Component</em> da rota <code>/dashboard</code>. Valida a sessão com <code>getAuthContext</code>, aplica o isolamento por cliente (<code>userClientId</code>) e executa o carregamento paralelo (<code>Promise.all</code>) das views da base de dados.</li>
+      <li><strong><code>src/app/dashboard/dashboard-view.tsx</code></strong>: <em>Client Component</em> principal do Dashboard. Gere o seletor de clientes (para perfis <code>admin</code> e <code>gestor</code>), calcula os 6 KPIs superiores e alterna instantaneamente entre os separadores de gráficos.</li>
+      <li><strong><code>src/app/dashboard/grafico-pedidos-mensal.tsx</code></strong>: Gráfico SVG interativo da evolução mensal de pedidos.</li>
+      <li><strong><code>src/app/dashboard/grafico-top-produtos.tsx</code></strong>: Ranking visual e tabela detalhada dos produtos com maior volume de expedição (<code>vw_saidas</code>), com navegação direta para a previsão de stock do produto clicado.</li>
+      <li><strong><code>src/app/dashboard/grafico-faturacao-mensal.tsx</code></strong>: Análise mensal financeira (Mercadoria, IVA, Descontos e Valor Líquido) e de unidades faturadas (<code>vw_fact_mes</code>).</li>
+      <li><strong><code>src/app/dashboard/previsao-stock/page.tsx</code> &amp; <code>previsao-stock-view.tsx</code></strong>: Página dedicada (<code>/dashboard/previsao-stock</code>) para simulação e análise preditiva de rotura de stock.</li>
+      <li><strong><code>src/app/dashboard/grafico-previsao-stock.tsx</code></strong>: Motor de cálculo de <em>Run-Rate</em>, abate de validades futuras, projeção de stock e interseção geométrica do <strong>Ponto de Encomenda</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>2. Controlo de Acessos por Perfil de Utilizador</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Perfil (<code>role</code>)</th>
+          <th>Visibilidade no Dashboard</th>
+          <th>Seletor de Cliente</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong><code>admin</code> / <code>gestor</code></strong></td>
+          <td>Acesso global a todos os clientes ativos, podendo agregar dados de toda a operação Sermail ou isolar um cliente específico.</td>
+          <td>Visível (<code>Todos os Clientes</code> ou <code>[SIGLA] Nome</code>).</td>
+        </tr>
+        <tr>
+          <td><strong><code>user1</code> / <code>user2</code></strong></td>
+          <td>Acesso estritamente isolado ao seu <code>cliente_id</code> (filtrado na query do servidor e garantido por <em>Row-Level Security</em> na base de dados).</td>
+          <td>Oculto (dados pré-filtrados pela entidade do utilizador).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>3. Os 6 Indicadores Superiores (Cartões KPI)</h2>
+    <p>Calculados em tempo real em <code>DashboardView</code> a partir do stock e histórico de pedidos filtrados:</p>
+    <ol>
+      <li><strong>Artigos em Risco <em>(Medicamentos de Uso Humano — MH)</em></strong>: Conta referências distintas (<code>artigo_id</code>) em <code>vw_stock_atual</code> com validade entre <strong>61 e 179 dias</strong> (<code>60 &lt; dias &lt; 180</code>) cujo <code>tipo_artigo</code> seja Medicamento de Uso Humano (<code>MH</code>).</li>
+      <li><strong>Artigos Bloqueados</strong>: Conta referências distintas (<code>artigo_id</code>) em <code>vw_stock_atual</code> com lotes a expirar num prazo crítico de <strong>1 a 60 dias</strong> (<code>0 &lt; dias &lt;= 60</code>), para qualquer tipologia de artigo.</li>
+      <li><strong>Pedidos do Mês em Curso</strong>: Total de pedidos em <code>vw_pedidos</code> realizados no mês e ano correntes.</li>
+      <li><strong>Pedidos do Ano Corrente</strong>: Total acumulado de pedidos realizados desde 1 de janeiro do ano civil atual.</li>
+      <li><strong>Total Histórico de Pedidos</strong>: Volume global de pedidos registados na plataforma para o âmbito selecionado.</li>
+      <li><strong>Artigos com Stock</strong>: Total de referências distintas (<code>artigo_id</code>) com stock físico positivo no armazém (<code>vw_stock_atual</code>).</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>4. Painéis Gráficos do Dashboard (/dashboard)</h2>
+    <h3>4.1 Evolução Mensal de Pedidos (<code>GraficoPedidosMensal</code>)</h3>
+    <ul>
+      <li><strong>Fonte:</strong> <code>public.vw_pedidos</code> (<code>data_pedido</code> / <code>created_at</code>).</li>
+      <li><strong>Filtros Temporais:</strong> <code>Mês Atual</code>, <code>3M</code>, <code>6M</code>, <code>12M</code>, <code>Ano Atual</code> e <code>Todos</code>.</li>
+      <li><strong>Modos de Gráfico:</strong> <code>Combinado</code> (Barras + Linha de tendência suave), <code>Barras</code> e <code>Área</code>.</li>
+      <li><strong>Indicadores:</strong> Total de pedidos no período, média mensal, mês de pico máximo e taxa de variação mensal (<code>MoM %</code>).</li>
+    </ul>
+
+    <h3>4.2 Top Produtos Mais Expedidos (<code>GraficoTopProdutos</code>)</h3>
+    <ul>
+      <li><strong>Fonte:</strong> <code>public.vw_saidas</code> (<code>quantidade</code>, <code>data_movimento</code>, <code>documento_ref</code>).</li>
+      <li><strong>Opções de Ranking:</strong> <code>Top 5</code>, <code>Top 10</code> ou <code>Top 25</code> artigos com maior quantidade expedida no período.</li>
+      <li><strong>Ação Interativa:</strong> Clicar em qualquer barra ou linha da tabela abre a <strong>Previsão de Stock</strong> já posicionada nesse artigo (<code>/dashboard/previsao-stock?codigo=...</code>).</li>
+    </ul>
+
+    <h3>4.3 Faturação Mensal (<code>GraficoFaturacaoMensal</code>)</h3>
+    <ul>
+      <li><strong>Fonte:</strong> <code>public.vw_fact_mes</code>.</li>
+      <li><strong>Regra de Exibição:</strong> Apresentado apenas para clientes com <code>tipo_cliente = 'CF'</code> (Cliente com Faturação).</li>
+      <li><strong>Métricas Comutáveis:</strong> <strong>Faturação (€)</strong> (Valor Líquido = Total Mercadoria - Total IVA - Total Descontos) e <strong>Unidades</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>5. Previsão de Stock e Ponto de Encomenda (/dashboard/previsao-stock)</h2>
+    <p>O componente <code>GraficoPrevisaoStock</code> combina o stock atual por lote/validade (<code>vw_stock_atual</code>) com o histórico de consumo (<code>vw_pedidos</code>) para projetar a evolução futura do stock de cada artigo:</p>
+    <div class="formula">Consumo Médio Mensal = round( Soma(Qtd. Pedida nos últimos N meses) / N )</div>
+    <div class="formula">Stock Projetado(m) = max( 0, Stock Projetado(m-1) - Consumo Médio Mensal - Stock Expirado(m) )</div>
+    <div class="formula">Autonomia (Meses) = Stock Atual / Consumo Médio Mensal &nbsp;&nbsp;|&nbsp;&nbsp; Nível de Segurança = Consumo Médio Mensal × Meses de Reposição</div>
+    <ul>
+      <li><strong>À Esquerda (Alerta Vermelho — Já Ultrapassado):</strong> Quando o stock atual já é inferior ao Nível de Segurança, prolonga a linha a tracejado para a esquerda indicando há quantos meses o ponto de encomenda foi ultrapassado.</li>
+      <li><strong>Dentro do Horizonte (Alerta Âmbar):</strong> Assinala o ponto exato de cruzamento dentro da janela de 3, 6 ou 12 meses e indica o mês recomendado para encomendar.</li>
+      <li><strong>À Direita (Estável — Fora do Horizonte):</strong> Quando o stock no final do período ainda supera o Nível de Segurança, prolonga a reta para a direita indicando em que mês futuro será atingido o ponto de encomenda.</li>
+    </ul>
+  </div>
+</body>
+</html>

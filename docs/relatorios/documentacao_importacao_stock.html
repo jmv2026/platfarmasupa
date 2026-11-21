@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentação Técnica e Operacional — Processos de Importação de Stock</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      background-color: #d1d5db !important;
+      color: #000000 !important;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10mm 12mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .card {
+      background-color: #e5e7eb !important;
+      border: 2px solid #374151;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    svg, table, .formula, tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    h2, h3 {
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    h1 { font-size: 20px; font-weight: 700; margin: 0 0 6px 0; color: #000000; }
+    h2 { font-size: 15px; font-weight: 700; margin: 0 0 10px 0; padding-bottom: 6px; border-bottom: 1.5px solid #4b5563; color: #000000; }
+    h3 { font-size: 13.5px; font-weight: 700; margin: 12px 0 6px 0; color: #000000; }
+    p { margin: 6px 0; color: #000000; }
+    ul, ol { margin: 6px 0; padding-left: 20px; color: #000000; }
+    li { margin-bottom: 4px; }
+    code {
+      background-color: #d1d5db !important;
+      border: 1px solid #6b7280;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      font-size: 11.5px;
+      color: #000000;
+    }
+    .formula {
+      background-color: #d1d5db !important;
+      border: 1.5px solid #4b5563;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+      font-size: 12px;
+      text-align: center;
+      color: #000000;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 12px;
+      background-color: #e5e7eb !important;
+    }
+    th, td {
+      border: 1px solid #4b5563;
+      padding: 7px 9px;
+      text-align: left;
+      color: #000000;
+      vertical-align: top;
+    }
+    th {
+      background-color: #d1d5db !important;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body class="bg-[#d1d5db] text-black antialiased p-6 space-y-6">
+  <div class="card">
+    <h1>Documentação Técnica e Operacional — Processos de Importação de Stock</h1>
+    <p><strong>Projeto:</strong> PlatFarmaSupa (Sermail) &nbsp;|&nbsp; <strong>Tabela Alvo:</strong> <code>public.stock</code> e <code>public.movimentos</code></p>
+    <p>Esta documentação descreve a arquitetura de armazenamento de saldos de stock na plataforma PlatFarmaSupa e os procedimentos disponíveis para atualizar a tabela <code>public.stock</code> via ficheiro web ou sincronização direta do MS Access.</p>
+  </div>
+
+  <div class="card">
+    <h2>1. Arquitetura Geral do Stock na Plataforma</h2>
+    <div style="width:100%;margin:8px 0;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" width="100%" height="auto" style="background-color:#d1d5db;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;border-radius:10px;">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#000000"/>
+          </marker>
+        </defs>
+        <rect x="4" y="4" width="952" height="312" rx="12" fill="#d1d5db" stroke="#374151" stroke-width="2"/>
+        <text x="480" y="32" text-anchor="middle" font-size="16" font-weight="700" fill="#000000">Arquitetura Geral do Stock e Importação na Plataforma</text>
+
+        <rect x="24" y="48" width="912" height="252" rx="8" fill="#e5e7eb" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="5,3"/>
+
+        <rect x="44" y="68" width="270" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="179" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Tabela public.stock</text>
+        <text x="179" y="110" text-anchor="middle" font-size="11" fill="#000000">(Snapshot base ERP / MS Access / CSV)</text>
+
+        <rect x="344" y="68" width="272" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Movimentos de Entrada (ES, ET, E)</text>
+        <text x="480" y="110" text-anchor="middle" font-size="11" fill="#000000">(public.movimentos_linhas)</text>
+
+        <rect x="646" y="68" width="270" height="58" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="781" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#000000">Movimentos de Saída (SS, ST, S)</text>
+        <text x="781" y="110" text-anchor="middle" font-size="11" fill="#000000">(Movimentos + Pedidos com stock = true)</text>
+
+        <rect x="180" y="160" width="600" height="48" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="182" text-anchor="middle" font-size="13" font-weight="700" fill="#000000">Cálculo Unificado de Stock (Supabase PostgreSQL)</text>
+        <text x="480" y="199" text-anchor="middle" font-size="11" fill="#000000">vw_stock_atual  |  vw_stock_pedidos  |  vw_stock_zero</text>
+
+        <rect x="220" y="238" width="520" height="44" rx="6" fill="#d1d5db" stroke="#1f2937" stroke-width="2"/>
+        <text x="480" y="265" text-anchor="middle" font-size="12.5" font-weight="700" fill="#000000">Saldo Disponível = Entradas - Saídas (Abate imediato em tempo real)</text>
+
+        <line x1="179" y1="126" x2="360" y2="160" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="126" x2="480" y2="160" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="781" y1="126" x2="600" y2="160" stroke="#000000" stroke-width="2.2" marker-end="url(#arrow)"/>
+        <line x1="480" y1="208" x2="480" y2="238" stroke="#000000" stroke-width="2.5" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+    <div class="formula">Stock Disponível = Soma(Entradas ES / Stock Base) - Soma(Saídas SS / Pedidos)</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Estrutura da Tabela public.stock</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Coluna</th>
+          <th>Tipo</th>
+          <th>Obrigatório</th>
+          <th>Descrição / Regra de Preenchimento</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td><code>uuid</code></td><td>Sim (Auto)</td><td>Gerado automaticamente (<code>gen_random_uuid()</code>) ou lido do ficheiro.</td></tr>
+        <tr><td><code>cliente_ser</code></td><td><code>text</code></td><td><strong>Sim</strong></td><td>Sigla do cliente na Sermail (ex.: <code>AOP</code>, <code>MAX</code>, <code>CRD</code>).</td></tr>
+        <tr><td><code>entidade</code></td><td><code>text</code></td><td>Não</td><td>Código do cliente no Primavera/ERP (corresponde a <code>clientes.cli_primavera</code>).</td></tr>
+        <tr><td><code>artigo_id</code></td><td><code>text</code></td><td><strong>Sim</strong></td><td>Código do artigo (aceita também o alias <code>artigo</code>).</td></tr>
+        <tr><td><code>armazem</code></td><td><code>text</code></td><td><strong>Sim</strong></td><td>Código do armazém (ex.: <code>AOP01</code>, <code>AOP05</code>, <code>AOP06</code>).</td></tr>
+        <tr><td><code>localizacao</code></td><td><code>text</code></td><td>Não</td><td>Código da localização física / posição (ex.: <code>AOP01.14B35</code>).</td></tr>
+        <tr><td><code>lote</code></td><td><code>text</code></td><td>Não</td><td>Código do lote farmacêutico.</td></tr>
+        <tr><td><code>stock</code></td><td><code>numeric</code></td><td><strong>Sim</strong></td><td>Quantidade em stock atual (predefinido <code>0</code>).</td></tr>
+        <tr><td><code>validade</code> / <code>data_fabrico</code></td><td><code>date</code></td><td>Não</td><td>Datas em formato <code>YYYY-MM-DD</code> (datas sentinela <code>1980-01-01</code> em fabrico convertidas em <code>NULL</code>).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>3. Comparativo dos Dois Processos de Importação</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Característica</th>
+          <th>Processo 1: Ficheiro Web (<code>Configuração &gt; Stocks</code>)</th>
+          <th>Processo 2: MS Access Direto (<code>VBA -&gt; RPC</code>)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Origem dos Dados</strong></td>
+          <td>Ficheiro <code>.xlsx</code>, <code>.xls</code>, <code>.csv</code> ou <code>.txt</code> analisado por <code>parseStockFile</code>.</td>
+          <td>Query direta no MS Access (<code>DAO.Recordset</code>) enviada via <code>access_sync_stock.bas</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>Intervenção Manual</strong></td>
+          <td>Exportar ficheiro + Upload na página de Configuração com grelha de pré-visualização.</td>
+          <td>1 Clique num botão dentro do MS Access (<code>Call AtualizarStockSupabase</code>).</td>
+        </tr>
+        <tr>
+          <td><strong>Gravação Transacional</strong></td>
+          <td>Limpa a tabela via <code>limparStockAction</code> e envia lotes de 500 linhas para <code>importarStockAction</code>.</td>
+          <td>Execução atómica no PostgreSQL via RPC <code>public.sync_stock_from_access</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

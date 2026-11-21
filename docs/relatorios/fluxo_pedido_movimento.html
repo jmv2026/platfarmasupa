@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ciclo de Vida e Lógica de Estados — Pedidos e Movimentos</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      background-color: #d1d5db !important;
+      color: #000000;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .header-card {
+      background: linear-gradient(135deg, #006b54 0%, #008769 50%, #004d3b 100%);
+      border: 1.5px solid #a3e635;
+      border-radius: 14px;
+      padding: 22px 28px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0 0 6px 0;
+      color: #ffffff;
+      letter-spacing: 0.3px;
+    }
+    .subtitle {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #bef264;
+      margin: 0;
+    }
+    .diagram-container {
+      margin: 20px 0;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6);
+      border: 1px solid #334155;
+    }
+    .card {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #a3e635;
+      margin: 0 0 12px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #334155;
+    }
+    h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 12px 0 6px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 12.5px;
+    }
+    th, td {
+      padding: 9px 12px;
+      border: 1px solid #334155;
+      text-align: left;
+    }
+    th {
+      background-color: #0f172a;
+      color: #a3e635;
+      font-weight: 700;
+    }
+    tr:nth-child(even) {
+      background-color: #1a2234;
+    }
+    code {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: Consolas, monospace;
+      color: #a3e635;
+      font-size: 12px;
+    }
+    .highlight {
+      color: #bef264;
+      font-weight: bold;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .tag-green { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+    .tag-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+    .tag-yellow { background: rgba(234, 179, 8, 0.2); color: #facc15; border: 1px solid #eab308; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-card">
+      <h1>PlatFarmaSupa • Ciclo de Vida e Lógica de Estados</h1>
+      <p class="subtitle">Da Criação do Pedido à Faturação ERP e Entrega com Tracking Torrestir</p>
+    </div>
+
+    <div class="diagram-container">
+      <img src="mapa_fluxo_pedido_movimento.svg" alt="Diagrama de Fluxo: Pedidos e Movimentos" style="width:100%; display:block;" />
+    </div>
+
+    <div class="card">
+      <h2>1. Distinção Central: Pedido vs. Movimento</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Conceito</th>
+            <th>Tabela BD</th>
+            <th>Módulo</th>
+            <th>O que Representa</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Pedido</strong></td>
+            <td><code>public.pedidos</code></td>
+            <td><code>/pedidos/novo</code> e <code>/Proc_Pedidos</code></td>
+            <td>A requisição/encomenda criada pelo cliente. Reserva provisória de stock até à emissão da fatura.</td>
+          </tr>
+          <tr>
+            <td><strong>Movimento</strong></td>
+            <td><code>public.movimentos</code></td>
+            <td><code>/historico-pedidos</code></td>
+            <td>A transação física real importada do ERP Primavera / MS Access (ES, SS, ET, ST). Rastreio final.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>2. As 7 Fases do Ciclo de Vida</h2>
+      <ol style="padding-left: 20px;">
+        <li><strong>Criação do Pedido:</strong> Estado inicial <code>status = 'pendente'</code>, <code>tipo_movimento = 'SS'</code> e <code>stock = true</code>.</li>
+        <li><strong>Reserva Provisória de Stock:</strong> RPC <code>sincronizar_pedido_para_movimentos</code> desconta quantidades no Armazém 01 sem duplicar abate.</li>
+        <li><strong>Documento Primavera (Regra de Ouro):</strong> O Gestor insere <code>doc_primavera</code> (ex: <em>ECL 2026/001</em>). A flag <em>Processar</em> está bloqueada sem este documento.</li>
+        <li><strong>Ordem de Preparação:</strong> Ao ativar <code>processar = true</code>, é registado o carimbo <code>datetime_proc = NOW()</code> e o estado visual passa a <code>em_preparacao</code>.</li>
+        <li><strong>Faturação no ERP Primavera:</strong> O ERP emite a Guia de Remessa e Fatura oficial, importada para <code>public.movimentos</code> com <code>documento_ref = doc_primavera</code>.</li>
+        <li><strong>Handoff de Stock e Marcação 'Processado':</strong> O pedido é marcado como <code>processado = true</code> e sai da fila ativa de pendentes. O abate físico passa a ser gerido exclusivamente pelo movimento real.</li>
+        <li><strong>Tracking Torrestir &amp; Comprovativo POD:</strong> Cruzamento dinâmico com <code>VW_torrestir_last</code>. Estados <em>Em Trânsito</em>, <em>Entregue</em> ou <em>Incidência</em>, com descodificação do comprovativo TIFF para PNG.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>3. Matriz de Estados de Movimentos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo Movimento</th>
+            <th>Origem</th>
+            <th>Estado Apresentado</th>
+            <th>Descrição Operacional</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ES</code></td>
+            <td>ERP</td>
+            <td><span class="tag tag-green">Rececionado</span></td>
+            <td>Entrada de Stock de fornecedor / receção no armazém.</td>
+          </tr>
+          <tr>
+            <td><code>ET</code> / <code>ST</code></td>
+            <td>ERP</td>
+            <td><span class="tag tag-blue">Transfer</span></td>
+            <td>Transferência interna entre armazéns (ex.: Venda para Devoluções / Expirados).</td>
+          </tr>
+          <tr>
+            <td><code>SS</code></td>
+            <td>ERP</td>
+            <td><span class="tag tag-yellow">Em Preparação</span></td>
+            <td>Saída de stock para expedição (estado base antes do tracking Torrestir).</td>
+          </tr>
+          <tr>
+            <td><code>SS</code> (com Tracking)</td>
+            <td>Torrestir</td>
+            <td><span class="tag tag-green">Entregue / Entregue PDA</span></td>
+            <td>Entrega final confirmada no destino com comprovativo digitalizado POD.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

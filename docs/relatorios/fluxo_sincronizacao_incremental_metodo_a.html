@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluxo de Sincronização Incremental (Método A) - MS Access para Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'neutral' });</script>
+  <style>
+    :root {
+      --primary: #111827;
+      --accent: #1d4ed8;
+      --accent-light: #e0e7ff;
+      --success: #15803d;
+      --warning: #b45309;
+      --border: #9ca3af;
+      --bg-card: #e5e7eb;
+      --bg: #d1d5db;
+      --text: #000000;
+      --text-muted: #374151;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background-color: var(--bg) !important;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--bg-card);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 40px;
+      border: 1.5px solid var(--border);
+    }
+    h1, h2, h3 { color: var(--primary); }
+    h1 { border-bottom: 2px solid var(--accent); padding-bottom: 12px; margin-top: 0; }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      background: #cbd5e1;
+      color: #0f172a;
+      border: 1px solid #94a3b8;
+      margin-right: 6px;
+    }
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .card {
+      background: #d1d5db;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .card h4 { margin: 0 0 8px 0; color: var(--primary); }
+    .card p { margin: 0; font-size: 0.92rem; color: var(--text-muted); }
+    .mermaid-box {
+      background: #f3f4f6;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin: 24px 0;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.92rem;
+      background: #ffffff;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background: #e5e7eb;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    pre {
+      background: #1f2937;
+      color: #f9fafb;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 0.88rem;
+    }
+    .alert {
+      border-left: 4px solid var(--accent);
+      background: #dbeafe;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0;
+      color: #1e3a8a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Fluxo de Sincronização Incremental (Método A)</h1>
+    <p>
+      <span class="badge">MS Access ➜ Supabase</span>
+      <span class="badge">Método A: Tabela Local de Controlo</span>
+      <span class="badge">PlatFarmaSupa</span>
+    </p>
+
+    <div class="alert">
+      <strong>Vantagem Estratégica:</strong> O Método A <u>não requer qualquer alteração</u> às tabelas ou estruturas do ERP Primavera. Toda a gestão incremental é governada pela tabela local <code>tbl_Sync_Controlo</code>, criada de forma 100% autónoma pelo VBA.
+    </div>
+
+    <h2>1. Pilares do Mecanismo</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h4>1. Pre-Flight Check a Custo Zero</h4>
+        <p>Antes de ligar o cursor e antes de qualquer requisição de rede, valida se há dados mais recentes que o último carimbo. Se não houver, aborta de imediato.</p>
+      </div>
+      <div class="card">
+        <h4>2. Filtragem Delta na Origem</h4>
+        <p>Lê estritamente registos com <code>[data] &gt; UltimoValor</code>, minimizando drasticamente o consumo de memória no Access e a largura de banda.</p>
+      </div>
+      <div class="card">
+        <h4>3. Lotes HTTP Transacionais</h4>
+        <p>Envia lotes de 500 registos JSON para as funções RPC no PostgreSQL com cláusula <code>ON CONFLICT DO UPDATE</code> (idempotente).</p>
+      </div>
+    </div>
+
+    <h2>2. Diagrama de Sequência da Execução</h2>
+    <div class="mermaid-box">
+      <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Utilizador (MS Access)
+    participant VBA as Módulo VBA
+    participant TabCtrl as tbl_Sync_Controlo
+    participant Query as Query Origem (Access)
+    participant Supa as Supabase RPC (PostgREST)
+    participant PG as PostgreSQL (Tabelas Finais)
+
+    User->>VBA: Clica no botão "Sincronizar"
+    VBA->>TabCtrl: Consulta UltimoValor para o TipoSync
+    TabCtrl-->>VBA: Retorna último carimbo (ex: "2026-11-20 18:45:00")
+    
+    VBA->>Query: SELECT TOP 1 WHERE [data] > UltimoValor
+    alt Não existem novos registos
+        Query-->>VBA: 0 registos devolvidos
+        VBA-->>User: Mensagem amigável "Sem novos dados" (Cancela sem chamadas HTTP)
+    else Existem novos registos
+        Query-->>VBA: Registos encontrados
+        Note over VBA: Ativa Ampulheta e Barra de Estado
+        VBA->>Query: SELECT * WHERE [data] > UltimoValor ORDER BY [data] ASC
+        
+        loop Por cada Lote de 500 linhas
+            VBA->>VBA: Serializa linhas para JSON escapado (RFC 8259)
+            VBA->>Supa: POST /rpc/sync_faturas_from_access
+            Supa->>PG: Transação ON CONFLICT DO UPDATE
+            PG-->>Supa: Linhas inseridas/atualizadas
+            Supa-->>VBA: HTTP 200 {"success": true, "upserted": 500}
+        end
+
+        VBA->>TabCtrl: Grava novo UltimoValor (MAX data) e DataHoraExecucao
+        TabCtrl-->>VBA: Confirmado
+        Note over VBA: Desativa Ampulheta
+        VBA-->>User: MsgBox com total de novos registos exportados
+    end
+      </div>
+    </div>
+
+    <h2>3. Fluxograma de Decisão</h2>
+    <div class="mermaid-box">
+      <div class="mermaid">
+flowchart TD
+    Inicio([Início: Chamada do Procedimento]) --> GaranteTab[Garantir existência de tbl_Sync_Controlo]
+    GaranteTab --> ObtemUltimo[Obter UltimoValor registado para TipoSync]
+    
+    ObtemUltimo --> TemHistorico{Já sincronizou alguma vez?}
+    TemHistorico -- Não --> TemDadosGeral{Existem dados na Origem?}
+    TemDadosGeral -- Não --> FimVazio[Avisa que origem está vazia e termina]
+    TemDadosGeral -- Sim --> PreparaTudo[Prepara carga total da query]
+    
+    TemHistorico -- Sim --> VerificaNovos{Existem registos com data > UltimoValor?}
+    VerificaNovos -- Não --> SemNovos[Avisa que não há novos dados<br/>Nenhuma chamada HTTP é feita]
+    SemNovos --> Fim([Fim da Operação])
+    
+    VerificaNovos -- Sim --> PreparaDelta[Filtra SELECT * WHERE data > UltimoValor]
+    
+    PreparaTudo --> LoopLotes[Inicia leitura do Recordset]
+    PreparaDelta --> LoopLotes
+    
+    LoopLotes --> MontaLote[Monta lote JSON até 500 linhas<br/>Calcula MAX de carimbo]
+    MontaLote --> EnviaHTTP[Envia POST HTTP para Supabase RPC]
+    
+    EnviaHTTP --> StatusHTTP{HTTP 200 e success = true?}
+    StatusHTTP -- Não --> ErroRPC[Mostra erro detalhado e aborta sem avançar carimbo]
+    ErroRPC --> Fim
+    
+    StatusHTTP -- Sim --> TemMaisLotes{Existem mais linhas?}
+    TemMaisLotes -- Sim --> MontaLote
+    TemMaisLotes -- Não --> AtualizaControlo[Grava MAX carimbo e Now na tbl_Sync_Controlo]
+    
+    AtualizaControlo --> MsgSucesso[Apresenta resumo de linhas inseridas/atualizadas]
+    MsgSucesso --> Fim
+      </div>
+    </div>
+
+    <h2>4. Especificação da Tabela <code>tbl_Sync_Controlo</code></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Campo</th>
+          <th>Tipo Access</th>
+          <th>Função</th>
+          <th>Exemplo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>TipoSync</strong></td>
+          <td>VARCHAR(50) [PK]</td>
+          <td>Chave primária do módulo</td>
+          <td><code>"FATURAS"</code>, <code>"MOVIMENTOS"</code>, <code>"STOCK"</code></td>
+        </tr>
+        <tr>
+          <td><strong>UltimoValor</strong></td>
+          <td>VARCHAR(100)</td>
+          <td>Último timestamp ou ID registado</td>
+          <td><code>"2026-11-20 18:45:00"</code></td>
+        </tr>
+        <tr>
+          <td><strong>UltimoTotalRegistos</strong></td>
+          <td>LONG</td>
+          <td>Quantidade da última carga</td>
+          <td><code>124</code></td>
+        </tr>
+        <tr>
+          <td><strong>DataHoraExecucao</strong></td>
+          <td>DATETIME</td>
+          <td>Momento exato da confirmação</td>
+          <td><code>21/11/2026 15:10:00</code></td>
+        </tr>
+        <tr>
+          <td><strong>Status</strong></td>
+          <td>VARCHAR(50)</td>
+          <td>Resultado operacional</td>
+          <td><code>"SUCESSO"</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>5. Como Forçar Re-sincronização Total (Reset)</h2>
+    <p>Se necessitar de re-exportar todo o histórico, basta executar na Janela Imediata do VBA (<code>CTRL + G</code>):</p>
+    <pre><code>Call ResetControloFaturas       ' Para faturas
+Call ResetControloMovimentos    ' Para movimentos
+Call ResetControloStock         ' Para stock</code></pre>
+  </div>
+</body>
+</html>
