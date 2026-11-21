@@ -14,6 +14,16 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTimer, setLockoutTimer] = useState(0);
+
+  useEffect(() => {
+    if (lockoutTimer <= 0) return;
+    const interval = setInterval(() => {
+      setLockoutTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutTimer]);
 
   const supabase = createClient();
 
@@ -37,6 +47,17 @@ export default function LoginPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    if (lockoutTimer > 0) {
+      setErrorMessage(
+        language === 'en'
+          ? `Too many failed attempts. Please wait ${lockoutTimer}s.`
+          : language === 'es'
+          ? `Demasiados intentos fallidos. Por favor espere ${lockoutTimer}s.`
+          : `Demasiadas tentativas falhadas. Por favor, aguarde ${lockoutTimer}s.`
+      );
+      return;
+    }
+
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       setErrorMessage(
@@ -58,7 +79,19 @@ export default function LoginPage() {
       });
 
       if (error) {
-        if (error.message.includes('Invalid login credentials')) {
+        const nextFailed = failedAttempts + 1;
+        setFailedAttempts(nextFailed);
+
+        if (nextFailed >= 5) {
+          setLockoutTimer(30);
+          setErrorMessage(
+            language === 'en'
+              ? 'Too many failed login attempts. Form locked for 30 seconds for security.'
+              : language === 'es'
+              ? 'Demasiados intentos fallidos. Formulario bloqueado durante 30 segundos por seguridad.'
+              : 'Demasiadas tentativas falhadas. Formulário bloqueado durante 30 segundos por motivos de segurança.'
+          );
+        } else if (error.message.includes('Invalid login credentials')) {
           setErrorMessage(t.login.invalidCredentials);
         } else if (error.message.includes('Email not confirmed')) {
           setErrorMessage(t.login.emailNotConfirmed);
@@ -70,6 +103,8 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
+        setFailedAttempts(0);
+        setLockoutTimer(0);
         // Verificar se o utilizador está ativo e obter o idioma configurado na tabela public.users
         const { data: profile, error: profileError } = await supabase
           .from('users')
