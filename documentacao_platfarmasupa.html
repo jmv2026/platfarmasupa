@@ -762,14 +762,24 @@
   <p>Visão integral do inventário físico e logístico em armazém. Permite acompanhamento rigoroso de lotes farmacêuticos,
     posições de arrumação e cumprimento dos prazos regulamentares de validade (Good Distribution Practices - GDP).</p>
   <ul>
-    <li><strong>Motor de Contabilização Consolidada de Stock:</strong> O saldo de cada lote é apurado exclusivamente a partir da tabela
-      base <code>public.stock</code> (sincronizada a partir do ERP/Access, com data e hora em <code>data_stock</code> do tipo
+    <li><strong>Motor de Contabilização Consolidada de Stock:</strong> O saldo de cada lote é apurado exclusivamente a
+      partir da tabela
+      base <code>public.stock</code> (sincronizada a partir do ERP/Access, com data e hora em <code>data_stock</code> do
+      tipo
       <code>timestamptz</code>), deduzindo no Armazém <code>01</code> todos os pedidos ativos em
-      <code>public.pedidos</code> (<code>stock = true</code> e <code>status &lt;&gt; 'cancelado'</code>) exceto aqueles cujo <code>doc_primavera</code> coincida com algum
-      <code>documento_ref</code> em <code>public.movimentos</code> (evitando dupla contabilização de movimentos históricos).
+      <code>public.pedidos</code> (<code>stock = true</code> e <code>status &lt;&gt; 'cancelado'</code>) exceto aqueles
+      cujo <code>doc_primavera</code> coincida com algum
+      <code>documento_ref</code> em <code>public.movimentos</code> (evitando dupla contabilização de movimentos
+      históricos).
     </li>
-    <li><strong>Filtro Multidimensional com Comutação Inteligente de Armazém:</strong> Filtragem por cliente, conservação, tipo de artigo (com conversão automática dos códigos <code>80</code>–<code>85</code> para <code>MH</code>, <code>MV</code>, <code>DM</code>, <code>DC</code>, <code>SA</code>, <code>SC</code>), armazém (<code>01</code> Venda a <code>10</code> MIA, com mudança automática para a aba <em>Stock Consolidado</em> ao escolher armazéns diferentes de <code>01</code>), lote e código/descrição de artigo.</li>
-    <li><strong>Apresentação Uniforme de Tipo de Artigo e Regras de Validade (Tabela <code>tempos</code>):</strong> Exibição da designação completa do <code>tipo_artigo</code> nas listas <em>Stock de Venda</em>, <em>Agrupado por Artigo</em> e <em>Artigos com Stock 0</em>, e classificação visual de cada
+    <li><strong>Filtro Multidimensional com Comutação Inteligente de Armazém:</strong> Filtragem por cliente,
+      conservação, tipo de artigo (com conversão automática dos códigos <code>80</code>–<code>85</code> para
+      <code>MH</code>, <code>MV</code>, <code>DM</code>, <code>DC</code>, <code>SA</code>, <code>SC</code>), armazém
+      (<code>01</code> Venda a <code>10</code> MIA, com mudança automática para a aba <em>Stock Consolidado</em> ao
+      escolher armazéns diferentes de <code>01</code>), lote e código/descrição de artigo.</li>
+    <li><strong>Apresentação Uniforme de Tipo de Artigo e Regras de Validade (Tabela <code>tempos</code>):</strong>
+      Exibição da designação completa do <code>tipo_artigo</code> nas listas <em>Stock de Venda</em>, <em>Agrupado por
+        Artigo</em> e <em>Artigos com Stock 0</em>, e classificação visual de cada
       lote com base na sua categoria regulamentar (MH, MV, DM, DC, SA) e parametrizações de Validade (VAL) e Expirado
       (EXP).</li>
     <li><strong>Exportação CSV e Excel Avançada:</strong> Download instantâneo da listagem filtrada em CSV (UTF-8 BOM)
@@ -1530,10 +1540,12 @@
   <div class="info-card">
     <strong>Lógica de Contabilização:</strong>
     <ul>
-      <li><strong>Base Primária Consolidada (<code>public.stock</code>):</strong> Saldo de referência sincronizado do ERP/Access com data e hora em
+      <li><strong>Base Primária Consolidada (<code>public.stock</code>):</strong> Saldo de referência sincronizado do
+        ERP/Access com data e hora em
         <code>data_stock</code> (<code>timestamp with time zone</code>).
       </li>
-      <li><strong>Pedidos Efetuados Pendentes de ERP (<code>public.pedidos</code> + <code>public.pedido_linhas</code>):</strong> Abate
+      <li><strong>Pedidos Efetuados Pendentes de ERP (<code>public.pedidos</code> +
+          <code>public.pedido_linhas</code>):</strong> Abate
         (<code>-quantidade</code> no Armazém <code>01</code>) todos os pedidos com <code>stock = true</code> e
         <code>status &lt;&gt; 'cancelado'</code>, <strong>exceto</strong> aqueles cujo <code>doc_primavera</code>
         coincida com algum <code>documento_ref</code> em <code>public.movimentos</code>.
