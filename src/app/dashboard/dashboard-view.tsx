@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Client, UserProfile } from '@/lib/supabase/types';
 import { useLanguage } from '@/lib/i18n/context';
+import AlterarPasswordModal from '@/components/auth/alterar-password-modal';
 import GraficoPedidosMensal from './grafico-pedidos-mensal';
 import type { DashboardEntradaESItem } from './grafico-kpi-rececoes';
 
@@ -111,6 +112,7 @@ export default function DashboardView({
   const [graficoAtivo, setGraficoAtivo] = useState<'pedidos' | 'top10' | 'faturacao' | 'faturacao_artigo' | 'kpi_rececoes'>('pedidos');
   const [visitedCharts, setVisitedCharts] = useState<Set<'pedidos' | 'top10' | 'faturacao' | 'faturacao_artigo' | 'kpi_rececoes'>>(() => new Set(['pedidos']));
   const [currentDateTime, setCurrentDateTime] = useState<string>('');
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const graficoContainerRef = useRef<HTMLDivElement>(null);
 
   // Relógio com data e hora atualizados em tempo real para a janela de informação
@@ -380,30 +382,43 @@ export default function DashboardView({
           </div>
         )}
 
-        {/* Janela Reduzida ao Mínimo Indispensável para Filtrar por Cliente (apenas Admin/Gestor) à extrema direita */}
-        {isManagerOrAdmin && (
-          <div className="flex items-center justify-between md:justify-start gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs shrink-0 w-full md:w-auto md:ml-auto">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="material-symbols-outlined text-sermail-green text-base">filter_alt</span>
-              <label htmlFor="dashboard-client-select" className="text-xs font-bold text-slate-700 whitespace-nowrap">
-                Filtrar:
-              </label>
+        {/* Ações Rápidas: Botão Alterar Password e Filtro por Cliente */}
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 shrink-0 md:ml-auto">
+          <button
+            type="button"
+            onClick={() => setIsPasswordModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-800 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-300 hover:border-lime-500 rounded-xl shadow-2xs transition-all cursor-pointer"
+            title={t.nav.alterarPassword}
+          >
+            <span className="material-symbols-outlined text-base text-sermail-green">lock_reset</span>
+            <span>{t.nav.alterarPassword}</span>
+          </button>
+
+          {/* Janela Reduzida ao Mínimo Indispensável para Filtrar por Cliente (apenas Admin/Gestor) */}
+          {isManagerOrAdmin && (
+            <div className="flex items-center justify-between md:justify-start gap-2 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5 shadow-2xs shrink-0 w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="material-symbols-outlined text-sermail-green text-base">filter_alt</span>
+                <label htmlFor="dashboard-client-select" className="text-xs font-bold text-slate-700 whitespace-nowrap">
+                  Filtrar:
+                </label>
+              </div>
+              <select
+                id="dashboard-client-select"
+                value={selectedClientId}
+                onChange={(e) => setSelectedClientId(e.target.value)}
+                className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer shadow-2xs w-full sm:w-auto max-w-full sm:max-w-[240px] transition-all truncate"
+              >
+                <option value="todos">{t.dashboard.allClients}</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    [{c.sigla}] {c.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              id="dashboard-client-select"
-              value={selectedClientId}
-              onChange={(e) => setSelectedClientId(e.target.value)}
-              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-900 border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:ring-1 focus:ring-sermail-green cursor-pointer shadow-2xs w-full sm:w-auto max-w-full sm:max-w-[240px] transition-all truncate"
-            >
-              <option value="todos">{t.dashboard.allClients}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  [{c.sigla}] {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* KPIs Grid (6 Indicadores superiores compactos a 2/3 da altura com elegância e alto contraste) */}
@@ -674,6 +689,13 @@ export default function DashboardView({
           </div>
         )}
       </div>
+
+      {/* Modal de Alteração de Palavra-passe */}
+      <AlterarPasswordModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+        userEmail={currentUserProfile?.email}
+      />
     </main>
   );
 }

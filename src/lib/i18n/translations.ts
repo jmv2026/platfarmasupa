@@ -11,6 +11,7 @@ export interface Translations {
     procPedidos: string;
     configuracao: string;
     terminarSessao: string;
+    alterarPassword: string;
     languageLabel: string;
     pt: string;
     es: string;
@@ -377,6 +378,30 @@ export interface Translations {
     accountInactive: string;
     loginSuccess: string;
   };
+  passwordModal: {
+    title: string;
+    subtitle: string;
+    novaPassword: string;
+    confirmarPassword: string;
+    placeholderNova: string;
+    placeholderConfirmar: string;
+    btnAlterar: string;
+    btnAlterando: string;
+    btnCancelar: string;
+    btnFechar: string;
+    reqMinChars: string;
+    reqCase: string;
+    reqNumber: string;
+    reqMatch: string;
+    forcaFraca: string;
+    forcaMedia: string;
+    forcaForte: string;
+    sucessoTitulo: string;
+    sucessoDescricao: string;
+    erroNaoCoincidem: string;
+    erroCurta: string;
+    erroGenerico: string;
+  };
 }
 
 export const translations: Record<Language, Translations> = {
@@ -391,6 +416,7 @@ export const translations: Record<Language, Translations> = {
       procPedidos: 'Processar Pedidos',
       configuracao: 'Configuração',
       terminarSessao: 'Terminar Sessão',
+      alterarPassword: 'Alterar Password',
       languageLabel: 'Idioma:',
       pt: 'PT',
       es: 'ES',
@@ -770,6 +796,30 @@ export const translations: Record<Language, Translations> = {
       accountInactive: 'Esta conta de utilizador encontra-se inativa. Contacte o administrador.',
       loginSuccess: 'Autenticação bem-sucedida! A redirecionar...',
     },
+    passwordModal: {
+      title: 'Alterar Palavra-passe',
+      subtitle: 'Defina uma nova palavra-passe segura para aceder à sua conta.',
+      novaPassword: 'Nova Palavra-passe',
+      confirmarPassword: 'Confirmar Nova Palavra-passe',
+      placeholderNova: 'Introduza a nova palavra-passe',
+      placeholderConfirmar: 'Reintroduza a nova palavra-passe',
+      btnAlterar: 'Guardar Nova Palavra-passe',
+      btnAlterando: 'A atualizar...',
+      btnCancelar: 'Cancelar',
+      btnFechar: 'Fechar',
+      reqMinChars: 'Mínimo de 8 caracteres',
+      reqCase: 'Letras maiúsculas e minúsculas',
+      reqNumber: 'Pelo menos um número',
+      reqMatch: 'As palavras-passe coincidem',
+      forcaFraca: 'Fraca',
+      forcaMedia: 'Média',
+      forcaForte: 'Forte',
+      sucessoTitulo: 'Palavra-passe alterada com sucesso!',
+      sucessoDescricao: 'A sua nova palavra-passe já se encontra ativa para os próximos inícios de sessão.',
+      erroNaoCoincidem: 'As palavras-passe não coincidem.',
+      erroCurta: 'A palavra-passe deve ter pelo menos 8 caracteres.',
+      erroGenerico: 'Não foi possível alterar a palavra-passe. Tente novamente mais tarde.',
+    },
   },
   es: {
     nav: {
@@ -782,6 +832,7 @@ export const translations: Record<Language, Translations> = {
       procPedidos: 'Procesar Pedidos',
       configuracao: 'Configuración',
       terminarSessao: 'Cerrar Sesión',
+      alterarPassword: 'Cambiar Contraseña',
       languageLabel: 'Idioma:',
       pt: 'PT',
       es: 'ES',
@@ -1161,6 +1212,30 @@ export const translations: Record<Language, Translations> = {
       accountInactive: 'Esta cuenta de usuario se encuentra inactiva. Contacte al administrador.',
       loginSuccess: '¡Autenticación exitosa! Redirigiendo...',
     },
+    passwordModal: {
+      title: 'Cambiar Contraseña',
+      subtitle: 'Defina una nueva contraseña segura para acceder a su cuenta.',
+      novaPassword: 'Nueva Contraseña',
+      confirmarPassword: 'Confirmar Nueva Contraseña',
+      placeholderNova: 'Introduzca la nueva contraseña',
+      placeholderConfirmar: 'Reintroduzca la nueva contraseña',
+      btnAlterar: 'Guardar Nueva Contraseña',
+      btnAlterando: 'Actualizando...',
+      btnCancelar: 'Cancelar',
+      btnFechar: 'Cerrar',
+      reqMinChars: 'Mínimo de 8 caracteres',
+      reqCase: 'Letras mayúsculas y minúsculas',
+      reqNumber: 'Al menos un número',
+      reqMatch: 'Las contraseñas coinciden',
+      forcaFraca: 'Débil',
+      forcaMedia: 'Media',
+      forcaForte: 'Fuerte',
+      sucessoTitulo: '¡Contraseña cambiada con éxito!',
+      sucessoDescricao: 'Su nueva contraseña ya está activa para los próximos inicios de sesión.',
+      erroNaoCoincidem: 'Las contraseñas no coinciden.',
+      erroCurta: 'La contraseña debe tener al menos 8 caracteres.',
+      erroGenerico: 'No fue posible cambiar la contraseña. Inténtelo más tarde.',
+    },
   },
   en: {
     nav: {
@@ -1173,6 +1248,7 @@ export const translations: Record<Language, Translations> = {
       procPedidos: 'Process Orders',
       configuracao: 'Settings',
       terminarSessao: 'Sign Out',
+      alterarPassword: 'Change Password',
       languageLabel: 'Language:',
       pt: 'PT',
       es: 'ES',
@@ -1551,6 +1627,30 @@ export const translations: Record<Language, Translations> = {
       emailNotConfirmed: 'Email has not been confirmed yet.',
       accountInactive: 'This user account is inactive. Please contact the administrator.',
       loginSuccess: 'Authentication successful! Redirecting...',
+    },
+    passwordModal: {
+      title: 'Change Password',
+      subtitle: 'Set a new secure password to access your account.',
+      novaPassword: 'New Password',
+      confirmarPassword: 'Confirm New Password',
+      placeholderNova: 'Enter new password',
+      placeholderConfirmar: 'Re-enter new password',
+      btnAlterar: 'Save New Password',
+      btnAlterando: 'Updating...',
+      btnCancelar: 'Cancel',
+      btnFechar: 'Close',
+      reqMinChars: 'Minimum 8 characters',
+      reqCase: 'Uppercase and lowercase letters',
+      reqNumber: 'At least one number',
+      reqMatch: 'Passwords match',
+      forcaFraca: 'Weak',
+      forcaMedia: 'Medium',
+      forcaForte: 'Strong',
+      sucessoTitulo: 'Password changed successfully!',
+      sucessoDescricao: 'Your new password is now active for future logins.',
+      erroNaoCoincidem: 'Passwords do not match.',
+      erroCurta: 'Password must be at least 8 characters long.',
+      erroGenerico: 'Could not change password. Please try again later.',
     },
   },
 };

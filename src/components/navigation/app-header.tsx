@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { UserProfile } from '@/lib/supabase/types';
 import { useLanguage, normalizeUserIdioma, SESSION_USER_LANG_INIT_KEY } from '@/lib/i18n/context';
 import SignOutButton from '@/app/dashboard/sign-out-button';
+import AlterarPasswordModal from '@/components/auth/alterar-password-modal';
 import InactivityGuard from './inactivity-guard';
 
 export type NavTab =
@@ -60,6 +61,7 @@ function HeaderBarUI({
   const { language, setLanguage, t } = useLanguage();
   const [optimisticTab, setOptimisticTab] = useState<NavTab | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [prefetchedRoutes, setPrefetchedRoutes] = useState<Set<string>>(() => new Set());
 
   const officialTab = activeTab || resolveTabFromPathname(pathname);
@@ -260,6 +262,16 @@ function HeaderBarUI({
             </p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setPasswordModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-sermail-green-dark bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-lime-400 rounded-lg transition-colors cursor-pointer"
+            title={t.nav.alterarPassword}
+          >
+            <span className="material-symbols-outlined text-base text-sermail-green">lock_reset</span>
+            <span className="hidden lg:inline">{t.nav.alterarPassword}</span>
+          </button>
+
           <SignOutButton />
 
           {/* Botão Menu Mobile / Janelas Estreitas (< 1280px) */}
@@ -389,6 +401,13 @@ function HeaderBarUI({
           </div>
         </div>
       </div>
+
+      {/* Modal de Alteração de Password acessível a partir da barra de navegação */}
+      <AlterarPasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        userEmail={userProfile?.email || userEmail}
+      />
     </header>
   );
 }
