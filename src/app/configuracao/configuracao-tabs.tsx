@@ -57,7 +57,8 @@ export type ConfigTab =
   | 'stocks'
   | 'email'
   | 'transporte'
-  | 'log';
+  | 'log'
+  | 'reset_password';
 
 interface ConfiguracaoTabsProps {
   users: UserProfile[];
@@ -89,6 +90,9 @@ export default function ConfiguracaoTabs({
   const router = useRouter();
   const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<ConfigTab>('utilizadores');
+  const [resetTargetUserId, setResetTargetUserId] = useState<string>('');
+  const [resetNewPassword, setResetNewPassword] = useState<string>('');
+  const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
   const [visitedTabs, setVisitedTabs] = useState<Set<ConfigTab>>(() => new Set(['utilizadores']));
 
   const handleSelectTab = (tab: ConfigTab) => {
@@ -744,6 +748,21 @@ export default function ConfiguracaoTabs({
           >
             <span className="material-symbols-outlined text-base">history_edu</span>
             Log
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleSelectTab('reset_password');
+              setFeedback(null);
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${activeTab === 'reset_password'
+                ? 'bg-secondary text-on-secondary shadow-md'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+              }`}
+          >
+            <span className="material-symbols-outlined text-base">lock_reset</span>
+            Reset Password
           </button>
         </div>
 
@@ -2548,6 +2567,141 @@ export default function ConfiguracaoTabs({
         {visitedTabs.has('log') && (
           <div className={activeTab === 'log' ? 'block space-y-6' : 'hidden'}>
             <LogTab logs={logs} initialInactivityMinutes={inactivityMinutes} />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* ABA: RESET PASSWORD */}
+        {/* ========================================================================= */}
+        {activeTab === 'reset_password' && (
+          <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm max-w-2xl">
+            <h3 className="text-base font-bold font-headline text-on-surface mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-secondary">lock_reset</span>
+              Reset de Password de Utilizador
+            </h3>
+            <p className="text-xs text-on-surface-variant mb-6">
+              Selecione o utilizador, defina ou gere uma nova password (mínimo 8 caracteres) e envie-a automaticamente por email.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setFeedback(null);
+
+                const selectedUser = users.find((u) => u.id === resetTargetUserId);
+                if (!selectedUser) {
+                  setFeedback({ type: 'error', text: 'Selecione um utilizador.' });
+                  return;
+                }
+                if (resetNewPassword.length < 8) {
+                  setFeedback({ type: 'error', text: 'A nova password deve ter pelo menos 8 caracteres.' });
+                  return;
+                }
+
+                setIsResettingPassword(true);
+                try {
+                  const res = await fetch('/api/admin/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      userId: selectedUser.id,
+                      userEmail: selectedUser.email,
+                      userName: selectedUser.full_name || '',
+                      newPassword: resetNewPassword,
+                    }),
+                  });
+
+                  const data = await res.json();
+                  if (!res.ok) {
+                    setFeedback({ type: 'error', text: data?.error || 'Erro ao efetuar reset da password.' });
+                  } else if (data?.emailSent === false) {
+                    setFeedback({
+                      type: 'error',
+                      text: data?.warning || 'Password alterada, mas o email não pôde ser enviado.',
+                    });
+                  } else {
+                    setFeedback({
+                      type: 'success',
+                      text: `Password redefinida com sucesso e enviada por email para ${selectedUser.email}.`,
+                    });
+                    setResetNewPassword('');
+                  }
+                } catch (err: any) {
+                  setFeedback({ type: 'error', text: err?.message || 'Erro de comunicação ao efetuar reset.' });
+                } finally {
+                  setIsResettingPassword(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div className="space-y-1.5">
+                <label htmlFor="reset-user-select" className="block text-xs font-bold text-slate-700">
+                  Utilizador <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  id="reset-user-select"
+                  value={resetTargetUserId}
+                  onChange={(e) => setResetTargetUserId(e.target.value)}
+                  required
+                  disabled={isResettingPassword}
+                  className="w-full px-3.5 py-2.5 text-xs text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary"
+                >
+                  <option value="">-- Selecionar Utilizador --</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.full_name ? `${u.full_name} (${u.email})` : u.email} — [{u.role}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="admin-reset-new-password" className="block text-xs font-bold text-slate-700">
+                  Nova Password <span className="text-rose-500">*</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="admin-reset-new-password"
+                    type="text"
+                    required
+                    minLength={8}
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                    disabled={isResettingPassword}
+                    className="flex-1 px-3.5 py-2.5 text-xs font-mono text-slate-900 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary"
+                  />
+                  <button
+                    type="button"
+                    disabled={isResettingPassword}
+                    onClick={() => {
+                      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+                      let pwd = '';
+                      for (let i = 0; i < 12; i++) {
+                        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+                      }
+                      setResetNewPassword(pwd);
+                    }}
+                    className="px-3.5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    Gerar Aleatória
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isResettingPassword || !resetTargetUserId || resetNewPassword.length < 8}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-white bg-secondary hover:bg-secondary/90 disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl shadow-xs transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base">send</span>
+                  <span>
+                    {isResettingPassword ? 'A redefinir e enviar email...' : 'Executar Reset e Enviar por Email'}
+                  </span>
+                </button>
+              </div>
+            </form>
           </div>
         )}
 </main>
