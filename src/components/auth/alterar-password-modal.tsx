@@ -104,37 +104,21 @@ export default function AlterarPasswordModal({
     setIsLoading(true);
 
     try {
-      // 1. Atualizar a palavra-passe no Supabase Auth
-      const { data, error } = await supabase.auth.updateUser({
-        password: newPassword,
+      // 1. Atualizar a palavra-passe através da API do servidor (evita bloqueios de CORS/rede no browser)
+      const response = await fetch('/api/auth/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: newPassword }),
       });
 
-      if (error) {
-        setErrorMessage(error.message || t.passwordModal.erroGenerico);
+      const result = await response.json();
+
+      if (!response.ok) {
+        setErrorMessage(result?.error || t.passwordModal.erroGenerico);
         setIsLoading(false);
         return;
-      }
-
-      // 2. Registar evento de segurança no audit_logs
-      try {
-        const currentUser = data?.user;
-        if (currentUser) {
-          await supabase.from('audit_logs').insert({
-            action: 'PASSWORD_CHANGE',
-            entity: 'auth.users',
-            entity_id: currentUser.id,
-            user_id: currentUser.id,
-            user_email: currentUser.email || userEmail,
-            details: {
-              source: 'dashboard_modal',
-              timestamp: new Date().toISOString(),
-              message: 'Palavra-passe alterada com sucesso pelo utilizador autenticado.',
-            },
-          });
-        }
-      } catch (auditErr) {
-        // Log não-bloqueante
-        console.warn('Aviso ao registar audit log de alteração de password:', auditErr);
       }
 
       setIsSuccess(true);
