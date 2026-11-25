@@ -17,13 +17,6 @@ export default function LoginPage() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutTimer, setLockoutTimer] = useState(0);
 
-  // Recuperação de password por email (válida por 1 minuto)
-  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [isSendingReset, setIsSendingReset] = useState(false);
-  const [resetError, setResetError] = useState<string | null>(null);
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
-
   useEffect(() => {
     if (lockoutTimer <= 0) return;
     const interval = setInterval(() => {
@@ -296,24 +289,6 @@ export default function LoginPage() {
                   className="w-full pl-10 pr-4 py-3.5 bg-surface-variant/50 border-none rounded-lg focus:ring-2 focus:ring-secondary/40 focus:bg-surface-container-lowest transition-all text-on-surface placeholder:text-on-surface-variant/40 text-sm"
                 />
               </div>
-              <div className="flex justify-end pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setResetEmail(email.trim());
-                    setResetError(null);
-                    setResetSuccess(null);
-                    setIsForgotModalOpen(true);
-                  }}
-                  className="text-xs font-semibold text-primary hover:text-primary-container hover:underline transition-colors cursor-pointer"
-                >
-                  {language === 'en'
-                    ? 'Forgot Password?'
-                    : language === 'es'
-                    ? '¿Olvidaste tu contraseña?'
-                    : 'Esqueci-me da Password'}
-                </button>
-              </div>
             </div>
 
             {/* Primary Action */}
@@ -396,146 +371,6 @@ export default function LoginPage() {
 
       {/* Bottom Decorative Glow */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-secondary/20 blur-[120px] rounded-full pointer-events-none"></div>
-
-      {/* Modal: Esqueci-me da Password (Link válido por 1 minuto) */}
-      {isForgotModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs"
-          role="dialog"
-          aria-modal="true"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isSendingReset) {
-              setIsForgotModalOpen(false);
-            }
-          }}
-        >
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="px-6 pt-5 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
-              <div className="flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-2xl text-primary">mail_lock</span>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 leading-tight">
-                    {language === 'en'
-                      ? 'Recover Password'
-                      : language === 'es'
-                      ? 'Recuperar Contraseña'
-                      : 'Recuperar Password'}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    {language === 'en'
-                      ? 'The reset link will be valid for 1 minute only.'
-                      : language === 'es'
-                      ? 'El enlace será válido durante solo 1 minuto.'
-                      : 'O link de alteração será válido apenas por 1 minuto.'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsForgotModalOpen(false)}
-                disabled={isSendingReset}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200/60 transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-xl">close</span>
-              </button>
-            </div>
-
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setResetError(null);
-                setResetSuccess(null);
-                const trimmed = resetEmail.trim();
-                if (!trimmed) {
-                  setResetError('Por favor, introduza o seu email.');
-                  return;
-                }
-                setIsSendingReset(true);
-                try {
-                  const expiresAt = Date.now() + 60 * 1000; // 1 minuto exacto
-                  const redirectTo = `${window.location.origin}/reset-password?expiresAt=${expiresAt}`;
-                  const { error } = await supabase.auth.resetPasswordForEmail(trimmed, {
-                    redirectTo,
-                  });
-                  if (error) {
-                    setResetError(error.message);
-                  } else {
-                    setResetSuccess(
-                      language === 'en'
-                        ? 'Recovery email sent! Please check your inbox. You have 1 minute to complete the password change.'
-                        : language === 'es'
-                        ? '¡Correo enviado! Revise su bandeja de entrada. Dispone de 1 minuto para cambiar la contraseña.'
-                        : 'Email de recuperação enviado! Verifique a sua caixa de entrada. Tem apenas 1 minuto para concluir a alteração da password.'
-                    );
-                  }
-                } catch (err: any) {
-                  setResetError(err?.message || 'Erro ao enviar email de recuperação.');
-                } finally {
-                  setIsSendingReset(false);
-                }
-              }}
-              className="p-6 space-y-4"
-            >
-              {resetError && (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2">
-                  <span className="material-symbols-outlined text-base text-rose-600 shrink-0">error</span>
-                  <span>{resetError}</span>
-                </div>
-              )}
-
-              {resetSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium flex items-start gap-2">
-                  <span className="material-symbols-outlined text-base text-emerald-600 shrink-0">check_circle</span>
-                  <span>{resetSuccess}</span>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label htmlFor="reset-email" className="block text-xs font-bold text-slate-700">
-                  Email <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  id="reset-email"
-                  type="email"
-                  required
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  placeholder="exemplo@sermail.pt"
-                  disabled={isSendingReset}
-                  className="w-full px-3.5 py-2.5 text-xs text-slate-900 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsForgotModalOpen(false)}
-                  disabled={isSendingReset}
-                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl transition-colors cursor-pointer"
-                >
-                  {t.common.cancel}
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSendingReset}
-                  className="px-4 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-container rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-                >
-                  <span className="material-symbols-outlined text-base">send</span>
-                  <span>
-                    {isSendingReset
-                      ? 'A enviar...'
-                      : language === 'en'
-                      ? 'Send Recovery Email'
-                      : language === 'es'
-                      ? 'Enviar Correo'
-                      : 'Enviar Email'}
-                  </span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

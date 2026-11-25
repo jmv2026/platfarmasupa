@@ -35,7 +35,6 @@ function checkLoginRateLimit(ip: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isLoginPage = pathname === '/login';
-  const isResetPasswordPage = pathname === '/reset-password';
   const isAuthCallback = pathname.startsWith('/auth') || pathname.startsWith('/api/auth');
 
   // 1. Verificação de Rate Limit no endpoint de Login
@@ -92,7 +91,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // 3. Utilizador não autenticado a tentar aceder a rota privada -> Redirecionar para /login
-  if (!user && !isLoginPage && !isResetPasswordPage && !isAuthCallback) {
+  if (!user && !isLoginPage && !isAuthCallback) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/login';
     if (pathname !== '/') {
