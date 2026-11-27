@@ -96,6 +96,7 @@ export default function ImportacaoFaturasCard({
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (file) {
       await handleProcessFile(file);
     }
@@ -146,9 +147,18 @@ export default function ImportacaoFaturasCard({
               `Lote ${chunkIndex}: fallback para inserção direta via Supabase client (${errMsg})`
             );
             const supabase = createClient();
+            const dedupedMap = new Map<string, FaturaRow>();
+            for (let idx = 0; idx < chunk.length; idx++) {
+              const row = chunk[idx];
+              const key = row.doc_linha || (row.documento_ref ? `${row.documento_ref}-${row.num_linha ?? idx + 1}` : null);
+              if (key) {
+                dedupedMap.set(key, { ...row, doc_linha: key });
+              }
+            }
+            const dedupedChunk = Array.from(dedupedMap.values());
             const { error: dbErr } = await supabase
               .from('faturas')
-              .upsert(chunk, { onConflict: 'documento_ref' });
+              .upsert(dedupedChunk, { onConflict: 'doc_linha' });
 
             if (dbErr) {
               throw new Error(`Erro na gravação (lote ${chunkIndex}): ${dbErr.message}`);
@@ -431,13 +441,22 @@ export default function ImportacaoFaturasCard({
             </div>
 
             {selectedFile && (
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-medium border border-teal-200">
+              <button
+                type="button"
+                onClick={() => {
+                  if (parsedRows.length > 0) setIsModalOpen(true);
+                }}
+                className={`mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-teal-50 text-teal-800 text-xs font-medium border border-teal-200 ${
+                  parsedRows.length > 0 ? 'hover:bg-teal-100 cursor-pointer transition-colors' : ''
+                }`}
+                title={parsedRows.length > 0 ? 'Clique para abrir a pré-visualização e importar' : undefined}
+              >
                 <span className="material-symbols-outlined text-sm">description</span>
                 <span>{selectedFile.name}</span>
                 <span className="text-[10px] text-teal-600 font-mono">
                   ({(selectedFile.size / 1024).toFixed(1)} KB)
                 </span>
-              </div>
+              </button>
             )}
           </div>
 

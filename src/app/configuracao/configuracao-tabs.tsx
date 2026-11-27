@@ -2590,11 +2590,11 @@ export default function ConfiguracaoTabs({
 
                 const selectedUser = users.find((u) => u.id === resetTargetUserId);
                 if (!selectedUser) {
-                  setFeedback({ type: 'error', text: 'Selecione um utilizador.' });
+                  setFeedback({ type: 'error', message: 'Selecione um utilizador.' });
                   return;
                 }
                 if (resetNewPassword.length < 8) {
-                  setFeedback({ type: 'error', text: 'A nova password deve ter pelo menos 8 caracteres.' });
+                  setFeedback({ type: 'error', message: 'A nova password deve ter pelo menos 8 caracteres.' });
                   return;
                 }
 
@@ -2613,21 +2613,21 @@ export default function ConfiguracaoTabs({
 
                   const data = await res.json();
                   if (!res.ok) {
-                    setFeedback({ type: 'error', text: data?.error || 'Erro ao efetuar reset da password.' });
+                    setFeedback({ type: 'error', message: data?.error || 'Erro ao efetuar reset da password.' });
                   } else if (data?.emailSent === false) {
                     setFeedback({
                       type: 'error',
-                      text: data?.warning || 'Password alterada, mas o email não pôde ser enviado.',
+                      message: data?.warning || 'Password alterada, mas o email não pôde ser enviado.',
                     });
                   } else {
                     setFeedback({
                       type: 'success',
-                      text: `Password redefinida com sucesso e enviada por email para ${selectedUser.email}.`,
+                      message: `Password redefinida com sucesso e enviada por email para ${selectedUser.email}.`,
                     });
                     setResetNewPassword('');
                   }
                 } catch (err: any) {
-                  setFeedback({ type: 'error', text: err?.message || 'Erro de comunicação ao efetuar reset.' });
+                  setFeedback({ type: 'error', message: err?.message || 'Erro de comunicação ao efetuar reset.' });
                 } finally {
                   setIsResettingPassword(false);
                 }

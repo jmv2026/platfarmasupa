@@ -155,17 +155,22 @@ export default function GraficoFaturacaoArtigo({
 
       const cod = String(s.artigo_id || s.artigo || s.artigo_codigo || s.artigo_cli || 'N/A').trim();
       const desc = String(s.descricao || s.artigo_descricao || s.artigo || cod).trim();
-      const qtd = Math.abs(Number(s.quantidade) || 0);
+      const rawQtd = Number(s.quantidade) || 0;
+      const qtd = Math.abs(rawQtd);
       const valUnit = Number(s.valor_unitario) || 0;
       const valAdic = Number(s.valor_adicional) || 0;
       const valAbat = Number(s.valor_abater) || 0;
+      const tipoDoc = String(s.tipo_doc || '').trim().toUpperCase();
+      const isNotaCredito = tipoDoc === 'NC' || tipoDoc === 'NCE';
 
-      const linhaLiquido = qtd * valUnit + valAdic;
+      // Em Notas de Crédito (NC / NCE), se os valores vierem positivos na linha, aplicam-se como crédito (negativo)
+      const sinal = isNotaCredito && rawQtd >= 0 && valUnit >= 0 ? -1 : 1;
+      const linhaLiquido = sinal * (rawQtd * valUnit + valAdic);
       const linhaDesconto = valAbat;
       const linhaBruto = linhaLiquido + linhaDesconto;
 
-      // Incluir linhas de artigos com valor de faturação ou desconto
-      if (linhaBruto <= 0 && linhaLiquido <= 0 && linhaDesconto <= 0) {
+      // Incluir linhas de artigos com valor de faturação, crédito (NC/NCE) ou desconto
+      if (linhaBruto === 0 && linhaLiquido === 0 && linhaDesconto === 0) {
         return;
       }
 

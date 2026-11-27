@@ -1232,11 +1232,30 @@ export async function importarFaturasAction(rows: FaturaRow[]) {
         cli_primavera: r.cli_primavera ? r.cli_primavera.trim() : null,
         sigla: r.sigla ? r.sigla.trim() : null,
         cliente_ser: r.cliente_ser ? r.cliente_ser.trim() : null,
+        num_linha: r.num_linha ?? null,
+        doc_linha: r.doc_linha ? r.doc_linha.trim() : null,
+        artigo: r.artigo ? r.artigo.trim() : null,
+        descricao: r.descricao ? r.descricao.trim() : null,
+        lote: r.lote ? r.lote.trim() : null,
+        valor_unitario: Number(r.valor_unitario) || 0,
+        valor_adicional: Number(r.valor_adicional) || 0,
+        valor_abater: Number(r.valor_abater) || 0,
+        quantidade: Number(r.quantidade) || 0,
       }));
+
+      const dedupedMap = new Map<string, any>();
+      for (let idx = 0; idx < batch.length; idx++) {
+        const item = batch[idx];
+        const key = item?.doc_linha || (item?.documento_ref ? `${item.documento_ref}-${item.num_linha ?? idx + 1}` : null);
+        if (key) {
+          dedupedMap.set(key, { ...item, doc_linha: key });
+        }
+      }
+      const dedupedBatch = Array.from(dedupedMap.values());
 
       const { error: insertErr } = await supabase
         .from('faturas')
-        .upsert(batch, { onConflict: 'documento_ref' });
+        .upsert(dedupedBatch, { onConflict: 'doc_linha' });
 
       if (insertErr) {
         console.error('Erro ao gravar lote em faturas:', insertErr);

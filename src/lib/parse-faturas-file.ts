@@ -28,6 +28,15 @@ export interface FaturaRow {
   cli_primavera: string | null;
   sigla: string | null;
   cliente_ser: string | null;
+  num_linha: number | null;
+  doc_linha: string | null;
+  artigo: string | null;
+  descricao: string | null;
+  lote: string | null;
+  valor_unitario: number;
+  valor_adicional: number;
+  valor_abater: number;
+  quantidade: number;
 }
 
 function parseNum(v: any): number {
@@ -192,6 +201,16 @@ function mapRawRowToFatura(r: Record<string, any>): FaturaRow | null {
   const cliPrimavera = cleanCell(r['cli_primavera'] ?? r['cliprimavera'] ?? r['cod_primavera'] ?? '') || null;
   const sigla = cleanCell(r['sigla'] ?? r['sigla_cliente'] ?? '') || null;
   const clienteSer = cleanCell(r['cliente_ser'] ?? r['clienteser'] ?? r['cliente'] ?? '') || null;
+  const rawNumLinha = cleanCell(r['num_linha'] ?? r['numlinha'] ?? '');
+  const numLinha = rawNumLinha ? parseInt(rawNumLinha, 10) || null : null;
+  const docLinha = cleanCell(r['doc_linha'] ?? r['doclinha'] ?? '') || null;
+  const artigo = cleanCell(r['artigo'] ?? '') || null;
+  const descricao = cleanCell(r['descricao'] ?? '') || null;
+  const lote = cleanCell(r['lote'] ?? '') || null;
+  const valorUnitario = parseNum(r['valor_unitario'] ?? r['valorunitario'] ?? 0);
+  const valorAdicional = parseNum(r['valor_adicional'] ?? r['valoradicional'] ?? 0);
+  const valorAbater = parseNum(r['valor_abater'] ?? r['valorabater'] ?? 0);
+  const quantidade = parseNum(r['quantidade'] ?? 0);
 
   return {
     documento_ref: docRef,
@@ -221,6 +240,15 @@ function mapRawRowToFatura(r: Record<string, any>): FaturaRow | null {
     cli_primavera: cliPrimavera,
     sigla,
     cliente_ser: clienteSer,
+    num_linha: numLinha,
+    doc_linha: docLinha,
+    artigo,
+    descricao,
+    lote,
+    valor_unitario: valorUnitario,
+    valor_adicional: valorAdicional,
+    valor_abater: valorAbater,
+    quantidade,
   };
 }
 
@@ -367,6 +395,15 @@ export function generateFaturasSampleCSV(): string {
     'cli_primavera',
     'sigla',
     'cliente_ser',
+    'NumLinha',
+    'doc_linha',
+    'Artigo',
+    'Descricao',
+    'Lote',
+    'ValorUnitario',
+    'ValorAdicional',
+    'ValorAbater',
+    'Quantidade',
   ].join(';');
 
   const sampleRows = [
@@ -411,6 +448,15 @@ export async function generateFaturasSampleExcel(): Promise<Blob> {
     { header: 'cli_primavera', key: 'cli_primavera', width: 14 },
     { header: 'sigla', key: 'sigla', width: 10 },
     { header: 'cliente_ser', key: 'cliente_ser', width: 16 },
+    { header: 'NumLinha', key: 'num_linha', width: 10 },
+    { header: 'doc_linha', key: 'doc_linha', width: 22 },
+    { header: 'Artigo', key: 'artigo', width: 16 },
+    { header: 'Descricao', key: 'descricao', width: 36 },
+    { header: 'Lote', key: 'lote', width: 14 },
+    { header: 'ValorUnitario', key: 'valor_unitario', width: 14 },
+    { header: 'ValorAdicional', key: 'valor_adicional', width: 14 },
+    { header: 'ValorAbater', key: 'valor_abater', width: 14 },
+    { header: 'Quantidade', key: 'quantidade', width: 12 },
   ];
 
   const headerRow = worksheet.getRow(1);

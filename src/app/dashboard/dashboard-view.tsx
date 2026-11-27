@@ -92,6 +92,7 @@ interface DashboardViewProps {
   saidas: DashboardSaidaItem[];
   entradas?: DashboardEntradaESItem[];
   faturacao: DashboardFaturacaoItem[];
+  faturasLinhas?: any[];
   currentUserProfile: UserProfile | null;
   isManagerOrAdmin: boolean;
 }
@@ -103,6 +104,7 @@ export default function DashboardView({
   saidas = [],
   entradas = [],
   faturacao,
+  faturasLinhas = [],
   currentUserProfile,
   isManagerOrAdmin,
 }: DashboardViewProps) {
@@ -221,6 +223,37 @@ export default function DashboardView({
       (f) => f.cliente_id === selectedClientId || (selectedClientObj?.sigla && f.sigla_cliente === selectedClientObj.sigla)
     );
   }, [faturacao, selectedClientId, selectedClientObj, isManagerOrAdmin]);
+
+  const filteredFaturasLinhas = useMemo(() => {
+    const mapped = faturasLinhas.map((fl) => ({
+      id: fl.doc_linha || fl.documento_ref,
+      cliente_id: '',
+      sigla: fl.sigla,
+      artigo_cli: fl.artigo || '',
+      artigo_id: fl.artigo || '',
+      artigo: fl.artigo || '',
+      descricao: fl.descricao || '',
+      quantidade: Number(fl.quantidade) || 0,
+      valor_unitario: fl.valor_unitario,
+      valor_adicional: fl.valor_adicional,
+      valor_abater: fl.valor_abater,
+      tipo_doc: fl.tipo_doc,
+      data: fl.data,
+      documento_ref: fl.documento_ref,
+      lote: fl.lote,
+    }));
+
+    if (!isManagerOrAdmin || selectedClientId === 'todos') {
+      return mapped;
+    }
+    const targetSigla = selectedClientObj?.sigla?.trim().toUpperCase();
+    const targetName = selectedClientObj?.name?.trim().toUpperCase();
+    const targetPrimavera = (selectedClientObj as any)?.cli_primavera?.trim().toUpperCase();
+    return mapped.filter((fl) => {
+      const s = fl.sigla ? String(fl.sigla).trim().toUpperCase() : '';
+      return (targetSigla && s === targetSigla) || (targetName && s === targetName) || (targetPrimavera && s === targetPrimavera);
+    });
+  }, [faturasLinhas, selectedClientId, selectedClientObj, isManagerOrAdmin]);
 
   const filteredEntradas = useMemo(() => {
     if (!isManagerOrAdmin || selectedClientId === 'todos') {
@@ -670,7 +703,7 @@ export default function DashboardView({
         {showFaturacao && visitedCharts.has('faturacao_artigo') && (
           <div className={graficoAtivo === 'faturacao_artigo' ? 'block' : 'hidden'}>
             <GraficoFaturacaoArtigo
-              saidas={filteredSaidas}
+              saidas={filteredFaturasLinhas}
               clientName={clientForChart ? `[${clientForChart.sigla}] ${clientForChart.name}` : null}
             />
           </div>

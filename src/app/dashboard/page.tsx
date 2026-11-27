@@ -76,6 +76,19 @@ export default async function DashboardPage() {
       return q;
     }, 2000);
 
+  // Buscar linhas de faturação diretamente da tabela faturas para o gráfico Faturação por Artigo
+  const fetchFaturasLinhas = () =>
+    fetchAllRowsFast<any>((from, to, countMode) => {
+      const q = supabase
+        .from('faturas')
+        .select(
+          'doc_linha, documento_ref, data, sigla, cliente_ser, cli_primavera, artigo, descricao, lote, quantidade, valor_unitario, valor_adicional, valor_abater, tipo_doc',
+          countMode ? { count: countMode } : undefined
+        )
+        .range(from, to);
+      return q;
+    }, 2000);
+
   // Buscar todos os dados em paralelo
   const [
     { data: clients },
@@ -84,6 +97,7 @@ export default async function DashboardPage() {
     { data: faturacao, error: faturacaoError },
     saidasRaw,
     entradasRaw,
+    faturasLinhasRaw,
   ] = await Promise.all([
     clientsQuery,
     stockAtualQuery,
@@ -91,6 +105,7 @@ export default async function DashboardPage() {
     faturacaoQuery,
     fetchSaidas(),
     fetchEntradasES(),
+    fetchFaturasLinhas(),
   ]);
 
   if (faturacaoError) {
@@ -211,6 +226,7 @@ export default async function DashboardPage() {
         saidas={finalSaidas}
         entradas={finalEntradas}
         faturacao={finalFaturacao}
+        faturasLinhas={faturasLinhasRaw || []}
         currentUserProfile={profile}
         isManagerOrAdmin={isManagerOrAdmin}
       />
